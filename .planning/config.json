@@ -1,7 +1,69 @@
 {
-  "mode": "yolo",
-  "depth": "comprehensive",
-  "parallelization": true,
+  "project": "Nexus",
+  "tagline": "The path from ERP to autonomy",
+  "workflow": {
+    "mode": "yolo",
+    "depth": "comprehensive",
+    "parallelization": true
+  },
+  "depth_settings": {
+    "phases_range": [8, 12],
+    "plans_per_phase": [5, 10]
+  },
+  "swarm": {
+    "architecture": "hierarchical",
+    "orchestrator": "chief-of-staff",
+    "autonomy_level": "fully_autonomous_between_gates",
+    "memory": ["document_based", "vector_memory", "handoff_summaries"],
+    "gates_required": true
+  },
+  "gates": [
+    {
+      "id": "gate_0",
+      "phase": "thesis_and_scope",
+      "checkpoints": ["icp_chosen", "workflow_chosen", "kpi_chosen", "pilot_spec_drafted"]
+    },
+    {
+      "id": "gate_1",
+      "phase": "architecture_and_stack",
+      "checkpoints": ["thin_slice_diagram", "tool_registry", "data_flows", "build_vs_buy_locked"]
+    },
+    {
+      "id": "gate_2",
+      "phase": "prototype",
+      "checkpoints": ["e2e_demo", "why_explanations", "route_comparison", "error_budget"]
+    },
+    {
+      "id": "gate_3",
+      "phase": "pilot",
+      "checkpoints": ["kpi_proven", "exceptions_cataloged", "autonomy_ladder_agreed"]
+    },
+    {
+      "id": "gate_4",
+      "phase": "productization",
+      "checkpoints": ["onboarding_checklist", "connector_template", "pricing_locked", "autonomy_policy"]
+    }
+  ],
+  "technology": {
+    "ai": "claude",
+    "vector_db": "pinecone",
+    "cloud": "aws",
+    "backend": "python",
+    "connectors": "mcp"
+  },
+  "first_target": {
+    "erp": "produce_pro",
+    "customer": "produce_distribution",
+    "initial_data": "csv_weekly_pricing",
+    "wedge": "popquote"
+  },
+  "values": {
+    "human_centered": true,
+    "no_job_displacement": true,
+    "transparency": true,
+    "data_sovereignty": true,
+    "incremental_trust": true
+  },
   "created": "2026-01-17",
-  "project": "MCP+Vector Warehouse Intelligence OS"
+  "version": "1.0.0"
 }
