@@ -1,0 +1,303 @@
+{
+  "version": "2026-05-27",
+  "description": "Second Eye ontology seed — mission-fit sources, methodologies, artifact formats, explicit relationships for Hermes synthesis clusters.",
+  "entities": [
+    {
+      "id": "ent_fmt_reel",
+      "name": "Short-form reel",
+      "entity_type": "ArtifactFormat",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "ent_fmt_reaction",
+      "name": "Reaction video",
+      "entity_type": "ArtifactFormat",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "ent_fmt_howto_ux",
+      "name": "How-to UX/UI tutorial",
+      "entity_type": "ArtifactFormat",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "ent_fmt_wireframe",
+      "name": "Wireframe like a pro",
+      "entity_type": "ArtifactFormat",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "ent_fmt_planning",
+      "name": "Planning like a pro",
+      "entity_type": "ArtifactFormat",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "ent_fmt_podcast",
+      "name": "Two-host podcast dialogue",
+      "entity_type": "ArtifactFormat",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "ent_fmt_blog",
+      "name": "Cited opinion blog",
+      "entity_type": "ArtifactFormat",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "ent_meth_oklch_tokens",
+      "name": "Deterministic OKLCH design tokens",
+      "entity_type": "Methodology",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "ent_meth_figma_mcp",
+      "name": "Figma MCP design workflow",
+      "entity_type": "Methodology",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "ent_meth_a11y_tokens",
+      "name": "Accessibility-first design tokens",
+      "entity_type": "Methodology",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "ent_meth_backend_owned_ai",
+      "name": "Backend-owned AI design workflow",
+      "entity_type": "Methodology",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "ent_meth_design_md",
+      "name": "Machine-readable DESIGN.md corpus",
+      "entity_type": "Methodology",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "ent_src_semitexa",
+      "name": "semitexa/semitexa-platform-ui",
+      "entity_type": "SourceArtifact",
+      "source_id": "src_4fcd1fc86038142f"
+    },
+    {
+      "id": "ent_src_creative_lab",
+      "name": "KallasLima/creative-ai-workflow-lab",
+      "entity_type": "SourceArtifact",
+      "source_id": "src_03b9b2f390abdf68"
+    },
+    {
+      "id": "ent_src_accessible_ds",
+      "name": "richardstelmach/accessible-design-system",
+      "entity_type": "SourceArtifact",
+      "source_id": "src_276fbac03e25d81b"
+    },
+    {
+      "id": "ent_src_design_ai",
+      "name": "Riccardoaerosolised936/design-ai",
+      "entity_type": "SourceArtifact",
+      "source_id": "src_e00a19c56af34d29"
+    },
+    {
+      "id": "ent_src_pixel_mcp",
+      "name": "giovannisacca/pixel-mcp-workflow",
+      "entity_type": "SourceArtifact",
+      "source_id": "src_f6ac22af8f054397"
+    },
+    {
+      "id": "ent_src_figma_releases",
+      "name": "figma.com/releases",
+      "entity_type": "SourceArtifact",
+      "source_id": "src_d8303122e7732530"
+    },
+    {
+      "id": "ent_src_replit_blog",
+      "name": "blog.replit.com",
+      "entity_type": "SourceArtifact",
+      "source_id": "src_be3f12566d1c9760"
+    },
+    {
+      "id": "ent_topic_agent_design_context",
+      "name": "Agent design context",
+      "entity_type": "Topic",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "ent_topic_cited_synthesis",
+      "name": "Cited multimodal synthesis",
+      "entity_type": "Topic",
+      "source_id": "system_seed"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_semitexa_oklch",
+      "source_entity_id": "ent_src_semitexa",
+      "target_entity_id": "ent_meth_oklch_tokens",
+      "relationship_type": "implements",
+      "source_id": "src_4fcd1fc86038142f"
+    },
+    {
+      "id": "rel_semitexa_figma",
+      "source_entity_id": "ent_src_semitexa",
+      "target_entity_id": "ent_a9836abfb11f70f1",
+      "relationship_type": "documents",
+      "source_id": "src_4fcd1fc86038142f"
+    },
+    {
+      "id": "rel_semitexa_ds_tax",
+      "source_entity_id": "ent_src_semitexa",
+      "target_entity_id": "ent_meth_oklch_tokens",
+      "relationship_type": "covers",
+      "source_id": "src_4fcd1fc86038142f"
+    },
+    {
+      "id": "rel_creative_figma",
+      "source_entity_id": "ent_src_creative_lab",
+      "target_entity_id": "ent_a9836abfb11f70f1",
+      "relationship_type": "documents",
+      "source_id": "src_03b9b2f390abdf68"
+    },
+    {
+      "id": "rel_creative_backend_ai",
+      "source_entity_id": "ent_src_creative_lab",
+      "target_entity_id": "ent_meth_backend_owned_ai",
+      "relationship_type": "implements",
+      "source_id": "src_03b9b2f390abdf68"
+    },
+    {
+      "id": "rel_creative_mcp",
+      "source_entity_id": "ent_src_creative_lab",
+      "target_entity_id": "ent_meth_figma_mcp",
+      "relationship_type": "extends",
+      "source_id": "src_03b9b2f390abdf68"
+    },
+    {
+      "id": "rel_accessible_a11y",
+      "source_entity_id": "ent_src_accessible_ds",
+      "target_entity_id": "ent_meth_a11y_tokens",
+      "relationship_type": "implements",
+      "source_id": "src_276fbac03e25d81b"
+    },
+    {
+      "id": "rel_accessible_figma",
+      "source_entity_id": "ent_src_accessible_ds",
+      "target_entity_id": "ent_a9836abfb11f70f1",
+      "relationship_type": "documents",
+      "source_id": "src_276fbac03e25d81b"
+    },
+    {
+      "id": "rel_design_ai_corpus",
+      "source_entity_id": "ent_src_design_ai",
+      "target_entity_id": "ent_meth_design_md",
+      "relationship_type": "implements",
+      "source_id": "src_e00a19c56af34d29"
+    },
+    {
+      "id": "rel_pixel_mcp_method",
+      "source_entity_id": "ent_src_pixel_mcp",
+      "target_entity_id": "ent_meth_figma_mcp",
+      "relationship_type": "implements",
+      "source_id": "src_f6ac22af8f054397"
+    },
+    {
+      "id": "rel_figma_releases_product",
+      "source_entity_id": "ent_src_figma_releases",
+      "target_entity_id": "ent_a9836abfb11f70f1",
+      "relationship_type": "documents",
+      "source_id": "src_d8303122e7732530"
+    },
+    {
+      "id": "rel_replit_product",
+      "source_entity_id": "ent_src_replit_blog",
+      "target_entity_id": "ent_7170ded013efea6a",
+      "relationship_type": "documents",
+      "source_id": "src_be3f12566d1c9760"
+    },
+    {
+      "id": "rel_cluster_reaction_figma",
+      "source_entity_id": "ent_src_figma_releases",
+      "target_entity_id": "ent_fmt_reaction",
+      "relationship_type": "suitable_for",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "rel_cluster_howto_semitexa",
+      "source_entity_id": "ent_src_semitexa",
+      "target_entity_id": "ent_fmt_howto_ux",
+      "relationship_type": "suitable_for",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "rel_cluster_podcast_creative",
+      "source_entity_id": "ent_src_creative_lab",
+      "target_entity_id": "ent_fmt_podcast",
+      "relationship_type": "suitable_for",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "rel_cluster_blog_accessible",
+      "source_entity_id": "ent_src_accessible_ds",
+      "target_entity_id": "ent_fmt_blog",
+      "relationship_type": "suitable_for",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "rel_cluster_wireframe_design_ai",
+      "source_entity_id": "ent_src_design_ai",
+      "target_entity_id": "ent_fmt_wireframe",
+      "relationship_type": "suitable_for",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "rel_cluster_reel_replit",
+      "source_entity_id": "ent_src_replit_blog",
+      "target_entity_id": "ent_fmt_reel",
+      "relationship_type": "suitable_for",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "rel_cluster_howto_pixel_mcp",
+      "source_entity_id": "ent_src_pixel_mcp",
+      "target_entity_id": "ent_fmt_howto_ux",
+      "relationship_type": "suitable_for",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "rel_topic_cited_synthesis",
+      "source_entity_id": "ent_topic_cited_synthesis",
+      "target_entity_id": "ent_fmt_blog",
+      "relationship_type": "requires",
+      "source_id": "system_seed"
+    },
+    {
+      "id": "rel_topic_agent_context",
+      "source_entity_id": "ent_topic_agent_design_context",
+      "target_entity_id": "ent_meth_design_md",
+      "relationship_type": "requires",
+      "source_id": "system_seed"
+    }
+  ],
+  "taxonomy_extensions": [
+    {
+      "id": "tax_agent_design_context",
+      "name": "agent design context",
+      "parent_id": "tax_77d0765bcbd774d3"
+    },
+    {
+      "id": "tax_cited_synthesis",
+      "name": "cited synthesis",
+      "parent_id": "tax_77d0765bcbd774d3"
+    },
+    {
+      "id": "tax_reaction_watch",
+      "name": "reaction and watch",
+      "parent_id": "tax_64680e62adedbe9a"
+    },
+    {
+      "id": "tax_figma_mcp",
+      "name": "Figma MCP workflows",
+      "parent_id": "tax_64680e62adedbe9a"
+    }
+  ]
+}

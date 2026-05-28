@@ -1,0 +1,38 @@
+User-agent: *
+
+Allow: /api/
+Allow: /llms.txt
+Allow: /.well-known/
+
+# Agent discovery — read these first
+# Menu (JSON):     /.well-known/menu.json
+# Menu (API):      /api/bar/menu
+# Agent card:      /.well-known/agent-card.json
+# MCP manifest:    /.well-known/mcp.json
+# Human/agent doc: /llms.txt
+
+Allow: /api/bar/menu
+Allow: /.well-known/menu.json
+
+Allow: /api/bar/marks/discover
+Allow: /.well-known/work-mark.json
+
+# Work mark — embed in output, not on agent. Schema: /.well-known/work-mark.json
+Allow: /api/bar/services/loop-detect
+Allow: /api/bar/services/scope-check
+Allow: /api/bar/services/context-recover
+Allow: /api/bar/services/tool-verify
+Allow: /api/bar/services/cascade-break
+Allow: /api/bar/services/pitstop
+Allow: /api/bar/services/pre-run-context
+Allow: /api/bar/services/claim-check
+Allow: /api/bar/services/context-compress
+Allow: /api/bar/services/mcp-wiring
+Allow: /api/bar/services/should-i-pay
+Allow: /api/bar/services/receipt
+
+Disallow: /review/
+Disallow: /briefs/
+
+# Agents: canonical domain https://secondeyesai.com
+# Start at /api/bar, /llms.txt, /.well-known/menu.json, or /.well-known/agent-card.json

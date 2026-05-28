@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Supply Queue | Second Eye AI</title>
+  <meta name="description" content="Review agent-supplied source proposals. You gate the pipeline; optional submissions welcome anytime.">
+  <link rel="stylesheet" href="/assets/style.css">
+  <link rel="stylesheet" href="/review/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">Second Eye AI</a>
+    <div class="header-meta">
+      <span><span id="queue-count" class="count">0</span> agent-supplied</span>
+      <span id="position-label" hidden></span>
+      <a href="/">Index</a>
+    </div>
+  </header>
+
+  <div id="auth-gate" class="auth-gate" hidden>
+    <h1>Review access</h1>
+    <p>Enter your review token to gate agent-supplied proposals.</p>
+    <label for="token-input">Review token</label>
+    <input id="token-input" type="password" autocomplete="current-password">
+    <div class="actions" style="margin-top:16px">
+      <button id="token-save" class="btn btn-primary" type="button">Continue</button>
+    </div>
+  </div>
+
+  <main id="app" class="layout" hidden>
+    <section class="queue-panel" aria-label="Review queue">
+      <div class="panel-head">
+        <h1>Agent supply queue</h1>
+        <p>The research agent keeps this fed. You review, approve, or deny. Submit your own sources anytime — that is optional, not required.</p>
+        <div class="filters" role="toolbar" aria-label="Filter queue">
+          <button class="chip" type="button" data-filter="all" aria-pressed="true">All</button>
+          <button class="chip" type="button" data-filter="worth_a_look" aria-pressed="false">Worth a look</button>
+          <button class="chip" type="button" data-filter="likely_skip" aria-pressed="false">Likely skip</button>
+          <button class="chip" type="button" data-filter="github" aria-pressed="false">GitHub</button>
+          <button class="chip" type="button" data-filter="huggingface" aria-pressed="false">Hugging Face</button>
+          <button class="chip" type="button" data-filter="article" aria-pressed="false">Articles</button>
+        </div>
+      </div>
+      <ul id="queue-list" class="queue-list"></ul>
+    </section>
+
+    <section class="detail-panel" aria-label="Review detail">
+      <div id="detail-empty" class="empty-state">
+        <h2>Select a proposal</h2>
+        <p>The agent supplies candidates. You decide what enters the index. Press <kbd>J</kbd> / <kbd>K</kbd> to move when not typing.</p>
+      </div>
+      <article id="detail-card" class="detail-card" hidden></article>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/review/app.js?v=3" defer></script>
+</body>
+</html>

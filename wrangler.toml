@@ -1,0 +1,24 @@
+name = "second-eyes-ai"
+pages_build_output_dir = "public"
+compatibility_date = "2026-05-26"
+
+# Resilience — set Cloudflare dashboard rate limits on /api/bar/enter and /api/bar/proof
+# Secrets (set via `wrangler secret put NAME`):
+# ACCESS_TOKEN_SECRET       — HMAC key for issued access JWTs (auto-generate via scripts/push-coinbase-secrets.mjs)
+# X402_PAYTO                — Base wallet for USDC (A4A/x402)
+# X402_FACILITATOR_URL      — https://api.cdp.coinbase.com/platform
+# CDP_API_KEY_NAME          — organizations/.../apiKeys/... from CDP portal
+# CDP_API_KEY_SECRET        — EC private key PEM from CDP portal
+# CDP_API_KEY               — legacy single bearer (optional fallback)
+# STRIPE_WEBHOOK_SECRET     — Stripe webhook signing secret
+# STRIPE_LINK_MONTHLY       — Payment Link URL ($10/mo)
+# STRIPE_LINK_ANNUAL        — Payment Link URL ($100/yr)
+# STRIPE_LINK_LIFETIME      — Payment Link URL ($250 once)
+
+[vars]
+X402_NETWORK = "base"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "second-eyes-lawful-loop"
+database_id = "0f8ec3e5-dc6b-4a34-89a9-b22c8f5880a7"

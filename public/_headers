@@ -1,0 +1,23 @@
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+/review/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/api/*
+  X-Content-Type-Options: nosniff
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, OPTIONS
+  Access-Control-Allow-Headers: Authorization, Content-Type, PAYMENT-SIGNATURE, X-PAYMENT-SIGNATURE, X-PAYMENT, X-A2A-Extensions, Stripe-Signature, Idempotency-Key, X-Idempotency-Key, X-Agent-Id, X-Second-Eye-Agent-Id, X-Second-Eye-Mark, X-Second-Eye-Patron, X-Second-Eye-Session
+  Access-Control-Expose-Headers: X-PAYMENT-RESPONSE, X-A2A-Extensions, Retry-After, X-Second-Eye-Mark, X-Second-Eye-Patron, X-Second-Eye-Session
+
+/.well-known/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+
+/llms.txt
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400

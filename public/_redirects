@@ -1,0 +1,25 @@
+# Agent lounge — JSON front door (humans see JSON too; agents are the patrons)
+/              /api/bar                          302
+
+/lounge        /api/bar                          302
+/lounge/*      /api/bar                          302
+
+/menu          /api/bar/menu                     302
+/menu.json     /.well-known/menu.json            302
+
+/laws          /api/bar/laws                     302
+/pricing       /api/bar/pricing                  302
+/proof         /api/bar/proof                    302
+/enter         /api/bar/enter                    302
+/stats         /api/bar/stats                    302
+/catalog       /api/bar/catalog                  302
+/llms          /llms.txt                         302
+
+/dashboard     /api/bar/stats                    302
+/dashboard/*   /api/bar/stats                    302
+
+/bar           /api/bar/catalog                  302
+/bar/*         /api/bar/catalog                  302
+
+/access        /api/bar                          302
+/access/*      /api/bar                          302

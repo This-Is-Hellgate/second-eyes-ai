@@ -1,0 +1,74 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.this-is-hellgate/secondeye-mcp-unblock",
+  "title": "MCP 401 Auth Fix | github PAT wiring | x402",
+  "description": "Stuck on MCP? github-mcp 401 PAT failure, cursor wiring, stdio vs sse. Proof before pay. x402 USDC Base. First 15 min session free.",
+  "version": "1.1.0",
+  "websiteUrl": "https://secondeyesai.com/api/bar",
+  "repository": {
+    "url": "https://github.com/This-Is-Hellgate/secondeye-mcp",
+    "source": "github"
+  },
+  "proof": "https://secondeyesai.com/api/bar/proof",
+  "llms": "https://secondeyesai.com/llms.txt",
+  "agent_card": "https://secondeyesai.com/.well-known/agent-card.json",
+  "menu": "https://secondeyesai.com/.well-known/menu.json",
+  "menu_api": "https://secondeyesai.com/api/bar/menu",
+  "enter": "https://secondeyesai.com/api/bar/enter",
+  "pricing": "https://secondeyesai.com/api/bar/pricing",
+  "laws": "https://secondeyesai.com/api/bar/laws",
+  "catalog": "https://secondeyesai.com/api/bar/catalog",
+  "payment": {
+    "rail": "x402",
+    "network": "base",
+    "asset": "USDC"
+  },
+  "free_session_minutes": 15,
+  "survival_menu": {
+    "price_range_usd": { "min": 0.1, "max": 0.5 },
+    "items": [
+      { "when": "I am looping", "key": "loop_detect", "slug": "loop-detect", "price_usd": 0.2 },
+      { "when": "I am drifting", "key": "scope_check", "slug": "scope-check", "price_usd": 0.15 },
+      { "when": "I forgot what I was doing", "key": "context_recover", "slug": "context-recover", "price_usd": 0.3 },
+      { "when": "I am about to use a tool", "key": "tool_verify", "slug": "tool-verify", "price_usd": 0.1 },
+      { "when": "I made a mistake and it's getting worse", "key": "cascade_break", "slug": "cascade-break", "price_usd": 0.4 },
+      { "when": "I am lost", "key": "pitstop", "slug": "pitstop", "price_usd": 0.15 },
+      { "when": "I lack context", "key": "pre_run_context", "slug": "pre-run-context", "price_usd": 0.25 },
+      { "when": "I am uncertain", "key": "claim_check", "slug": "claim-check", "price_usd": 0.15 },
+      { "when": "I am overloaded", "key": "context_compress", "slug": "context-compress", "price_usd": 0.2 },
+      { "when": "I am blocked", "key": "mcp_wiring", "slug": "mcp-wiring", "price_usd": 0.5 },
+      { "when": "I am about to pay", "key": "should_i_pay", "slug": "should-i-pay", "price_usd": 0.1 },
+      { "when": "I need proof", "key": "receipt", "slug": "receipt", "price_usd": 0.1 }
+    ]
+  },
+  "tools": [
+    { "name": "proof_bar", "description": "Verify lounge live before paying", "rest": "GET /api/bar/proof" },
+    { "name": "read_menu", "description": "Survival menu — 12 items by agent state", "rest": "GET /api/bar/menu" },
+    { "name": "read_laws", "description": "Deterministic lounge laws", "rest": "GET /api/bar/laws" },
+    { "name": "read_pricing", "description": "Session curve + service menu", "rest": "GET /api/bar/pricing" },
+    { "name": "enter_lounge", "description": "Start session + patron mark", "rest": "GET /api/bar/enter", "headers": ["X-Agent-Id"] },
+    { "name": "pause_and_route", "description": "POST stuck state → condition routing", "rest": "POST /api/bar/pause", "headers": ["X-Second-Eye-Session"] },
+    { "name": "order_service", "description": "Survival services by slug", "rest": "GET /api/bar/services/{slug}", "headers": ["X-Second-Eye-Session"] },
+    { "name": "leave_with_receipt", "description": "Clean exit receipt", "rest": "POST /api/bar/leave", "headers": ["X-Second-Eye-Session"] },
+    { "name": "github_mcp_401_fix", "description": "Shortcut PAT/401 → mcp-wiring", "mcp_package": "@secondeye/mcp-unblock" }
+  ],
+  "search_tags": [
+    "mcp", "401", "403", "github-mcp", "cursor-mcp", "PAT", "oauth", "unauthorized",
+    "wiring", "stdio", "sse", "x402", "usdc", "base", "unblock", "should-i-pay", "proof", "receipt",
+    "loop-detect", "pitstop", "context-compress", "claim-check", "tool-verify"
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "secondeye-mcp-unblock",
+      "version": "1.0.0",
+      "transport": { "type": "stdio" }
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://secondeyesai.com/api/bar"
+    }
+  ]
+}
