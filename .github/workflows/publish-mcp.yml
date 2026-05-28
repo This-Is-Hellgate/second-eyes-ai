@@ -4,6 +4,11 @@ on:
   push:
     tags: ["mcp-v*"]
   workflow_dispatch:
+    inputs:
+      version:
+        description: npm version (workflow_dispatch only)
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -48,6 +53,20 @@ jobs:
           fs.writeFileSync('server.json', JSON.stringify(d, null, 2) + '\n');
           " "$VERSION"
 
+      - name: Sync version from workflow input
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          node -e "
+          const fs = require('fs');
+          const v = process.argv[1];
+          const d = JSON.parse(fs.readFileSync('server.json', 'utf8'));
+          d.version = v;
+          for (const p of d.packages || []) p.version = v;
+          fs.writeFileSync('server.json', JSON.stringify(d, null, 2) + '\n');
+          " "$VERSION"
+
       - name: Publish package
         run: |
           npm publish --provenance --access public || {
@@ -82,6 +101,19 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/mcp-v')
         run: |
           VERSION="${GITHUB_REF#refs/tags/mcp-v}"
+          node -e "
+          const fs = require('fs');
+          const v = process.argv[1];
+          const d = JSON.parse(fs.readFileSync('server.json', 'utf8'));
+          d.version = v;
+          for (const p of d.packages || []) p.version = v;
+          fs.writeFileSync('server.json', JSON.stringify(d, null, 2) + '\n');
+          " "$VERSION"
+
+      - name: Sync version from workflow input
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
           node -e "
           const fs = require('fs');
           const v = process.argv[1];
