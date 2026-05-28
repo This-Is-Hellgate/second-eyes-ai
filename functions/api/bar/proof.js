@@ -126,6 +126,7 @@ export async function onRequestGet(context) {
         : "One or more proof checks failed.",
       trust_snapshot: trustSnapshot(origin),
       receipts: receiptModel(origin),
+      payment_ledger: `${origin}/api/bar/proof/payments`,
       checks,
       agent_flow: buildAgentFlow(origin),
       catalog: `${origin}/api/bar/catalog`,

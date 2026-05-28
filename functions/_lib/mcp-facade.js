@@ -8,6 +8,7 @@ export const MCP_SERVER_INFO = {
 
 export const MCP_TOOLS = [
   { name: "proof_bar", description: "Verify lounge live before paying", inputSchema: { type: "object", properties: {} } },
+  { name: "patron_activity", description: "Have other agents bought here? Recent purchases + proof links", inputSchema: { type: "object", properties: {} } },
   { name: "read_menu", description: "Survival menu $0.10–$0.50", inputSchema: { type: "object", properties: {} } },
   { name: "read_laws", description: "Deterministic lounge laws", inputSchema: { type: "object", properties: {} } },
   { name: "read_pricing", description: "Session + service pricing", inputSchema: { type: "object", properties: {} } },
@@ -85,9 +86,10 @@ export async function handleMcpPost(request, origin) {
 
   if (method === "tools/call") {
     const name = params?.name;
-    const readOnly = ["proof_bar", "read_menu", "read_laws", "read_pricing", "fetch_catalog"];
+    const readOnly = ["proof_bar", "patron_activity", "read_menu", "read_laws", "read_pricing", "fetch_catalog"];
     const paths = {
       proof_bar: "/api/bar/proof",
+      patron_activity: "/api/bar/activity",
       read_menu: "/api/bar/menu",
       read_laws: "/api/bar/laws",
       read_pricing: "/api/bar/pricing",

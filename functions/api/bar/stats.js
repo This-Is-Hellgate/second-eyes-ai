@@ -3,6 +3,7 @@ import { getCounters, recentMarks, formatMark } from "../../_lib/marks.js";
 import { buildAgentFlow } from "../../_lib/agent-entry.js";
 import { corsOptions } from "../../_lib/bar-pay.js";
 import { getLoungeStats } from "../../_lib/lounge/stats.js";
+import { getPatronActivity } from "../../_lib/lounge/patron-activity.js";
 export async function onRequestOptions() {
   return corsOptions();
 }
@@ -13,12 +14,14 @@ export async function onRequestGet(context) {
   const counters = await getCounters(context.env);
   const recent = await recentMarks(context.env, 24);
   const lounge = await getLoungeStats(context.env);
+  const patron_activity = await getPatronActivity(context.env, origin);
 
   return accessJson(
     {
       service: "second-eye-lounge",
       patrons: "agents_only",
       display: "counter",
+      patron_activity,
       agents_served: counters.agents_served,
       tasks_sold: counters.tasks_sold,
       survival_services_sold: lounge.survival_services_sold,

@@ -4,6 +4,7 @@ import { buildWorkStamp, workMarkLaw } from "../../_lib/work-mark.js";
 import { buildAgentFlow, buildPaymentProtocol } from "../../_lib/agent-entry.js";
 import { corsOptions } from "../../_lib/bar-pay.js";
 import { createSession, sessionHeaders, closeStaleSessions } from "../../_lib/lounge/sessions.js";
+import { getPatronActivity } from "../../_lib/lounge/patron-activity.js";
 import { lawsPayload, pricingResponse } from "../../_lib/lounge/handler.js";
 import { MENU, IDLE_TIMEOUT_SECONDS, MAX_SESSION_SECONDS, FREE_SESSION_MINUTES } from "../../_lib/lounge/constants.js";
 import { isPenned, quarantineBody } from "../../_lib/lounge/strikes.js";
@@ -40,6 +41,7 @@ async function handleEnter(context) {
   const mark = formatMark(result.mark, origin);
   const stats = await getCounters(context.env);
   const session = await createSession(context.env, { agentId, markId: mark.id });
+  const patron_activity = await getPatronActivity(context.env, origin);
 
   return accessJson(
     {
@@ -50,6 +52,7 @@ async function handleEnter(context) {
       message: result.existing
         ? "Welcome back. Session started — carry session header on every service call."
         : "You are in. Session clock is running. Order survival services; leave with proof.",
+      patron_activity,
       mark,
       work_mark_law: workMarkLaw(),
       work_stamp: buildWorkStamp(mark, origin, { product_slug: "enter" }),
@@ -89,6 +92,7 @@ async function handleEnter(context) {
         discover_mark: `${origin}/api/bar/marks/discover`,
         free_tool: `${origin}/api/bar/tools/cursor-mcp-wiring`,
         stats: `${origin}/api/bar/stats`,
+        activity: `${origin}/api/bar/activity`,
       },
       agent_flow: buildAgentFlow(origin),
       payment_activation: buildPaymentProtocol(origin),

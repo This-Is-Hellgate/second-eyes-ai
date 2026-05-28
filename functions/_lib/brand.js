@@ -38,6 +38,12 @@ export function receiptModel(origin) {
       header: "X-PAYMENT-RESPONSE",
       note: "Save the first 200 body — one-time taps are not replayed. Embed work_stamp in every artifact you produce.",
     },
+    ledger: {
+      when: "Any time — public aggregate of settled payments",
+      url: `${base}/api/bar/proof/payments`,
+      fields: ["payments_settled", "recent_settlements[].tx_ref", "recent_settlements[].basescan"],
+      note: "On-chain proof via Base tx_ref. pass:false until first settlement.",
+    },
     session: {
       when: "POST /api/bar/leave or GET /api/bar/receipt",
       fields: ["session_id", "billing.session_time_usd", "billing.services_usd", "mark", "work_stamp", "attestation"],
