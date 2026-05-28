@@ -162,7 +162,16 @@ export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
   const base = facilitator.replace(/\/$/, "");
   const paths = facilitatorPaths(base);
 
-  const verifyAuth = await buildCdpAuthHeaders(env, "POST", paths.verifyPath);
+  let verifyAuth;
+  try {
+    verifyAuth = await buildCdpAuthHeaders(env, "POST", paths.verifyPath);
+  } catch (err) {
+    return {
+      ok: false,
+      error: err?.message || "cdp_auth_key_import_failed",
+      stage: "auth",
+    };
+  }
   const headers = { "Content-Type": "application/json", ...verifyAuth };
 
   let verifyRes;
@@ -191,7 +200,16 @@ export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
     };
   }
 
-  const settleAuth = await buildCdpAuthHeaders(env, "POST", paths.settlePath);
+  let settleAuth;
+  try {
+    settleAuth = await buildCdpAuthHeaders(env, "POST", paths.settlePath);
+  } catch (err) {
+    return {
+      ok: false,
+      error: err?.message || "cdp_auth_key_import_failed",
+      stage: "auth",
+    };
+  }
   const settleHeaders = { "Content-Type": "application/json", ...settleAuth };
 
   let settleRes;

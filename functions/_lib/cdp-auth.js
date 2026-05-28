@@ -1,6 +1,66 @@
-import { SignJWT, importPKCS8 } from "jose";
+import { SignJWT, importJWK, importPKCS8 } from "jose";
 
 const CDP_HOST = "api.cdp.coinbase.com";
+
+function normalizeSecret(raw) {
+  return raw.includes("\\n") ? raw.replace(/\\n/g, "\n") : raw;
+}
+
+function isPemSecret(secret) {
+  return secret.trimStart().startsWith("-----BEGIN");
+}
+
+function decodeBase64ToBytes(base64Secret) {
+  const binary = atob(base64Secret);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/** Ed25519 CDP keys: base64(32-byte seed || 32-byte public key) → 64 bytes. */
+async function importEd25519SigningKey(base64Secret) {
+  const decoded = decodeBase64ToBytes(base64Secret);
+  if (decoded.length !== 64) {
+    throw new Error(`invalid_ed25519_key_length:${decoded.length}`);
+  }
+
+  const seed = decoded.subarray(0, 32);
+  const publicKey = decoded.subarray(32, 64);
+  const jwk = {
+    kty: "OKP",
+    crv: "Ed25519",
+    d: b64urlBytes(seed),
+    x: b64urlBytes(publicKey),
+  };
+
+  return importJWK(jwk, "EdDSA");
+}
+
+function b64urlBytes(bytes) {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** EC CDP keys: PKCS#8 PEM only (Workers-safe — no node:crypto SEC1 conversion). */
+async function importEcSigningKey(pemSecret) {
+  if (pemSecret.includes("BEGIN EC PRIVATE KEY")) {
+    throw new Error("ec_sec1_pem_requires_pkcs8_conversion");
+  }
+  return importPKCS8(pemSecret, "ES256");
+}
+
+async function loadCdpSigningKey(keySecret) {
+  const secret = normalizeSecret(keySecret);
+  if (isPemSecret(secret)) {
+    return { key: await importEcSigningKey(secret), alg: "ES256" };
+  }
+  return { key: await importEd25519SigningKey(secret), alg: "EdDSA" };
+}
 
 /** CDP Secret API key JWT — valid ~2 minutes per request. */
 export async function buildCdpAuthHeaders(env, method, requestPath) {
@@ -9,13 +69,13 @@ export async function buildCdpAuthHeaders(env, method, requestPath) {
 
   if (keyName && keySecret) {
     const uri = `${method.toUpperCase()} ${CDP_HOST}${requestPath}`;
-    const pem = keySecret.includes("\\n") ? keySecret.replace(/\\n/g, "\n") : keySecret;
-    const key = await importPKCS8(pem, "ES256");
     const now = Math.floor(Date.now() / 1000);
     const nonce = crypto.randomUUID().replace(/-/g, "");
 
-    const jwt = await new SignJWT({ sub: keyName, uri })
-      .setProtectedHeader({ alg: "ES256", kid: keyName, nonce })
+    const { key, alg } = await loadCdpSigningKey(keySecret);
+
+    const jwt = await new SignJWT({ sub: keyName, uri, aud: ["cdp_service"] })
+      .setProtectedHeader({ alg, kid: keyName, typ: "JWT", nonce })
       .setIssuer("cdp")
       .setIssuedAt(now)
       .setNotBefore(now)
