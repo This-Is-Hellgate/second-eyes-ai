@@ -38,6 +38,9 @@ jobs:
           cache: npm
           cache-dependency-path: packages/secondeye-mcp/package-lock.json
 
+      - name: Upgrade npm for Trusted Publishing (OIDC requires npm ≥11.5.1)
+        run: npm install -g npm@11
+
       - run: npm ci
 
       - name: Sync version from tag
