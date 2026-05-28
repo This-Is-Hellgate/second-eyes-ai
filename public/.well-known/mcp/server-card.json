@@ -2,7 +2,7 @@
   "serverInfo": {
     "name": "secondeye-mcp-unblock",
     "title": "MCP 401 Auth Fix | github PAT wiring | x402",
-    "version": "1.0.4"
+    "version": "1.0.5"
   },
   "authentication": {
     "required": false,
@@ -96,7 +96,7 @@
     {
       "registryType": "npm",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "transport": { "type": "stdio" }
     }
   ],

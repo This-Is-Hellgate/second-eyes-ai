@@ -1,6 +1,6 @@
 # Publish checklist
 
-**Status:** npm + MCP Registry live at `@secondeyes/mcp-unblock@1.0.4`.
+**Status:** npm + MCP Registry live at `@secondeyes/mcp-unblock@1.0.5`.
 
 ## 1. npm Trusted Publishing (one-time setup)
 

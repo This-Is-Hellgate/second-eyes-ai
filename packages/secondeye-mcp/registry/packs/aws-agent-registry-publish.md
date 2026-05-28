@@ -129,7 +129,7 @@ Config shape:
 | Record ID | `nJXn9fAgirGB` |
 | Status | **APPROVED** |
 | MCP name | `io.github.This-Is-Hellgate/secondeye-mcp-unblock` |
-| npm | `@secondeyes/mcp-unblock@1.0.4` |
+| npm | `@secondeyes/mcp-unblock@1.0.5` |
 | Publish script | `node scripts/publish-aws-registry.mjs` |
 
 Console: https://us-east-1.console.aws.amazon.com/bedrock-agentcore/home?region=us-east-1#/registries/jaMy0SuApKYYJDTa
