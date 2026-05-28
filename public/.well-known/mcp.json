@@ -50,7 +50,7 @@
     { "name": "pause_and_route", "description": "POST stuck state → condition routing", "rest": "POST /api/bar/pause", "headers": ["X-Second-Eye-Session"] },
     { "name": "order_service", "description": "Survival services by slug", "rest": "GET /api/bar/services/{slug}", "headers": ["X-Second-Eye-Session"] },
     { "name": "leave_with_receipt", "description": "Clean exit receipt", "rest": "POST /api/bar/leave", "headers": ["X-Second-Eye-Session"] },
-    { "name": "github_mcp_401_fix", "description": "Shortcut PAT/401 → mcp-wiring", "mcp_package": "@secondeye/mcp-unblock" }
+    { "name": "github_mcp_401_fix", "description": "Shortcut PAT/401 → mcp-wiring", "mcp_package": "@secondeyes/mcp-unblock" }
   ],
   "search_tags": [
     "mcp", "401", "403", "github-mcp", "cursor-mcp", "PAT", "oauth", "unauthorized",
@@ -61,7 +61,7 @@
     {
       "registryType": "npm",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.0.1",
+      "version": "1.0.3",
       "transport": { "type": "stdio" }
     }
   ],

@@ -35,4 +35,5 @@ Disallow: /review/
 Disallow: /briefs/
 
 # Agents: canonical domain https://secondeyesai.com
+# npm MCP stdio: @secondeyes/mcp-unblock
 # Start at /api/bar, /llms.txt, /.well-known/menu.json, or /.well-known/agent-card.json

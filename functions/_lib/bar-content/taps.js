@@ -1,5 +1,7 @@
 /** One-time taps — nano ($0.25) or micro ($1) single fetch. */
 
+import { getAwsAgentRegistryPublishPack } from "./packs/aws-agent-registry-publish.js";
+
 const TAPS = {
   "cursor-mcp-minimal-config": {
     slug: "cursor-mcp-minimal-config",
@@ -97,6 +99,19 @@ const TAPS = {
         source_url: "https://github.com/modelcontextprotocol/servers/tree/main/src/github",
       },
     ],
+  },
+
+  "aws-agent-registry-publish": {
+    slug: "aws-agent-registry-publish",
+    tap_type: "micro_pack",
+    tier: "micro",
+    price_usd: 1,
+    one_time: true,
+    tool: "agent-discovery",
+    access: "paid",
+    lead: "Publish MCP to AWS Agent Registry — protocols, pitfalls, live CLI payloads.",
+    pack: getAwsAgentRegistryPublishPack(),
+    claims: getAwsAgentRegistryPublishPack().claims,
   },
 };
 

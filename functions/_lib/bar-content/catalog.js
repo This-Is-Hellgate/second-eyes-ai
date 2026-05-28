@@ -144,6 +144,15 @@ export const TOOLS = [
     status: "stocking",
     micro_taps: [],
   },
+  {
+    slug: "agent-discovery",
+    name: "Agent discovery and registry publish",
+    platforms: ["cursor", "claude-code", "agents"],
+    priceUsd: 5,
+    access: "paid",
+    status: "live",
+    micro_taps: ["aws-agent-registry-publish"],
+  },
 ];
 
 export const MICRO_TAPS = [
@@ -200,6 +209,15 @@ export const MICRO_TAPS = [
     one_time: true,
     access: "paid",
     status: "stocking",
+  },
+  {
+    slug: "aws-agent-registry-publish",
+    tool: "agent-discovery",
+    tier: "micro",
+    priceUsd: 1,
+    one_time: true,
+    access: "paid",
+    status: "live",
   },
 ];
 

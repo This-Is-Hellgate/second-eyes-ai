@@ -88,6 +88,7 @@ export async function onRequestGet(context) {
     ["paid_tool_402", "/api/bar/tools/github-mcp", 402],
     ["paid_nano_402", "/api/bar/taps/mcp-stdio-vs-sse", 402],
     ["paid_micro_402", "/api/bar/taps/github-mcp-search-code", 402],
+    ["paid_micro_pack_402", "/api/bar/taps/aws-agent-registry-publish", 402],
     ["pause_requires_session", "/api/bar/pause", 400],
   ];
 
