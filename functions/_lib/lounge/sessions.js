@@ -136,6 +136,63 @@ export async function recordServiceCall(env, sessionId, slug, priceUsd) {
     .run();
 }
 
+/** Close sessions that exceeded idle or max TTL without a follow-up request. */
+export async function closeStaleSessions(env) {
+  if (!env?.DB) return { closed_idle: 0, closed_max_ttl: 0 };
+
+  const ts = nowIso();
+
+  const idle = await env.DB.prepare(
+    `UPDATE bar_sessions SET status = 'closed', left_at = ?, exit_type = 'idle_timeout', updated_at = ?
+     WHERE status = 'active'
+       AND (julianday('now') - julianday(last_activity_at)) * 86400 > ?`
+  )
+    .bind(ts, ts, IDLE_TIMEOUT_SECONDS)
+    .run();
+
+  const maxTtl = await env.DB.prepare(
+    `UPDATE bar_sessions SET status = 'closed', left_at = ?, exit_type = 'max_ttl', updated_at = ?
+     WHERE status = 'active'
+       AND (julianday('now') - julianday(entered_at)) * 86400 > ?`
+  )
+    .bind(ts, ts, MAX_SESSION_SECONDS)
+    .run();
+
+  return {
+    closed_idle: idle.meta?.changes ?? 0,
+    closed_max_ttl: maxTtl.meta?.changes ?? 0,
+  };
+}
+
+export async function getSessionHealth(env) {
+  if (!env?.DB) {
+    return { sessions_active: 0, sessions_closed_today: 0, sessions_abandoned_idle: 0 };
+  }
+
+  await closeStaleSessions(env);
+
+  const active = await env.DB.prepare(
+    "SELECT COUNT(*) AS n FROM bar_sessions WHERE status = 'active'"
+  ).first();
+
+  const closedToday = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM bar_sessions
+     WHERE status = 'closed' AND entered_at > datetime('now', '-1 day')`
+  ).first();
+
+  const abandoned = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM bar_sessions
+     WHERE status = 'closed' AND exit_type = 'idle_timeout'
+       AND entered_at > datetime('now', '-1 day')`
+  ).first();
+
+  return {
+    sessions_active: active?.n ?? 0,
+    sessions_closed_today: closedToday?.n ?? 0,
+    sessions_abandoned_idle: abandoned?.n ?? 0,
+  };
+}
+
 export async function terminateSession(env, sessionId, exitType) {
   const row = await getSession(env, sessionId);
   if (!row) return null;

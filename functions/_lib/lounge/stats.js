@@ -1,5 +1,7 @@
 /** Aggregate lounge intelligence — no PII, no task content. */
 
+import { getSessionHealth } from "./sessions.js";
+
 export async function getLoungeStats(env) {
   const base = {
     sessions_today: 0,
@@ -71,6 +73,20 @@ export async function getLoungeStats(env) {
   if (served > 0 && returnRow?.repeat_patrons) {
     base.patron_return_rate = Math.round((returnRow.repeat_patrons / served) * 1000) / 1000;
   }
+
+  base.session_health = await getSessionHealth(env);
+
+  const funnelKeys = ["payment_402_lounge", "payment_402_micro", "payment_402_nano", "payment_402_tool"];
+  const funnelRows = await env.DB.prepare(
+    `SELECT key, value FROM bar_counters WHERE key IN (${funnelKeys.map(() => "?").join(",")})`
+  )
+    .bind(...funnelKeys)
+    .all();
+  base.payment_funnel = Object.fromEntries(
+    (funnelRows.results || []).map((r) => [r.key, r.value])
+  );
+  base.payment_funnel_note =
+    "payment_402_* = agents hit paid gate (402). Compare to survival_services_sold for conversion.";
 
   return base;
 }

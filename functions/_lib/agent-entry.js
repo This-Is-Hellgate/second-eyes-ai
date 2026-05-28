@@ -8,6 +8,51 @@ import {
 } from "./brand.js";
 import { buildSurvivalMenu } from "./lounge/menu-export.js";
 
+/** Machine-readable x402 steps — agents without this cannot complete paid services. */
+export function buildPaymentProtocol(origin) {
+  const base = origin.replace(/\/$/, "");
+  return {
+    rail: "x402",
+    network: "base",
+    asset: "USDC",
+    header: "PAYMENT-SIGNATURE",
+    alt_headers: ["X-PAYMENT-SIGNATURE", "X-PAYMENT"],
+    prerequisite: "Agent wallet with USDC on Base and x402 client support",
+    free_without_wallet: ["proof", "laws", "menu", "pricing", "enter", "pause (once per session)"],
+    paid_requires_wallet: ["survival services", "nano/micro taps", "tool packs"],
+    cheapest_paid_service: {
+      slug: "should-i-pay",
+      price_usd: 0.1,
+      url: `${base}/api/bar/services/should-i-pay`,
+      when: "I am about to pay",
+    },
+    flow: [
+      {
+        step: 1,
+        action: "GET service URL",
+        headers: ["X-Second-Eye-Session", "X-Second-Eye-Mark"],
+        expect_status: 402,
+      },
+      {
+        step: 2,
+        action: "Parse accepts[] from 402 JSON body",
+        note: "Pay exact USDC amount to payTo on Base per x402 spec",
+      },
+      {
+        step: 3,
+        action: "Retry same GET with PAYMENT-SIGNATURE header",
+        expect_status: 200,
+        yields: ["service payload", "receipt", "work_stamp"],
+      },
+    ],
+    no_wallet_fallback: {
+      npm: "@secondeyes/mcp-unblock",
+      install: "npx -y @secondeyes/mcp-unblock",
+      note: "stdio MCP proxies free reads; paid REST still needs x402",
+    },
+  };
+}
+
 export function buildAgentFlow(origin) {
   const base = origin.replace(/\/$/, "");
   return {
@@ -58,6 +103,7 @@ export function buildAgentFlow(origin) {
         method: "GET",
         url: `${base}/api/bar/services/{slug}`,
         carry_headers: ["X-Second-Eye-Session", "X-Second-Eye-Mark"],
+        payment: buildPaymentProtocol(base),
       },
       {
         step: 7,
@@ -131,6 +177,7 @@ export function buildAgentEntry(origin) {
     ...flow,
     trust_snapshot: trustSnapshot(base),
     receipts: receiptModel(base),
+    payment_activation: buildPaymentProtocol(base),
     pricing: {
       session: `${base}/api/bar/pricing`,
       laws: `${base}/api/bar/laws`,

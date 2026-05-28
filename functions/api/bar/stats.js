@@ -23,7 +23,10 @@ export async function onRequestGet(context) {
       tasks_sold: counters.tasks_sold,
       survival_services_sold: lounge.survival_services_sold,
       survival_revenue_usd: lounge.survival_revenue_usd,
-      payment_note: "tasks_sold = legacy taps/tools; survival_services_sold = paid menu items via x402",
+      session_health: lounge.session_health,
+      payment_funnel: lounge.payment_funnel,
+      payment_note:
+        "tasks_sold = legacy taps/tools; survival_services_sold = paid menu via x402; payment_402_* = saw paywall",
       latest_patron_number: counters.patron_number,
       tagline: "Second Eye is the pause.",
       sessions_today: lounge.sessions_today,

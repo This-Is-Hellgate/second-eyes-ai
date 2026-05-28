@@ -5,6 +5,7 @@ import { enrichWithWorkStamp, workMarkLaw } from "../work-mark.js";
 import { SERVICE_PRICES, MENU, LOUNGE_VERSION, LAWS, FREE_SESSION_MINUTES, SURVIVAL_MENU } from "./constants.js";
 import { buildPricingPayload } from "./pricing.js";
 import { buildSurvivalMenu } from "./menu-export.js";
+import { buildPaymentProtocol } from "../agent-entry.js";
 import { triageResponse } from "./triage.js";
 import { buildServicePayload, honeypotPayload } from "./services.js";
 import {
@@ -104,6 +105,7 @@ export async function handlePauseOrDiagnose(context, mode) {
 
   const orderSlug = triage.recommendation?.replace(/_/g, "-");
   const orderPrice = SERVICE_PRICES[orderSlug]?.price_usd ?? triage.price_usd ?? triage.estimated_cost_usd;
+  const payment = buildPaymentProtocol(origin);
 
   return loungeJson({
     mode,
@@ -117,6 +119,8 @@ export async function handlePauseOrDiagnose(context, mode) {
             method: "GET",
             header: "X-Second-Eye-Session",
             payment: "HTTP 402 → pay USDC on Base → retry with PAYMENT-SIGNATURE",
+            x402: payment.flow,
+            cheapest_alternative: payment.cheapest_paid_service,
           }
         : null,
     menu: MENU,

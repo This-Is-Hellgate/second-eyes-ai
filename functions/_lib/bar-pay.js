@@ -1,6 +1,7 @@
 import { makeId, nowIso } from "./review.js";
 import { getPlan, issueAccessToken, verifyAccessToken } from "./access.js";
 import { recordAccessGrant, findAccessGrantByTxRef, readIdempotencyKey, findIdempotencyGrant, storeIdempotencyKey } from "./a4a-store.js";
+import { incrementCounter } from "./marks.js";
 import {
   buildProductPaymentRequirements,
   encodePaymentResponse,
@@ -173,6 +174,11 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
 
   const paymentHeader = readPaymentHeader(request);
   if (!paymentHeader) {
+    if (env.DB && product.priceUsd > 0) {
+      const counterKey =
+        product.kind === "lounge" ? "payment_402_lounge" : `payment_402_${product.kind}`;
+      await incrementCounter(env, counterKey, 1);
+    }
     return accessJson(payment402BodyForProduct(requirements, product, undefined, origin), 402, {
       "Access-Control-Allow-Origin": "*",
       "Cache-Control": CACHE.payment402,

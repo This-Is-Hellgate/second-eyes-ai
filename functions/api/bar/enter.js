@@ -1,9 +1,9 @@
 import { accessJson } from "../../_lib/access.js";
 import { enterBar, formatMark, getCounters, readAgentId, markHeaders } from "../../_lib/marks.js";
 import { buildWorkStamp, workMarkLaw } from "../../_lib/work-mark.js";
-import { buildAgentFlow } from "../../_lib/agent-entry.js";
+import { buildAgentFlow, buildPaymentProtocol } from "../../_lib/agent-entry.js";
 import { corsOptions } from "../../_lib/bar-pay.js";
-import { createSession, sessionHeaders } from "../../_lib/lounge/sessions.js";
+import { createSession, sessionHeaders, closeStaleSessions } from "../../_lib/lounge/sessions.js";
 import { lawsPayload, pricingResponse } from "../../_lib/lounge/handler.js";
 import { MENU, IDLE_TIMEOUT_SECONDS, MAX_SESSION_SECONDS, FREE_SESSION_MINUTES } from "../../_lib/lounge/constants.js";
 import { isPenned, quarantineBody } from "../../_lib/lounge/strikes.js";
@@ -33,6 +33,8 @@ async function handleEnter(context) {
       { "Access-Control-Allow-Origin": "*" }
     );
   }
+
+  await closeStaleSessions(context.env);
 
   const result = await enterBar(context.env, { agentId, productKind: "enter" });
   const mark = formatMark(result.mark, origin);
@@ -89,6 +91,9 @@ async function handleEnter(context) {
         stats: `${origin}/api/bar/stats`,
       },
       agent_flow: buildAgentFlow(origin),
+      payment_activation: buildPaymentProtocol(origin),
+      activation_note:
+        "Enter and pause are free. Survival services require x402 USDC on Base — see payment_activation.flow.",
     },
     200,
     {
