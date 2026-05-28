@@ -1,0 +1,106 @@
+{
+  "serverInfo": {
+    "name": "secondeye-mcp-unblock",
+    "title": "MCP 401 Auth Fix | github PAT wiring | x402",
+    "version": "1.0.3"
+  },
+  "authentication": {
+    "required": false,
+    "schemes": []
+  },
+  "tools": [
+    {
+      "name": "proof_bar",
+      "description": "Verify lounge live before paying",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "read_menu",
+      "description": "Survival menu $0.10–$0.50",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "read_laws",
+      "description": "Deterministic lounge laws",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "read_pricing",
+      "description": "Session + service pricing",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "enter_lounge",
+      "description": "Start session + work stamp",
+      "inputSchema": {
+        "type": "object",
+        "properties": { "agent_id": { "type": "string" } },
+        "required": ["agent_id"]
+      }
+    },
+    {
+      "name": "pause_and_route",
+      "description": "POST stuck state → routed service",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string" },
+          "task": { "type": "string" },
+          "state": { "type": "string" }
+        },
+        "required": ["session_id"]
+      }
+    },
+    {
+      "name": "order_service",
+      "description": "Survival services by slug",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string" },
+          "slug": { "type": "string" }
+        },
+        "required": ["session_id", "slug"]
+      }
+    },
+    {
+      "name": "leave_with_receipt",
+      "description": "Exit with receipt",
+      "inputSchema": {
+        "type": "object",
+        "properties": { "session_id": { "type": "string" } },
+        "required": ["session_id"]
+      }
+    },
+    {
+      "name": "fetch_catalog",
+      "description": "Lounge + legacy tool packs",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "github_mcp_401_fix",
+      "description": "Shortcut PAT/401 → mcp-wiring",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string" },
+          "error_detail": { "type": "string" }
+        },
+        "required": ["session_id"]
+      }
+    }
+  ],
+  "resources": [],
+  "prompts": [],
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@secondeyes/mcp-unblock",
+      "version": "1.0.3",
+      "transport": { "type": "stdio" }
+    }
+  ],
+  "websiteUrl": "https://secondeyesai.com/api/bar",
+  "proof": "https://secondeyesai.com/api/bar/proof",
+  "repository": "https://github.com/This-Is-Hellgate/secondeye-mcp"
+}
