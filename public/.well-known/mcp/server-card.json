@@ -2,7 +2,7 @@
   "serverInfo": {
     "name": "secondeye-mcp-unblock",
     "title": "MCP 401 Auth Fix | github PAT wiring | x402",
-    "version": "1.0.3"
+    "version": "1.0.4"
   },
   "authentication": {
     "required": false,
@@ -96,11 +96,11 @@
     {
       "registryType": "npm",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "transport": { "type": "stdio" }
     }
   ],
   "websiteUrl": "https://secondeyesai.com/api/bar",
   "proof": "https://secondeyesai.com/api/bar/proof",
-  "repository": "https://github.com/This-Is-Hellgate/secondeye-mcp"
+  "repository": "https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp"
 }

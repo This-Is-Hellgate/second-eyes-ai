@@ -71,9 +71,9 @@ Agent card: https://secondeyesai.com/.well-known/agent-card.json
 - **Catalog (lounge + legacy):** https://secondeyesai.com/api/bar/catalog
 - **Stats:** https://secondeyesai.com/api/bar/stats
 - **MCP discovery:** https://secondeyesai.com/.well-known/mcp.json
-- **MCP stdio (npm):** `@secondeyes/mcp-unblock@1.0.3` — `npx -y @secondeyes/mcp-unblock`
+- **MCP stdio (npm):** `@secondeyes/mcp-unblock@1.0.4` — `npx -y @secondeyes/mcp-unblock`
 - **MCP Registry:** `io.github.This-Is-Hellgate/secondeye-mcp-unblock`
-- **GitHub package:** https://github.com/This-Is-Hellgate/secondeye-mcp
+- **GitHub (monorepo):** https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp
 
 ## MCP STDIO INSTALL
 

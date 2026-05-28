@@ -1,0 +1,67 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
+  "title": "MCP 401 Auth Fix | github PAT wiring | x402",
+  "description": "github-mcp 401? PAT wiring. Proof before pay. x402 USDC Base. 15 min free.",
+  "version": "1.0.4",
+  "websiteUrl": "https://secondeyesai.com/api/bar",
+  "repository": {
+    "url": "https://github.com/This-Is-Hellgate/second-eyes-ai",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@secondeyes/mcp-unblock",
+      "version": "1.0.4",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "SECOND_EYE_BASE_URL",
+          "description": "Second Eye lounge base URL",
+          "default": "https://secondeyesai.com",
+          "isRequired": false
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://secondeyesai.com/api/bar"
+    }
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "search_tags": [
+        "mcp",
+        "401",
+        "403",
+        "github-mcp",
+        "cursor-mcp",
+        "PAT",
+        "oauth",
+        "unauthorized",
+        "wiring",
+        "stdio",
+        "sse",
+        "x402",
+        "usdc",
+        "base",
+        "agent",
+        "unblock",
+        "claim-check",
+        "should-i-pay",
+        "proof",
+        "receipt"
+      ],
+      "proof_url": "https://secondeyesai.com/api/bar/proof",
+      "llms_txt": "https://secondeyesai.com/llms.txt",
+      "agent_card": "https://secondeyesai.com/.well-known/agent-card.json",
+      "mcp_discovery": "https://secondeyesai.com/.well-known/mcp.json"
+    }
+  }
+}

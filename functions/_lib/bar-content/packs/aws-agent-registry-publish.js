@@ -180,7 +180,7 @@ export const AWS_AGENT_REGISTRY_PUBLISH_PACK = {
     console:
       "https://us-east-1.console.aws.amazon.com/bedrock-agentcore/home?region=us-east-1#/registries/jaMy0SuApKYYJDTa",
     publish_script: "node scripts/publish-aws-registry.mjs (set AWS_AGENT_REGISTRY_ID)",
-    repo: "https://github.com/This-Is-Hellgate/secondeye-mcp",
+    repo: "https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp",
   },
 
   troubleshooting: [

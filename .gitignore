@@ -5,4 +5,3 @@ cdp-credentials.local.json
 node_modules/
 .wrangler/
 .dev.vars
-packages/secondeye-mcp/

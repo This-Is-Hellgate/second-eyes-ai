@@ -1,0 +1,99 @@
+name: Publish MCP package
+
+on:
+  push:
+    tags: ["mcp-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish-npm:
+    name: Publish @secondeyes/mcp-unblock to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/secondeye-mcp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: packages/secondeye-mcp/package-lock.json
+
+      - run: npm ci
+
+      - name: Sync version from tag
+        if: startsWith(github.ref, 'refs/tags/mcp-v')
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/mcp-v}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          node -e "
+          const fs = require('fs');
+          const v = process.argv[1];
+          const d = JSON.parse(fs.readFileSync('server.json', 'utf8'));
+          d.version = v;
+          for (const p of d.packages || []) p.version = v;
+          fs.writeFileSync('server.json', JSON.stringify(d, null, 2) + '\n');
+          " "$VERSION"
+
+      - name: Publish package
+        run: |
+          npm publish --provenance --access public || {
+            code=$?
+            ver=$(node -p "require('./package.json').version")
+            if npm view "@secondeyes/mcp-unblock@${ver}" version >/dev/null 2>&1; then
+              echo "Version ${ver} already on npm — continuing."
+              exit 0
+            fi
+            exit $code
+          }
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-mcp-registry:
+    name: Publish to MCP Registry
+    needs: publish-npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: packages/secondeye-mcp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mcp-publisher
+        run: |
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          chmod +x mcp-publisher
+
+      - name: Sync version from tag
+        if: startsWith(github.ref, 'refs/tags/mcp-v')
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/mcp-v}"
+          node -e "
+          const fs = require('fs');
+          const v = process.argv[1];
+          const d = JSON.parse(fs.readFileSync('server.json', 'utf8'));
+          d.version = v;
+          for (const p of d.packages || []) p.version = v;
+          fs.writeFileSync('server.json', JSON.stringify(d, null, 2) + '\n');
+          " "$VERSION"
+
+      - name: Authenticate (GitHub OIDC)
+        run: ./mcp-publisher login github-oidc
+
+      - name: Dry-run validate
+        run: ./mcp-publisher publish --dry-run
+
+      - name: Publish to MCP Registry
+        run: ./mcp-publisher publish
