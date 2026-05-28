@@ -1,3 +1,8 @@
+# npm: Trusted Publishing (OIDC) — no NPM_TOKEN secret required.
+# One-time setup on npmjs.com → @secondeyes/mcp-unblock → Trusted Publisher:
+#   GitHub Actions | This-Is-Hellgate / second-eyes-ai | publish-mcp.yml | npm publish
+# See packages/secondeye-mcp/PUBLISH.md
+
 name: Publish MCP package
 
 on:
@@ -19,9 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      id-token: write # Required for npm Trusted Publishing + provenance
     defaults:
       run:
         working-directory: packages/secondeye-mcp
@@ -34,8 +37,6 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
           cache-dependency-path: packages/secondeye-mcp/package-lock.json
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - run: npm ci
 
@@ -67,7 +68,7 @@ jobs:
           fs.writeFileSync('server.json', JSON.stringify(d, null, 2) + '\n');
           " "$VERSION"
 
-      - name: Publish package
+      - name: Publish package (Trusted Publishing OIDC)
         run: |
           npm publish --provenance --access public || {
             code=$?

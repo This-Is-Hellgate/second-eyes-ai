@@ -33,9 +33,7 @@ npx wrangler pages deploy public --project-name second-eyes-ai
 
 ## Publish MCP package
 
-From repo root, tag `mcp-v1.0.4` (or run workflow manually). Requires `NPM_TOKEN` secret on this repository.
-
-See `packages/secondeye-mcp/PUBLISH.md`.
+From repo root, tag `mcp-vX.Y.Z` (or run workflow manually). Uses **npm Trusted Publishing** (OIDC) — configure once on npmjs.com. See `packages/secondeye-mcp/PUBLISH.md`.
 
 ## Deprecated repo
 
