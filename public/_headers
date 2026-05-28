@@ -16,8 +16,17 @@
   Access-Control-Allow-Headers: Authorization, Content-Type, PAYMENT-SIGNATURE, X-PAYMENT-SIGNATURE, X-PAYMENT, X-A2A-Extensions, Stripe-Signature, Idempotency-Key, X-Idempotency-Key, X-Agent-Id, X-Second-Eye-Agent-Id, X-Second-Eye-Mark, X-Second-Eye-Patron, X-Second-Eye-Session
   Access-Control-Expose-Headers: X-PAYMENT-RESPONSE, X-A2A-Extensions, Retry-After, X-Second-Eye-Mark, X-Second-Eye-Patron, X-Second-Eye-Session
 
-/.well-known/*
-  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
-
 /llms.txt
-  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+  Cache-Control: public, max-age=300, s-maxage=86400
+
+/.well-known/agent-card.json
+  Cache-Control: public, max-age=300, s-maxage=86400
+
+/.well-known/menu.json
+  Cache-Control: public, max-age=300, s-maxage=86400
+
+/.well-known/mcp.json
+  Cache-Control: public, max-age=300, s-maxage=86400
+
+/.well-known/mcp/server-card.json
+  Cache-Control: public, max-age=300, s-maxage=86400
