@@ -9,6 +9,6 @@ Install in Cursor or Claude Desktop:
 ```json
 {
   "command": "npx",
-  "args": ["-y", "secondeye-mcp-unblock"]
+  "args": ["-y", "@secondeyes/mcp-unblock"]
 }
 ```
