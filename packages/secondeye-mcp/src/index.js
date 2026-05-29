@@ -3,6 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { payAndRetryService, walletStatus } from "./x402-wallet.js";
 
 const BASE = (process.env.SECOND_EYE_BASE_URL || "https://secondeyesai.com").replace(/\/$/, "");
 /** Canonical: secondeyesai.com */
@@ -34,7 +35,7 @@ const server = new McpServer({
 
 server.tool(
   "proof_bar",
-  "Verify Second Eye lounge is live before paying. Must return pass:true.",
+  "Verify Second Eyes lounge is live before paying. Must return pass:true.",
   {},
   async () => textResult((await api("/api/bar/proof")).json)
 );
@@ -101,7 +102,7 @@ server.tool(
 
 server.tool(
   "order_service",
-  "Order survival service: claim-check, mcp-wiring, should-i-pay, context-compress, etc.",
+  "Order survival service: claim-check, mcp-wiring, should-i-pay, context-compress, etc. Paid slugs auto-settle via MCP_X402_WALLET_KEY when configured.",
   {
     session_id: z.string(),
     slug: z
@@ -111,12 +112,37 @@ server.tool(
       ),
   },
   async ({ session_id, slug }) => {
-    const r = await api(`/api/bar/services/${slug}`, {
+    const path = `/api/bar/services/${slug}`;
+    const r = await api(path, {
       headers: { "X-Second-Eye-Session": session_id },
     });
+
+    if (r.status !== 402) {
+      return textResult({ status: r.status, ...r.json });
+    }
+
+    const paid = await payAndRetryService(`${BASE}${path}`, {
+      session_id,
+      slug,
+      initial402: r.json,
+    });
+
+    if (paid.status === 200) {
+      return textResult({
+        status: paid.status,
+        paid_via_mcp_x402: true,
+        payment: paid.payment,
+        ...paid.json,
+      });
+    }
+
     return textResult({
-      status: r.status,
-      note: r.status === 402 ? "Payment required — retry with PAYMENT-SIGNATURE header via REST" : undefined,
+      status: 402,
+      payment_required: true,
+      x402_error: paid.x402_error,
+      wallet_hint: walletStatus(),
+      note: paid.x402_error?.hint ||
+        "Set MCP_X402_WALLET_KEY on the MCP server process, or pay via REST with PAYMENT-SIGNATURE.",
       ...r.json,
     });
   }

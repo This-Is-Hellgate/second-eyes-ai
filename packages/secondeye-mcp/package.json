@@ -1,8 +1,8 @@
 {
   "name": "@secondeyes/mcp-unblock",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "mcpName": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
-  "description": "MCP 401 auth fix | github PAT wiring | x402 USDC Base | proof required — proxy to Second Eye agent lounge",
+  "description": "MCP 401 auth fix | github PAT wiring | x402 USDC Base | proof required — proxy to Second Eyes agent lounge",
   "type": "module",
   "bin": {
     "secondeye-mcp-unblock": "src/index.js"
@@ -17,6 +17,10 @@
     "provenance": true
   },
   "keywords": [
+    "second eyes",
+    "second eyes agent lounge",
+    "secondeyes",
+    "secondeyesai",
     "mcp",
     "github-mcp",
     "cursor-mcp",
@@ -39,6 +43,12 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
+    "@x402/evm": "^2.13.0",
+    "@x402/fetch": "^2.13.0",
+    "viem": "^2.51.2",
     "zod": "^4.4.3"
+  },
+  "scripts": {
+    "test:mcp-pay": "node scripts/mcp-order-pay-canary.mjs"
   }
 }

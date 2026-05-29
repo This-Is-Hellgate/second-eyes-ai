@@ -3,7 +3,7 @@
   "name": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
   "title": "MCP 401 Auth Fix | github PAT wiring | x402",
   "description": "github-mcp 401? PAT wiring. Proof before pay. x402 USDC Base. 15 min free.",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "websiteUrl": "https://secondeyesai.com/api/bar",
   "repository": {
     "url": "https://github.com/This-Is-Hellgate/second-eyes-ai",
@@ -14,15 +14,38 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.0.5",
+      "version": "1.1.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
           "name": "SECOND_EYE_BASE_URL",
-          "description": "Second Eye lounge base URL",
+          "description": "Second Eyes lounge base URL",
           "default": "https://secondeyesai.com",
+          "isRequired": false
+        },
+        {
+          "name": "MCP_X402_WALLET_KEY",
+          "description": "EVM private key (0x…) for auto USDC payment on 402. SECURITY: MCP process can drain this wallet — use a dedicated low-balance payer.",
+          "isRequired": false
+        },
+        {
+          "name": "MCP_X402_MAX_SPEND_USD",
+          "description": "Per-call spending cap (default 0.50)",
+          "default": "0.50",
+          "isRequired": false
+        },
+        {
+          "name": "MCP_X402_SESSION_MAX_USD",
+          "description": "Process lifetime spending cap (default 2.00)",
+          "default": "2.00",
+          "isRequired": false
+        },
+        {
+          "name": "MCP_X402_ALLOW_SLUGS",
+          "description": "Comma-separated slugs allowed for auto-pay. Default (unset): should-i-pay only. Use * for full lounge menu.",
+          "default": "should-i-pay",
           "isRequired": false
         }
       ]
