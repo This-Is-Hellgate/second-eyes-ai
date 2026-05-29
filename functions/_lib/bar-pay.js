@@ -45,7 +45,7 @@ export function bearerToken(request) {
 
 /** CDP Bazaar crawl must get 402 before lounge session gate — agents still need session to pay. */
 export function discoveryPaywall402(context, product, origin) {
-  if (product.priceUsd <= 0 || !product.bazaarOutputSchema) return null;
+  if (product.priceUsd <= 0) return null;
   if (readPaymentHeader(context.request)) return null;
 
   const requirements = buildProductPaymentRequirements(product, context.request.url, context.env);

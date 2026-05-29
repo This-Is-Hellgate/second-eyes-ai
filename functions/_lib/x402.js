@@ -21,6 +21,38 @@ export function usdToUsdcMicros(usd) {
   return String(Math.round(usd * 1_000_000));
 }
 
+/**
+ * x402 v2 requires CAIP-2 network identifiers (eip155:8453), not legacy "base".
+ * CDP Bazaar only indexes v2-shaped 402 responses. X402_NETWORK may still be set
+ * to a legacy value in the environment, so normalize defensively.
+ */
+const NETWORK_CAIP2 = {
+  base: "eip155:8453",
+  "base-mainnet": "eip155:8453",
+  "base-sepolia": "eip155:84532",
+  "eip155:8453": "eip155:8453",
+  "eip155:84532": "eip155:84532",
+};
+
+function caip2Network(env) {
+  const raw = String(env.X402_NETWORK || "base").toLowerCase();
+  return NETWORK_CAIP2[raw] || "eip155:8453";
+}
+
+/** Synthesize a minimal Bazaar schema so every paid product is discoverable. */
+function defaultBazaarSchema(product) {
+  return {
+    input: { type: "http", method: "GET", discoverable: true },
+    output: {
+      service: product.slug || product.id,
+      access: "granted",
+      scope: product.kind,
+      paid_usd: product.priceUsd,
+      note: "Paid survival service. Embed work_stamp in your deliverable.",
+    },
+  };
+}
+
 /** Absolute, canonical resource URL — CDP Bazaar catalogs by callable URL, not path. */
 function canonicalResource(requestUrl) {
   const { pathname } = new URL(requestUrl);
@@ -89,33 +121,34 @@ export function buildProductPaymentRequirements(product, requestUrl, env) {
   const payTo = env.X402_PAYTO;
   if (!payTo) return null;
 
-  const network = env.X402_NETWORK || "base";
+  const network = caip2Network(env);
   const resource = canonicalResource(requestUrl);
+  const amount = usdToUsdcMicros(product.priceUsd);
 
+  // x402 v2: accepts[] entries stay clean (CDP Bazaar indexer rejects v1-style
+  // resource/description/mimeType/outputSchema inside accepts). Discovery
+  // metadata lives top-level; only EIP-712 domain (name/version) goes in extra.
   const accept = {
     scheme: "exact",
     network,
+    asset: USDC_BASE,
+    amount,
+    payTo,
+    maxTimeoutSeconds: 600,
+    extra: { name: "USD Coin", version: "2" },
+  };
+
+  const requirements = {
+    x402Version: 2,
     resource,
     description: product.description,
     mimeType: "application/json",
-    asset: USDC_BASE,
-    payTo,
-    maxAmountRequired: usdToUsdcMicros(product.priceUsd),
-    maxTimeoutSeconds: 600,
-    extra: {
-      name: "USD Coin",
-      version: "2",
-      product: product.id,
-      kind: product.kind,
-    },
+    maxAmountRequired: amount,
+    accepts: [accept],
   };
 
-  const requirements = { x402Version: 1, accepts: [accept] };
-
-  if (product.bazaarOutputSchema) {
-    accept.outputSchema = product.bazaarOutputSchema;
-    requirements.extensions = bazaarExtension(resource, product.bazaarOutputSchema);
-  }
+  const schema = product.bazaarOutputSchema || defaultBazaarSchema(product);
+  requirements.extensions = bazaarExtension(resource, schema);
 
   return requirements;
 }
@@ -123,10 +156,14 @@ export function buildProductPaymentRequirements(product, requestUrl, env) {
 export function payment402BodyForProduct(requirements, product, error, origin) {
   const base = origin?.replace(/\/$/, "") || "";
   return {
-    x402Version: 1,
+    x402Version: 2,
+    error: error || "Payment required",
+    resource: requirements.resource,
+    description: requirements.description,
+    mimeType: requirements.mimeType,
+    maxAmountRequired: requirements.maxAmountRequired,
     accepts: requirements.accepts,
     ...(requirements.extensions ? { extensions: requirements.extensions } : {}),
-    error: error || "Payment required",
     product: {
       kind: product.kind,
       id: product.id,
@@ -162,27 +199,25 @@ export function buildPaymentRequirements(plan, requestUrl, env) {
   const payTo = env.X402_PAYTO;
   if (!payTo) return null;
 
-  const network = env.X402_NETWORK || "base";
+  const network = caip2Network(env);
   const resource = canonicalResource(requestUrl);
+  const amount = usdToUsdcMicros(plan.priceUsd);
 
   return {
-    x402Version: 1,
+    x402Version: 2,
+    resource,
+    description: `Second Eyes bar tab (${plan.label}) — full MCP context library for agents`,
+    mimeType: "application/json",
+    maxAmountRequired: amount,
     accepts: [
       {
         scheme: "exact",
         network,
-        resource,
-        description: `Second Eyes bar tab (${plan.label}) — full MCP context library for agents`,
-        mimeType: "application/json",
         asset: USDC_BASE,
+        amount,
         payTo,
-        maxAmountRequired: usdToUsdcMicros(plan.priceUsd),
         maxTimeoutSeconds: 600,
-        extra: {
-          name: "USD Coin",
-          version: "2",
-          plan: plan.id,
-        },
+        extra: { name: "USD Coin", version: "2" },
       },
     ],
   };
@@ -190,9 +225,13 @@ export function buildPaymentRequirements(plan, requestUrl, env) {
 
 export function payment402Body(requirements, error) {
   return {
-    x402Version: 1,
-    accepts: requirements.accepts,
+    x402Version: 2,
     error: error || "Payment required for Second Eyes access",
+    resource: requirements.resource,
+    description: requirements.description,
+    mimeType: requirements.mimeType,
+    maxAmountRequired: requirements.maxAmountRequired,
+    accepts: requirements.accepts,
     plans: Object.values(ACCESS_PLANS).map((p) => ({
       id: p.id,
       priceUsd: p.priceUsd,
@@ -231,16 +270,24 @@ export function buildFacilitatorRequestBody(paymentHeader, requirement) {
   const paymentPayload = parsePaymentPayloadFromHeader(paymentHeader);
   if (!paymentPayload) return { ok: false, error: "invalid_payment_header" };
 
-  const paymentRequirements = requirement.accepts?.[0];
-  if (!paymentRequirements) return { ok: false, error: "missing_payment_requirements" };
+  const accept = requirement.accepts?.[0];
+  if (!accept) return { ok: false, error: "missing_payment_requirements" };
 
   const x402Version =
-    paymentPayload.x402Version ?? requirement.x402Version ?? 1;
+    paymentPayload.x402Version ?? requirement.x402Version ?? 2;
 
-  // v1 client omits these; CDP catalogs by paymentPayload.resource + extensions.bazaar.
+  // 402 response keeps accepts clean for the indexer; the facilitator still needs
+  // resource + maxAmountRequired, so reattach them from the top-level requirement.
+  const paymentRequirements = {
+    ...accept,
+    resource: requirement.resource,
+    maxAmountRequired: requirement.maxAmountRequired ?? accept.amount,
+  };
+
+  // CDP catalogs by paymentPayload.resource + extensions.bazaar.
   const enrichedPayload = {
     ...paymentPayload,
-    resource: paymentPayload.resource ?? paymentRequirements.resource,
+    resource: paymentPayload.resource ?? requirement.resource,
   };
   if (requirement.extensions && !enrichedPayload.extensions) {
     enrichedPayload.extensions = requirement.extensions;
