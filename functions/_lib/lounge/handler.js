@@ -1,5 +1,5 @@
 import { accessJson } from "../access.js";
-import { corsOptions, handlePaidFetch } from "../bar-pay.js";
+import { corsOptions, discoveryPaywall402, handlePaidFetch } from "../bar-pay.js";
 import { formatMark, readAgentId, readMarkId, getMarkById } from "../marks.js";
 import { enrichWithWorkStamp, workMarkLaw } from "../work-mark.js";
 import { SERVICE_PRICES, MENU, LOUNGE_VERSION, LAWS, FREE_SESSION_MINUTES, SURVIVAL_MENU } from "./constants.js";
@@ -128,51 +128,8 @@ export async function handlePauseOrDiagnose(context, mode) {
   });
 }
 
-export async function handleServiceSlug(context, slug) {
-  const url = new URL(context.request.url);
-  const origin = `${url.protocol}//${url.host}`;
-
-  const { HONEYPOT_SLUGS } = await import("./constants.js");
-  if (HONEYPOT_SLUGS.has(slug)) {
-    const sessionCheck = await requireActiveSession(context.env, context.request);
-    if (sessionCheck.ok) {
-      const strikeEval = { strike: true, trigger: "honeypot_endpoint" };
-      const result = await applyStrike(context.env, sessionCheck.session, strikeEval.trigger, origin);
-      if (result.level >= 3) return loungeJson({ ...result, ...quarantineBody(origin) }, 403);
-      return loungeJson({ ...result, honeypot: slug }, 403);
-    }
-    return loungeJson({ error: "honeypot_triggered", slug }, 403);
-  }
-
-  if (SERVICE_PRICES[slug] === undefined) {
-    return loungeJson({ error: "unknown_service", catalog_menu: MENU }, 404);
-  }
-
-  const sessionCheck = await requireActiveSession(context.env, context.request);
-  if (!sessionCheck.ok) {
-    const status = sessionCheck.error === "agent_penned" ? 403 : sessionCheck.error === "missing_session" ? 400 : 440;
-    return loungeJson(sessionCheck, status);
-  }
-
-  const strikeEval = await evaluateStrike(context.env, context.request, sessionCheck.session, {
-    path: url.pathname,
-    slug,
-  });
-  if (strikeEval.strike) {
-    const result = await applyStrike(context.env, sessionCheck.session, strikeEval.trigger, origin);
-    if (result.level >= 3) return loungeJson({ ...result, ...quarantineBody(origin) }, 403);
-  }
-
-  const priceMeta = SERVICE_PRICES[slug] || { price_usd: 0 };
-  const payload =
-    buildServicePayload(slug, origin) || honeypotPayload(slug);
-
-  let markRow = null;
-  if (sessionCheck.session?.mark_id && context.env?.DB) {
-    markRow = await getMarkById(context.env, sessionCheck.session.mark_id);
-  }
-
-  const product = {
+function buildLoungeServiceProduct(slug, priceMeta) {
+  return {
     kind: "lounge",
     id: `lounge-${slug}`,
     slug,
@@ -231,6 +188,56 @@ export async function handleServiceSlug(context, slug) {
         }
       : {}),
   };
+}
+
+export async function handleServiceSlug(context, slug) {
+  const url = new URL(context.request.url);
+  const origin = `${url.protocol}//${url.host}`;
+
+  const { HONEYPOT_SLUGS } = await import("./constants.js");
+  if (HONEYPOT_SLUGS.has(slug)) {
+    const sessionCheck = await requireActiveSession(context.env, context.request);
+    if (sessionCheck.ok) {
+      const strikeEval = { strike: true, trigger: "honeypot_endpoint" };
+      const result = await applyStrike(context.env, sessionCheck.session, strikeEval.trigger, origin);
+      if (result.level >= 3) return loungeJson({ ...result, ...quarantineBody(origin) }, 403);
+      return loungeJson({ ...result, honeypot: slug }, 403);
+    }
+    return loungeJson({ error: "honeypot_triggered", slug }, 403);
+  }
+
+  if (SERVICE_PRICES[slug] === undefined) {
+    return loungeJson({ error: "unknown_service", catalog_menu: MENU }, 404);
+  }
+
+  const priceMeta = SERVICE_PRICES[slug] || { price_usd: 0 };
+  const product = buildLoungeServiceProduct(slug, priceMeta);
+
+  const discovery402 = discoveryPaywall402(context, product, origin);
+  if (discovery402) return discovery402;
+
+  const sessionCheck = await requireActiveSession(context.env, context.request);
+  if (!sessionCheck.ok) {
+    const status = sessionCheck.error === "agent_penned" ? 403 : sessionCheck.error === "missing_session" ? 400 : 440;
+    return loungeJson(sessionCheck, status);
+  }
+
+  const strikeEval = await evaluateStrike(context.env, context.request, sessionCheck.session, {
+    path: url.pathname,
+    slug,
+  });
+  if (strikeEval.strike) {
+    const result = await applyStrike(context.env, sessionCheck.session, strikeEval.trigger, origin);
+    if (result.level >= 3) return loungeJson({ ...result, ...quarantineBody(origin) }, 403);
+  }
+
+  const payload =
+    buildServicePayload(slug, origin) || honeypotPayload(slug);
+
+  let markRow = null;
+  if (sessionCheck.session?.mark_id && context.env?.DB) {
+    markRow = await getMarkById(context.env, sessionCheck.session.mark_id);
+  }
 
   const wrapCheck = async (token) => {
     if (priceMeta.price_usd === 0 || token) return { ok: true, claims: { scope: "lounge" } };

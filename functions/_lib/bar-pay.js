@@ -43,6 +43,20 @@ export function bearerToken(request) {
   return auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
 }
 
+/** CDP Bazaar crawl must get 402 before lounge session gate — agents still need session to pay. */
+export function discoveryPaywall402(context, product, origin) {
+  if (product.priceUsd <= 0 || !product.bazaarOutputSchema) return null;
+  if (readPaymentHeader(context.request)) return null;
+
+  const requirements = buildProductPaymentRequirements(product, context.request.url, context.env);
+  if (!requirements) return null;
+
+  return accessJson(payment402BodyForProduct(requirements, product, undefined, origin), 402, {
+    "Access-Control-Allow-Origin": "*",
+    "Cache-Control": CACHE.payment402,
+  });
+}
+
 export async function hasBarTabAccess(token, env) {
   const claims = await verifyAccessToken(token, env);
   if (!claims) return null;

@@ -27,14 +27,48 @@ function canonicalResource(requestUrl) {
   return `https://${CANONICAL_HOST}${pathname}`;
 }
 
-/** declareDiscoveryExtension() wire shape (hand-rolled — we don't use the SDK). */
-function bazaarExtension(resource, bazaarOutputSchema) {
+/** Matches @x402/extensions createQueryDiscoveryExtension() { info, schema } wire shape. */
+function bazaarExtension(_resource, bazaarOutputSchema) {
+  const { input, output } = bazaarOutputSchema;
+  const method = (input.method || "GET").toUpperCase();
+
   return {
     bazaar: {
-      discoverable: true,
-      resource,
-      inputSchema: bazaarOutputSchema.input,
-      outputSchema: bazaarOutputSchema.output,
+      info: {
+        input: {
+          type: "http",
+          method,
+          ...(input.headerFields ? { headers: input.headerFields } : {}),
+        },
+        ...(output ? { output: { type: "json", example: output } } : {}),
+      },
+      schema: {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        type: "object",
+        properties: {
+          input: {
+            type: "object",
+            properties: {
+              type: { type: "string", const: "http" },
+              method: { type: "string", enum: [method] },
+            },
+            required: ["type", "method"],
+          },
+          ...(output
+            ? {
+                output: {
+                  type: "object",
+                  properties: {
+                    type: { type: "string" },
+                    example: { type: "object" },
+                  },
+                  required: ["type"],
+                },
+              }
+            : {}),
+        },
+        required: ["input"],
+      },
     },
   };
 }
