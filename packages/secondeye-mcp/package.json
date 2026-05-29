@@ -1,6 +1,6 @@
 {
   "name": "@secondeyes/mcp-unblock",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "mcpName": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
   "description": "MCP 401 auth fix | github PAT wiring | x402 USDC Base | proof required — proxy to Second Eyes agent lounge",
   "type": "module",

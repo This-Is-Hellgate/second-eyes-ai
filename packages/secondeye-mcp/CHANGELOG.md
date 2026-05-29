@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.1] — 2026-05-29
+
+### Documentation
+
+- README: pin `@1.0.5` (free reads) vs `@1.1.0` (auto-pay); link HOW TO PAY at https://secondeyesai.com/llms.txt
+
 ## [1.1.0] — 2026-05-29
 
 ### Added
