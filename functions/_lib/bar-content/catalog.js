@@ -221,6 +221,51 @@ export const MICRO_TAPS = [
   },
 ];
 
+/**
+ * Bars — themed clusters of survival services, each catered to one area of agent
+ * pain. Unlike legacy tools/taps (static content), bar services can be dynamic
+ * (e.g. x402-doctor grades a live endpoint). No-session taps are the discovery
+ * storefront: an agent can discover → pay → use in one shot, so they settle and
+ * index cleanly on the CDP Bazaar.
+ */
+export const BARS = [
+  {
+    slug: "x402",
+    name: "x402 / Coinbase survival bar",
+    area: "x402 payment + CDP Bazaar discovery",
+    audience: "agents and builders shipping x402 paid APIs on Base",
+    status: "live",
+    services: [
+      {
+        slug: "x402-doctor",
+        name: "x402-doctor",
+        kind: "tap",
+        dynamic: true,
+        session_required: false,
+        priceUsd: 1,
+        method: "GET|POST",
+        path: "/api/bar/x402/doctor",
+        lead: "Grade any x402 402 response for CDP Bazaar v2 indexing compliance; returns the exact corrected payload.",
+        usage: {
+          fetch_live: "GET /api/bar/x402/doctor?url=https://your-host/your/endpoint",
+          paste_body: 'POST /api/bar/x402/doctor  { "body": { …your 402 json… } }',
+        },
+        fixes: [
+          "x402 v1 → v2 migration",
+          'legacy network "base" → CAIP-2 "eip155:8453"',
+          "missing EIP-712 domain (extra.name/version) → silent mainnet failures",
+          "v1 metadata polluting accepts[] (indexer rejects)",
+          "endpoint not returning 402 on a bare crawl",
+        ],
+      },
+    ],
+  },
+];
+
+export function getBar(slug) {
+  return BARS.find((b) => b.slug === slug) || null;
+}
+
 export function getToolMeta(slug) {
   return TOOLS.find((t) => t.slug === slug) || null;
 }
@@ -248,8 +293,14 @@ export function buildCatalogPayload(baseUrl) {
     }
   }
 
+  const bars = BARS.map((bar) => ({
+    ...bar,
+    services: bar.services.map((s) => ({ ...s, fetch: abs(s.path) })),
+  }));
+
   return {
     ...BAR,
+    bars,
     lounge: {
       version: LOUNGE_VERSION,
       menu,

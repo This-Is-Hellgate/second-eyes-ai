@@ -116,8 +116,14 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
   const origin = `${url.protocol}//${url.host}`;
   const token = bearerToken(request);
 
+  // payload may be a static object OR an async () => object that is computed only
+  // when access is granted. Dynamic taps (e.g. x402-doctor) use the function form
+  // so unpaid 402 crawls never run the underlying work (no outbound fetch, no abuse).
+  const resolvePayload = async () =>
+    typeof payload === "function" ? await payload() : payload;
+
   if (product.access === "free") {
-    const body = { ...payload, lounge: SERVICE_ID };
+    const body = { ...(await resolvePayload()), lounge: SERVICE_ID };
     const agentId = readAgentId(request);
     const markId = readMarkId(request);
     let markRow = null;
@@ -155,7 +161,7 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
   if (token) {
     const allowed = await accessCheck(token);
     if (allowed.ok) {
-      return accessJson({ ...payload, access: "granted", scope: allowed.claims.scope }, 200, {
+      return accessJson({ ...(await resolvePayload()), access: "granted", scope: allowed.claims.scope }, 200, {
         "Access-Control-Allow-Origin": "*",
       });
     }
@@ -288,14 +294,15 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
   };
 
   if (product.kind === "lounge") {
-    const sessionId = payload.session_id;
+    const resolvedLounge = await resolvePayload();
+    const sessionId = resolvedLounge.session_id;
     if (sessionId) {
       await recordServiceCall(env, sessionId, product.slug, product.priceUsd);
     }
     return accessJson(
       enrichWithWorkStamp(
         {
-          ...payload,
+          ...resolvedLounge,
           access: "granted",
           scope: "lounge",
           paid_usd: product.priceUsd,
@@ -323,7 +330,7 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
     return accessJson(
       enrichWithWorkStamp(
         {
-          ...payload,
+          ...(await resolvePayload()),
           access: "granted",
           scope: product.kind,
           tier: product.kind,
@@ -353,7 +360,7 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
   return accessJson(
     enrichWithWorkStamp(
       {
-        ...payload,
+        ...(await resolvePayload()),
         access: "granted",
         scope: "tool",
         accessToken,
