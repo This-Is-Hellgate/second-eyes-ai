@@ -34,12 +34,22 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
+          set +e
           DEPLOY_OUTPUT=$(npx wrangler pages deploy public \
             --project-name=second-eyes-ai \
             --branch=main \
             --commit-dirty=true 2>&1)
+          DEPLOY_EXIT=$?
+          set -e
           echo "$DEPLOY_OUTPUT"
+          if [ "$DEPLOY_EXIT" -ne 0 ]; then
+            echo "wrangler pages deploy failed (exit $DEPLOY_EXIT)" >&2
+            exit "$DEPLOY_EXIT"
+          fi
           DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep -oE 'https://[a-z0-9-]+\.second-eyes-ai\.pages\.dev' | tail -1)
+          if [ -z "$DEPLOY_URL" ]; then
+            DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep -oE 'https://[a-z0-9-]+\.pages\.dev' | tail -1)
+          fi
           if [ -z "$DEPLOY_URL" ]; then
             echo "Could not parse deployment URL from wrangler output" >&2
             exit 1
