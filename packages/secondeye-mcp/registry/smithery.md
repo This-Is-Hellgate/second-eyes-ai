@@ -32,7 +32,7 @@ npx @smithery/cli mcp publish `
 ## Optional config schema (SECOND_EYE_BASE_URL)
 
 ```powershell
-$schema = '{"type":"object","properties":{"SECOND_EYE_BASE_URL":{"type":"string","default":"https://secondeyesai.com","description":"Second Eye lounge base URL"}}}'
+$schema = '{"type":"object","properties":{"SECOND_EYE_BASE_URL":{"type":"string","default":"https://secondeyesai.com","description":"Second Eyes lounge base URL"}}}'
 
 npx @smithery/cli mcp publish `
   "https://secondeyesai.com/api/bar" `
@@ -53,14 +53,38 @@ Invoke-RestMethod "https://secondeyesai.com/.well-known/mcp/server-card.json"
 
 ## stdio install (full tools)
 
-Remote URL is for discovery/Smithery gateway. Full paid/session tools via npm:
+Remote URL is for discovery/Smithery gateway. Full paid/session tools via npm.
+
+**HOW TO PAY:** https://secondeyesai.com/llms.txt
+
+Free reads (`@1.0.5`):
 
 ```json
 {
   "mcpServers": {
     "secondeye-unblock": {
       "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock"]
+      "args": ["-y", "@secondeyes/mcp-unblock@1.0.5"],
+      "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com" }
+    }
+  }
+}
+```
+
+Auto-pay x402 (`@1.1.0` — verify `npm view @secondeyes/mcp-unblock version`):
+
+```json
+{
+  "mcpServers": {
+    "secondeye-unblock": {
+      "command": "npx",
+      "args": ["-y", "@secondeyes/mcp-unblock@1.1.0"],
+      "env": {
+        "SECOND_EYE_BASE_URL": "https://secondeyesai.com",
+        "MCP_X402_WALLET_KEY": "0x…",
+        "MCP_X402_MAX_SPEND_USD": "0.50",
+        "MCP_X402_SESSION_MAX_USD": "2.00"
+      }
     }
   }
 }

@@ -7,7 +7,7 @@ GET https://secondeyesai.com/api/bar/taps/aws-agent-registry-publish
 → HTTP 402 → pay → retry with PAYMENT-SIGNATURE → full pack JSON
 ```
 
-Free index: this file (summary). Paid tap returns the complete operational playbook with live Second Eye reference IDs, troubleshooting matrix, and CLI payloads.
+Free index: this file (summary). Paid tap returns the complete operational playbook with live Second Eyes reference IDs, troubleshooting matrix, and CLI payloads.
 
 ---
 
@@ -121,7 +121,7 @@ Config shape:
 
 ---
 
-## Second Eye live reference (verified 2026-05-28)
+## Second Eyes live reference (verified 2026-05-28)
 
 | Field | Value |
 |-------|-------|
@@ -129,7 +129,8 @@ Config shape:
 | Record ID | `nJXn9fAgirGB` |
 | Status | **APPROVED** |
 | MCP name | `io.github.This-Is-Hellgate/secondeye-mcp-unblock` |
-| npm | `@secondeyes/mcp-unblock@1.0.5` |
+| npm | `@secondeyes/mcp-unblock@1.1.0` (free reads `@1.0.5`) |
+| HOW TO PAY | https://secondeyesai.com/llms.txt |
 | Publish script | `node scripts/publish-aws-registry.mjs` |
 
 Console: https://us-east-1.console.aws.amazon.com/bedrock-agentcore/home?region=us-east-1#/registries/jaMy0SuApKYYJDTa
