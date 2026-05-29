@@ -197,7 +197,11 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
         }
       );
     }
-    return accessJson(payment402BodyForProduct(requirements, product, settled.error, origin), 402, {
+    const paywall = payment402BodyForProduct(requirements, product, settled.error, origin);
+    if (settled.invalidReason) paywall.invalidReason = settled.invalidReason;
+    if (settled.facilitatorStatus) paywall.facilitatorStatus = settled.facilitatorStatus;
+    if (settled.facilitatorResponse) paywall.facilitatorResponse = settled.facilitatorResponse;
+    return accessJson(paywall, 402, {
       "Access-Control-Allow-Origin": "*",
       "Cache-Control": CACHE.payment402,
     });

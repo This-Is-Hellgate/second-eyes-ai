@@ -254,6 +254,8 @@ export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
       error: facilitatorVerifyError(verify),
       stage: "verify",
       invalidReason: verify.invalidReason || null,
+      facilitatorStatus: verifyRes.status,
+      facilitatorResponse: verify,
     };
   }
 

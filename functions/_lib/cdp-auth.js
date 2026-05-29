@@ -62,13 +62,19 @@ async function loadCdpSigningKey(keySecret) {
   return { key: await importEd25519SigningKey(secret), alg: "EdDSA" };
 }
 
+/** JWT `uri` claim must include the full CDP route (with `/platform`). */
+export function cdpJwtRequestPath(httpPath) {
+  const path = httpPath.startsWith("/") ? httpPath : `/${httpPath}`;
+  return path.startsWith("/platform/") ? path : `/platform${path}`;
+}
+
 /** CDP Secret API key JWT — valid ~2 minutes per request. */
 export async function buildCdpAuthHeaders(env, method, requestPath) {
   const keyName = env.CDP_API_KEY_NAME || env.CDP_API_KEY_ID;
   const keySecret = env.CDP_API_KEY_SECRET;
 
   if (keyName && keySecret) {
-    const uri = `${method.toUpperCase()} ${CDP_HOST}${requestPath}`;
+    const uri = `${method.toUpperCase()} ${CDP_HOST}${cdpJwtRequestPath(requestPath)}`;
     const now = Math.floor(Date.now() / 1000);
     const nonce = crypto.randomUUID().replace(/-/g, "");
 
