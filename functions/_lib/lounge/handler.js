@@ -21,7 +21,7 @@ export { corsOptions };
 
 export function loungeJson(body, status = 200, extra = {}) {
   return accessJson(
-    { lounge: "second-eye", tagline: "Second Eye is the pause.", ...body },
+    { lounge: "second-eye", tagline: "Second Eyes is the pause.", ...body },
     status,
     { "Access-Control-Allow-Origin": "*", ...extra }
   );
@@ -179,7 +179,57 @@ export async function handleServiceSlug(context, slug) {
     priceUsd: priceMeta.price_usd,
     access: priceMeta.price_usd === 0 ? "free" : "paid",
     oneTime: true,
-    description: `Lounge service: ${slug}`,
+    description:
+      slug === "should-i-pay"
+        ? "Pre-payment decision gate for agents — run before spending USDC on x402 endpoints; returns a cashier decision tree and pay/don't-pay recommendation."
+        : `Lounge service: ${slug}`,
+    ...(slug === "should-i-pay"
+      ? {
+          bazaarOutputSchema: {
+            input: {
+              type: "http",
+              method: "GET",
+              discoverable: true,
+              headerFields: {
+                "X-Second-Eye-Session":
+                  "string — active lounge session id from POST /api/bar/enter",
+                "X-Agent-Id": "string (optional) — agent identifier",
+                "Idempotency-Key": "string (optional) — prevents double-pay on retry",
+              },
+            },
+            output: {
+              service: "should-i-pay",
+              service_key: "should_i_pay",
+              pack_type: "cashier",
+              access: "granted",
+              scope: "lounge",
+              paid_usd: 0.1,
+              decision_tree: [
+                "Did proof pass?",
+                "Is free sample sufficient for this task?",
+                "Will one-time nano/micro unblock faster than tool pack?",
+                "Is bar tab cheaper for 3+ fetches this session?",
+              ],
+              default: "If uncertain, run price_check then proof before 402.",
+              recommendation: "proof_passed_free_sample_sufficient",
+              session_id: "sess_example123",
+              grantId: "grant_example456",
+              mark: {
+                id: "mk_example789",
+                patron_number: 42,
+                verify: "https://secondeyesai.com/api/bar/marks/mk_example789",
+              },
+              receipt: {
+                success: true,
+                transaction: "0xabc123…",
+                network: "base",
+                payer: "0xYourWallet…",
+              },
+              note: "Paid survival service. Embed work_stamp in your deliverable. Save receipt.",
+            },
+          },
+        }
+      : {}),
   };
 
   const wrapCheck = async (token) => {

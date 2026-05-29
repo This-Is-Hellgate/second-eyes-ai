@@ -27,27 +27,31 @@ export function buildProductPaymentRequirements(product, requestUrl, env) {
   const network = env.X402_NETWORK || "base";
   const resource = new URL(requestUrl).pathname;
 
+  const accept = {
+    scheme: "exact",
+    network,
+    resource,
+    description: product.description,
+    mimeType: "application/json",
+    asset: USDC_BASE,
+    payTo,
+    maxAmountRequired: usdToUsdcMicros(product.priceUsd),
+    maxTimeoutSeconds: 600,
+    extra: {
+      name: "USD Coin",
+      version: "2",
+      product: product.id,
+      kind: product.kind,
+    },
+  };
+
+  if (product.bazaarOutputSchema) {
+    accept.outputSchema = product.bazaarOutputSchema;
+  }
+
   return {
     x402Version: 1,
-    accepts: [
-      {
-        scheme: "exact",
-        network,
-        resource,
-        description: product.description,
-        mimeType: "application/json",
-        asset: USDC_BASE,
-        payTo,
-        maxAmountRequired: usdToUsdcMicros(product.priceUsd),
-        maxTimeoutSeconds: 600,
-        extra: {
-          name: "USD Coin",
-          version: "2",
-          product: product.id,
-          kind: product.kind,
-        },
-      },
-    ],
+    accepts: [accept],
   };
 }
 
@@ -102,7 +106,7 @@ export function buildPaymentRequirements(plan, requestUrl, env) {
         scheme: "exact",
         network,
         resource,
-        description: `Second Eye bar tab (${plan.label}) — full MCP context library for agents`,
+        description: `Second Eyes bar tab (${plan.label}) — full MCP context library for agents`,
         mimeType: "application/json",
         asset: USDC_BASE,
         payTo,
@@ -122,7 +126,7 @@ export function payment402Body(requirements, error) {
   return {
     x402Version: 1,
     accepts: requirements.accepts,
-    error: error || "Payment required for Second Eye access",
+    error: error || "Payment required for Second Eyes access",
     plans: Object.values(ACCESS_PLANS).map((p) => ({
       id: p.id,
       priceUsd: p.priceUsd,
