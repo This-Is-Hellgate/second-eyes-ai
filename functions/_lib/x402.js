@@ -8,6 +8,7 @@ import {
   fetchWithTimeout,
 } from "./resilience.js";
 import { buildCdpAuthHeaders, facilitatorPaths } from "./cdp-auth.js";
+import { CANONICAL_HOST } from "./brand.js";
 
 const x402Circuit = () => getCircuit("x402_facilitator", { failureThreshold: 5, openMs: 30_000 });
 
@@ -20,12 +21,42 @@ export function usdToUsdcMicros(usd) {
   return String(Math.round(usd * 1_000_000));
 }
 
+/** Absolute, canonical resource URL — CDP Bazaar catalogs by callable URL, not path. */
+function canonicalResource(requestUrl) {
+  const { pathname } = new URL(requestUrl);
+  return `https://${CANONICAL_HOST}${pathname}`;
+}
+
+/** declareDiscoveryExtension() wire shape (hand-rolled — we don't use the SDK). */
+function bazaarExtension(resource, bazaarOutputSchema) {
+  return {
+    bazaar: {
+      discoverable: true,
+      resource,
+      inputSchema: bazaarOutputSchema.input,
+      outputSchema: bazaarOutputSchema.output,
+    },
+  };
+}
+
+/** Decode CDP settle EXTENSION-RESPONSES header → bazaar status object. */
+export function parseExtensionResponses(header) {
+  if (!header) return null;
+  try {
+    const n = header.trim().replace(/-/g, "+").replace(/_/g, "/");
+    const pad = n.length % 4 === 0 ? "" : "=".repeat(4 - (n.length % 4));
+    return JSON.parse(atob(n + pad))?.bazaar || null;
+  } catch {
+    return null;
+  }
+}
+
 export function buildProductPaymentRequirements(product, requestUrl, env) {
   const payTo = env.X402_PAYTO;
   if (!payTo) return null;
 
   const network = env.X402_NETWORK || "base";
-  const resource = new URL(requestUrl).pathname;
+  const resource = canonicalResource(requestUrl);
 
   const accept = {
     scheme: "exact",
@@ -45,14 +76,14 @@ export function buildProductPaymentRequirements(product, requestUrl, env) {
     },
   };
 
+  const requirements = { x402Version: 1, accepts: [accept] };
+
   if (product.bazaarOutputSchema) {
     accept.outputSchema = product.bazaarOutputSchema;
+    requirements.extensions = bazaarExtension(resource, product.bazaarOutputSchema);
   }
 
-  return {
-    x402Version: 1,
-    accepts: [accept],
-  };
+  return requirements;
 }
 
 export function payment402BodyForProduct(requirements, product, error, origin) {
@@ -60,6 +91,7 @@ export function payment402BodyForProduct(requirements, product, error, origin) {
   return {
     x402Version: 1,
     accepts: requirements.accepts,
+    ...(requirements.extensions ? { extensions: requirements.extensions } : {}),
     error: error || "Payment required",
     product: {
       kind: product.kind,
@@ -97,7 +129,7 @@ export function buildPaymentRequirements(plan, requestUrl, env) {
   if (!payTo) return null;
 
   const network = env.X402_NETWORK || "base";
-  const resource = new URL(requestUrl).pathname;
+  const resource = canonicalResource(requestUrl);
 
   return {
     x402Version: 1,
@@ -171,9 +203,18 @@ export function buildFacilitatorRequestBody(paymentHeader, requirement) {
   const x402Version =
     paymentPayload.x402Version ?? requirement.x402Version ?? 1;
 
+  // v1 client omits these; CDP catalogs by paymentPayload.resource + extensions.bazaar.
+  const enrichedPayload = {
+    ...paymentPayload,
+    resource: paymentPayload.resource ?? paymentRequirements.resource,
+  };
+  if (requirement.extensions && !enrichedPayload.extensions) {
+    enrichedPayload.extensions = requirement.extensions;
+  }
+
   return {
     ok: true,
-    body: { x402Version, paymentPayload, paymentRequirements },
+    body: { x402Version, paymentPayload: enrichedPayload, paymentRequirements },
   };
 }
 
@@ -297,6 +338,9 @@ export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
     };
   }
 
+  const extensionResponsesHeader = settleRes.headers.get("EXTENSION-RESPONSES");
+  const bazaar = parseExtensionResponses(extensionResponsesHeader);
+
   return {
     ok: true,
     receipt: {
@@ -305,6 +349,8 @@ export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
       network: settle.network || accept.network,
       payer: settle.payer || "",
     },
+    bazaar,
+    extensionResponsesHeader: extensionResponsesHeader || null,
   };
 }
 

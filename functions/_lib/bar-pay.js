@@ -247,6 +247,8 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
     payerRef: settled.receipt.payer || null,
     txRef: settled.receipt.transaction || null,
     expiresAt: product.oneTime ? null : undefined,
+    bazaarStatus: settled.bazaar?.status || null,
+    bazaarReason: settled.bazaar?.rejectedReason || null,
   });
 
   if (idemKey) {

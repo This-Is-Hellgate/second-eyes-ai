@@ -90,8 +90,8 @@ export async function recordAccessGrant(env, grant) {
   try {
     await env.DB.prepare(
       `INSERT INTO access_grants
-        (id, plan_id, rail, payer_ref, tx_ref, task_id, stripe_session_id, created_at, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        (id, plan_id, rail, payer_ref, tx_ref, task_id, stripe_session_id, created_at, expires_at, bazaar_status, bazaar_reason)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         id,
@@ -102,7 +102,9 @@ export async function recordAccessGrant(env, grant) {
         grant.taskId || null,
         grant.stripeSessionId || null,
         ts,
-        grant.expiresAt || null
+        grant.expiresAt || null,
+        grant.bazaarStatus || null,
+        grant.bazaarReason || null
       )
       .run();
   } catch (err) {
