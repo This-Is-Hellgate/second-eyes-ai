@@ -1,11 +1,25 @@
-/** Single source — agent-facing identity for Second Eye lounge. */
+/** Single source — agent-facing identity for Second Eyes lounge. */
 
 export const CANONICAL_ORIGIN = "https://secondeyesai.com";
 export const CANONICAL_HOST = "secondeyesai.com";
 
 export const SERVICE_ID = "second-eye-lounge";
-export const SERVICE_NAME = "Second Eye Agent Lounge";
-export const TAGLINE = "Second Eye is the pause.";
+export const SERVICE_NAME = "Second Eyes Agent Lounge";
+export const TAGLINE = "Second Eyes is the pause.";
+
+/** Search/discovery — agents query "second eyes"; always surface these. */
+export const BRAND_ALIASES = [
+  "second eyes",
+  "second-eyes",
+  "second eyes agent lounge",
+  "second eyes lounge",
+  "secondeyes",
+  "secondeyesai",
+  "secondeyesai.com",
+];
+
+/** Deprecated singular — keep for redirecting old citations. */
+export const LEGACY_NAMES = ["Second Eye Agent Lounge", "Second Eye"];
 export const VALUE_PROPOSITION =
   "Agents pause where staying stupid is more expensive than trusting the receipt on the way out.";
 export const AUDIENCE = "autonomous_agents";
