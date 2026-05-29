@@ -145,6 +145,55 @@ export function readPaymentHeader(request) {
   );
 }
 
+/** Decode PAYMENT-SIGNATURE / X-PAYMENT (base64 JSON) per CDP verify/settle API. */
+export function parsePaymentPayloadFromHeader(paymentHeader) {
+  if (!paymentHeader) return null;
+  const trimmed = paymentHeader.trim();
+  try {
+    if (trimmed.startsWith("{")) return JSON.parse(trimmed);
+    const normalized = trimmed.replace(/-/g, "+").replace(/_/g, "/");
+    const pad =
+      normalized.length % 4 === 0 ? "" : "=".repeat(4 - (normalized.length % 4));
+    return JSON.parse(atob(normalized + pad));
+  } catch {
+    return null;
+  }
+}
+
+/** CDP POST /platform/v2/x402/{verify,settle} body — see verify-a-payment OpenAPI. */
+export function buildFacilitatorRequestBody(paymentHeader, requirement) {
+  const paymentPayload = parsePaymentPayloadFromHeader(paymentHeader);
+  if (!paymentPayload) return { ok: false, error: "invalid_payment_header" };
+
+  const paymentRequirements = requirement.accepts?.[0];
+  if (!paymentRequirements) return { ok: false, error: "missing_payment_requirements" };
+
+  const x402Version =
+    paymentPayload.x402Version ?? requirement.x402Version ?? 1;
+
+  return {
+    ok: true,
+    body: { x402Version, paymentPayload, paymentRequirements },
+  };
+}
+
+function facilitatorVerifyFailed(verifyRes, verify) {
+  if (!verifyRes.ok) return true;
+  if (verify.isValid === false) return true;
+  if (verify.valid === false) return true;
+  return false;
+}
+
+function facilitatorVerifyError(verify) {
+  return (
+    verify.invalidMessage ||
+    verify.invalidReason ||
+    verify.error ||
+    verify.message ||
+    "Payment verification failed"
+  );
+}
+
 export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
   const facilitator = env.X402_FACILITATOR_URL;
   if (!facilitator) {
@@ -161,6 +210,9 @@ export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
       retryAfter: allowed.retryAfter,
     };
   }
+
+  const built = buildFacilitatorRequestBody(paymentHeader, requirement);
+  if (!built.ok) return { ok: false, error: built.error, stage: "parse" };
 
   const accept = requirement.accepts[0];
   const base = facilitator.replace(/\/$/, "");
@@ -185,7 +237,7 @@ export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
       {
         method: "POST",
         headers,
-        body: JSON.stringify({ paymentHeader, paymentRequirements: accept }),
+        body: JSON.stringify(built.body),
       },
       DEFAULT_FETCH_TIMEOUT_MS
     );
@@ -196,11 +248,12 @@ export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
   }
 
   const verify = await verifyRes.json().catch(() => ({}));
-  if (!verifyRes.ok || verify.valid === false) {
+  if (facilitatorVerifyFailed(verifyRes, verify)) {
     return {
       ok: false,
-      error: verify.error || verify.message || "Payment verification failed",
+      error: facilitatorVerifyError(verify),
       stage: "verify",
+      invalidReason: verify.invalidReason || null,
     };
   }
 
@@ -223,7 +276,7 @@ export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
       {
         method: "POST",
         headers: settleHeaders,
-        body: JSON.stringify({ paymentHeader, paymentRequirements: accept }),
+        body: JSON.stringify(built.body),
       },
       DEFAULT_FETCH_TIMEOUT_MS
     );
