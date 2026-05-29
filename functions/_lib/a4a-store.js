@@ -164,7 +164,7 @@ export async function storeIdempotencyKey(env, { key, grantId, productKind, prod
     .run();
 }
 
-export async function readIdempotencyKey(request) {
+export function readIdempotencyKey(request) {
   return (
     request.headers.get("Idempotency-Key") ||
     request.headers.get("X-Idempotency-Key") ||

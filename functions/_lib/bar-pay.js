@@ -224,7 +224,7 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
     }
   }
 
-  const idemKey = readIdempotencyKey(request);
+  const idemKey = await readIdempotencyKey(request);
   if (idemKey) {
     const priorKey = await findIdempotencyGrant(env, idemKey);
     if (priorKey) {
