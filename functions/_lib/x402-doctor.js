@@ -2,25 +2,26 @@
  * x402-doctor — grade any x402 "402 Payment Required" response for CDP Bazaar
  * v2 indexing compliance and emit the exact corrected payload.
  *
- * This is the productized version of the audit Second Eyes ran on its own
- * endpoint during the v2 migration. It is pure and deterministic: give it a
- * parsed 402 body, get back a scored report + a ready-to-paste corrected body.
- * No network calls happen here — the caller fetches a live URL if needed.
+ * Pure and deterministic: give it a parsed 402 body, get back a scored report +
+ * a ready-to-paste corrected body. No network calls happen here — the caller
+ * fetches a live URL if needed.
  *
- * The failure modes encoded below are the exact ones reported, repeatedly, in
- * coinbase/x402#1461 and the CDP discovery docs:
+ * CHAIN-AWARE: the x402 ecosystem spans EVM (eip155, EIP-712 USDC) and Solana
+ * (base58 mints, no EIP-712). Checks are gated by the declared CAIP-2 namespace
+ * so a healthy Solana endpoint is not falsely failed for lacking an EVM domain.
+ *
+ * Failure modes encoded below are the exact ones reported in coinbase/x402#1461
+ * and the CDP discovery docs / bazaar.md spec:
  *   - v1-shaped responses never index (must be x402Version: 2)
- *   - legacy network "base" instead of CAIP-2 "eip155:8453"
- *   - missing EIP-712 domain (extra.name / extra.version) → silent mainnet fails
+ *   - non-CAIP-2 network (legacy "base" instead of "eip155:8453")
+ *   - missing EIP-712 domain on EVM (extra.name/version) → silent mainnet fails
  *   - v1 metadata (resource/description/mimeType/outputSchema) polluting accepts[]
- *   - missing top-level discovery fields the indexer reads
+ *   - missing/malformed resource (spec v2 uses resource:{url,description,mimeType})
  *   - missing extensions.bazaar query-discovery block
  */
 
 const KNOWN_USDC = {
-  // Base mainnet USDC
   "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913": { name: "USD Coin", version: "2", network: "eip155:8453" },
-  // Base Sepolia USDC (testnet)
   "0x036cbd53842c5426634e7929541ec2318f3dcf7e": { name: "USDC", version: "2", network: "eip155:84532" },
 };
 
@@ -32,35 +33,67 @@ const NETWORK_CAIP2 = {
   "eip155:84532": "eip155:84532",
 };
 
-const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
-const CAIP2_RE = /^eip155:\d+$/;
+const EVM_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
+const SOLANA_ADDRESS_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 const SEVERITY_WEIGHT = { critical: 3, warning: 2, info: 1 };
 
-/** Pull the accepts[] array out of whatever 402 shape we were handed. */
+const V1_CONTAMINANTS = ["resource", "description", "mimeType", "outputSchema"];
+
+function parseCaip2(network) {
+  const m = String(network || "").match(/^([-a-z0-9]{3,8}):([-_a-zA-Z0-9]{1,32})$/);
+  return m ? { namespace: m[1], reference: m[2] } : null;
+}
+
+function namespaceOf(accept) {
+  const c = parseCaip2(accept?.network);
+  return c ? c.namespace : null;
+}
+
+function isValidAddressFor(namespace, addr) {
+  const a = String(addr || "");
+  if (!a) return false;
+  if (namespace === "eip155") return EVM_ADDRESS_RE.test(a);
+  if (namespace === "solana") return SOLANA_ADDRESS_RE.test(a);
+  // Unknown namespace: accept any plausible non-empty token rather than false-fail.
+  return a.length >= 16;
+}
+
+/** v2 spec allows resource as a string OR an object {url, description, mimeType}. */
+function resourceUrlOf(body) {
+  const r = body?.resource;
+  if (typeof r === "string") return r;
+  if (r && typeof r === "object" && typeof r.url === "string") return r.url;
+  return "";
+}
+
+function resourceDescriptionOf(body) {
+  const r = body?.resource;
+  if (r && typeof r === "object" && r.description) return r.description;
+  return body?.description || "";
+}
+
+function resourceMimeTypeOf(body) {
+  const r = body?.resource;
+  if (r && typeof r === "object" && r.mimeType) return r.mimeType;
+  return body?.mimeType || "";
+}
+
 function normalizeAccepts(body) {
   if (!body || typeof body !== "object") return [];
   if (Array.isArray(body.accepts)) return body.accepts;
-  // Some v1 servers used a single/array paymentRequirements field instead.
   if (body.paymentRequirements) {
-    return Array.isArray(body.paymentRequirements)
-      ? body.paymentRequirements
-      : [body.paymentRequirements];
+    return Array.isArray(body.paymentRequirements) ? body.paymentRequirements : [body.paymentRequirements];
   }
-  // Last resort: a bare single requirement object at the top level.
   if (body.scheme || body.payTo || body.asset) return [body];
   return [];
 }
 
-/** Fields that belong top-level in v2 but the CDP indexer rejects inside accepts[]. */
-const V1_CONTAMINANTS = ["resource", "description", "mimeType", "outputSchema"];
-
 function detectVersion(body, accepts) {
   if (body && Number(body.x402Version) === 2) return 2;
   if (body && Number(body.x402Version) === 1) return 1;
-  // No explicit version — infer from shape. v1 hallmark: metadata inside accepts.
-  const contaminated = accepts.some((a) =>
-    a && typeof a === "object" && V1_CONTAMINANTS.some((k) => k in a)
+  const contaminated = accepts.some(
+    (a) => a && typeof a === "object" && V1_CONTAMINANTS.some((k) => k in a)
   );
   return contaminated ? 1 : null;
 }
@@ -74,13 +107,20 @@ function check(id, label, severity, ok, detail, fix) {
  * @param {object} body - parsed JSON of the 402 response.
  * @param {object} [opts]
  * @param {string} [opts.sourceUrl] - the URL the 402 came from (for resource checks).
- * @returns {{ score, grade, version, checks, criticalCount, warningCount, corrected, summary, indexable }}
  */
 export function diagnose402(body, opts = {}) {
   const checks = [];
   const accepts = normalizeAccepts(body);
   const version = detectVersion(body, accepts);
   const accept = accepts[0] || {};
+  const hasAccepts = Array.isArray(accepts) && accepts.length > 0;
+
+  function firstFail(predicate) {
+    for (let i = 0; i < accepts.length; i++) {
+      if (!predicate(accepts[i] || {})) return i;
+    }
+    return -1;
+  }
 
   // ---- version ----
   checks.push(
@@ -99,7 +139,6 @@ export function diagnose402(body, opts = {}) {
   );
 
   // ---- accepts presence ----
-  const hasAccepts = Array.isArray(accepts) && accepts.length > 0;
   checks.push(
     check(
       "accepts_present",
@@ -111,54 +150,36 @@ export function diagnose402(body, opts = {}) {
     )
   );
 
-  // ---- top-level discovery fields ----
-  const resource = typeof body?.resource === "string" ? body.resource : "";
-  const resourceAbs = /^https:\/\//.test(resource);
+  // ---- resource (string OR {url,description,mimeType}) ----
+  const resourceUrl = resourceUrlOf(body);
+  const resourceAbs = /^https:\/\//.test(resourceUrl);
   checks.push(
     check(
-      "top_resource",
-      "Top-level resource is an absolute https URL",
+      "resource_url",
+      "resource is an absolute https URL (string or {url})",
       "critical",
       resourceAbs,
       resourceAbs
         ? ""
-        : resource
-        ? `resource "${resource}" is not an absolute https URL. The indexer catalogs by callable URL.`
-        : "Missing top-level resource. The indexer catalogs the service by this URL.",
-      resourceAbs ? null : `Set top-level "resource": "${opts.sourceUrl || "https://your-host/your/path"}"`
+        : resourceUrl
+        ? `resource "${resourceUrl}" is not an absolute https URL. The indexer catalogs by callable URL.`
+        : "Missing resource. v2 uses top-level resource (string, or { url, description, mimeType }).",
+      resourceAbs ? null : `Set resource: { "url": "${opts.sourceUrl || "https://your-host/your/path"}", "description": "...", "mimeType": "application/json" }`
     )
   );
 
   checks.push(
     check(
-      "top_max_amount",
-      "Top-level maxAmountRequired present",
-      "warning",
-      body?.maxAmountRequired != null,
-      body?.maxAmountRequired != null ? "" : "Indexers read maxAmountRequired at the top level.",
-      body?.maxAmountRequired != null ? null : 'Mirror the price as top-level "maxAmountRequired" (micros string)'
-    )
-  );
-
-  checks.push(
-    check(
-      "top_description",
-      "Top-level description present",
+      "description",
+      "A description is present (top-level or resource.description)",
       "info",
-      Boolean(body?.description),
-      body?.description ? "" : "A human/agent-readable description improves discovery quality.",
-      body?.description ? null : 'Add a top-level "description"'
+      Boolean(resourceDescriptionOf(body)),
+      resourceDescriptionOf(body) ? "" : "A human/agent-readable description improves discovery relevance and quality score.",
+      resourceDescriptionOf(body) ? null : "Add a description (resource.description or top-level)"
     )
   );
 
-  // ---- accept-level checks (validate ALL, report on first failure) ----
-  function firstFail(predicate) {
-    for (let i = 0; i < accepts.length; i++) {
-      if (!predicate(accepts[i] || {})) return i;
-    }
-    return -1;
-  }
-
+  // ---- accept-level ----
   const schemeBad = firstFail((a) => a.scheme === "exact");
   checks.push(
     check(
@@ -171,42 +192,46 @@ export function diagnose402(body, opts = {}) {
     )
   );
 
-  const netBad = firstFail((a) => CAIP2_RE.test(String(a.network || "")));
-  const legacyNet = accept.network && !CAIP2_RE.test(String(accept.network));
+  const netBad = firstFail((a) => parseCaip2(a.network) !== null);
+  const legacyNet = accept.network && !parseCaip2(accept.network);
   checks.push(
     check(
       "accept_network",
-      "accepts[].network is CAIP-2 (eip155:NNNN)",
+      "accepts[].network is CAIP-2 (namespace:reference)",
       "critical",
       hasAccepts && netBad === -1,
       netBad >= 0
-        ? `accepts[${netBad}].network is "${accepts[netBad]?.network}". CDP requires CAIP-2 (e.g. eip155:8453 for Base).`
+        ? `accepts[${netBad}].network is "${accepts[netBad]?.network}". CDP requires CAIP-2 — e.g. eip155:8453 (Base) or solana:5eyk… (Solana).`
         : "",
-      legacyNet ? `Convert "${accept.network}" → "${NETWORK_CAIP2[String(accept.network).toLowerCase()] || "eip155:8453"}"` : null
+      legacyNet ? `Use CAIP-2, e.g. "${NETWORK_CAIP2[String(accept.network).toLowerCase()] || "eip155:8453"}"` : null
     )
   );
 
-  const assetBad = firstFail((a) => ADDRESS_RE.test(String(a.asset || "")));
+  const assetBad = firstFail((a) => isValidAddressFor(namespaceOf(a), a.asset));
   checks.push(
     check(
       "accept_asset",
-      "accepts[].asset is a token contract address",
+      "accepts[].asset is a valid token address for its chain",
       "critical",
       hasAccepts && assetBad === -1,
-      assetBad >= 0 ? `accepts[${assetBad}].asset "${accepts[assetBad]?.asset}" is not a 0x… contract address.` : "",
-      assetBad >= 0 ? "Set asset to the ERC-20 contract (USDC on Base: 0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913)" : null
+      assetBad >= 0
+        ? `accepts[${assetBad}].asset "${accepts[assetBad]?.asset}" is not valid for network ${accepts[assetBad]?.network}.`
+        : "",
+      assetBad >= 0 ? "Set asset to the token contract (EVM 0x…) or mint (Solana base58) for the declared network" : null
     )
   );
 
-  const payToBad = firstFail((a) => ADDRESS_RE.test(String(a.payTo || "")));
+  const payToBad = firstFail((a) => isValidAddressFor(namespaceOf(a), a.payTo));
   checks.push(
     check(
       "accept_payto",
-      "accepts[].payTo is a valid address",
+      "accepts[].payTo is a valid address for its chain",
       "critical",
       hasAccepts && payToBad === -1,
-      payToBad >= 0 ? `accepts[${payToBad}].payTo "${accepts[payToBad]?.payTo}" is not a 0x… address.` : "",
-      payToBad >= 0 ? "Set payTo to your receiving wallet address" : null
+      payToBad >= 0
+        ? `accepts[${payToBad}].payTo "${accepts[payToBad]?.payTo}" is not valid for network ${accepts[payToBad]?.network}.`
+        : "",
+      payToBad >= 0 ? "Set payTo to your receiving address on the declared network" : null
     )
   );
 
@@ -214,11 +239,11 @@ export function diagnose402(body, opts = {}) {
   checks.push(
     check(
       "accept_amount",
-      "accepts[].amount is an integer micros string",
+      "accepts[].amount is an integer (smallest-unit string)",
       "critical",
       hasAccepts && amountBad === -1,
       amountBad >= 0 ? `accepts[${amountBad}] has no integer amount (USDC has 6 decimals → $1 = "1000000").` : "",
-      amountBad >= 0 ? 'Set amount as a micros string, e.g. "1000000" for $1.00' : null
+      amountBad >= 0 ? 'Set amount as a smallest-unit string, e.g. "1000000" for $1.00 USDC' : null
     )
   );
 
@@ -234,19 +259,33 @@ export function diagnose402(body, opts = {}) {
     )
   );
 
-  const domainBad = firstFail((a) => a.extra && a.extra.name && a.extra.version);
-  checks.push(
-    check(
-      "accept_eip712_domain",
-      "accepts[].extra has EIP-712 domain (name + version)",
-      "critical",
-      hasAccepts && domainBad === -1,
-      domainBad >= 0
-        ? "Missing extra.{name,version}. Without the EIP-712 domain, USDC payments fail silently on mainnet."
-        : "",
-      domainBad >= 0 ? 'Add extra: { "name": "USD Coin", "version": "2" } (USDC on Base)' : null
-    )
-  );
+  // ---- EIP-712 domain: EVM (eip155) only ----
+  const evmAccepts = accepts.filter((a) => namespaceOf(a) === "eip155");
+  if (evmAccepts.length) {
+    const domainBad = evmAccepts.findIndex((a) => !(a.extra && a.extra.name && a.extra.version));
+    checks.push(
+      check(
+        "accept_eip712_domain",
+        "EVM accepts[].extra has EIP-712 domain (name + version)",
+        "critical",
+        domainBad === -1,
+        domainBad >= 0
+          ? "Missing extra.{name,version} on an eip155 entry. Without the EIP-712 domain, USDC payments fail silently on EVM mainnet."
+          : "",
+        domainBad >= 0 ? 'Add extra: { "name": "USD Coin", "version": "2" } to the EVM/USDC entry' : null
+      )
+    );
+  } else {
+    checks.push(
+      check(
+        "accept_eip712_domain",
+        "EIP-712 domain (EVM only) — not applicable",
+        "info",
+        true,
+        hasAccepts ? "Non-EVM network; EIP-712 domain not required." : ""
+      )
+    );
+  }
 
   const contaminated = firstFail((a) => !V1_CONTAMINANTS.some((k) => k in (a || {})));
   checks.push(
@@ -256,9 +295,9 @@ export function diagnose402(body, opts = {}) {
       "warning",
       hasAccepts && contaminated === -1,
       contaminated >= 0
-        ? `accepts[${contaminated}] contains v1 fields (${V1_CONTAMINANTS.filter((k) => k in (accepts[contaminated] || {})).join(", ")}). The CDP indexer rejects accepts[] polluted with v1 metadata.`
+        ? `accepts[${contaminated}] contains v1 fields (${V1_CONTAMINANTS.filter((k) => k in (accepts[contaminated] || {})).join(", ")}). The CDP indexer expects clean accepts[]; metadata belongs in top-level resource + extensions.bazaar.`
         : "",
-      contaminated >= 0 ? "Move resource/description/mimeType/outputSchema to the top level; keep accepts[] entries clean" : null
+      contaminated >= 0 ? "Move resource/description/mimeType/outputSchema out of accepts[] (resource object + extensions.bazaar)" : null
     )
   );
 
@@ -266,11 +305,11 @@ export function diagnose402(body, opts = {}) {
   checks.push(
     check(
       "extensions_bazaar",
-      "extensions.bazaar present for query discovery",
+      "extensions.bazaar present for discovery cataloging",
       "warning",
       hasBazaar,
-      hasBazaar ? "" : "No extensions.bazaar block. Settlement can still index, but query/search discovery is weaker without it.",
-      hasBazaar ? null : "Attach extensions.bazaar.info { input, output } so the service is searchable"
+      hasBazaar ? "" : "No extensions.bazaar block. Indexing is settle-driven and the client echoes this extension; without it, cataloging will not occur.",
+      hasBazaar ? null : "Attach extensions.bazaar.info { input, output } so the service can be cataloged on settle"
     )
   );
 
@@ -295,6 +334,7 @@ export function diagnose402(body, opts = {}) {
 
   return {
     tool: "x402-doctor",
+    chain: namespaceOf(accept) || "unknown",
     version,
     score,
     grade,
@@ -309,49 +349,53 @@ export function diagnose402(body, opts = {}) {
 
 function buildSummary({ version, score, grade, indexable, criticalCount, warningCount }) {
   if (indexable && score >= 95) {
-    return "Clean v2 response. Eligible for CDP Bazaar indexing on next settlement.";
+    return "Clean v2 response. Eligible for CDP Bazaar cataloging on next settled payment.";
   }
   const parts = [];
   if (version === 1) parts.push("This is x402 v1 — it will not index on the Bazaar");
   parts.push(`${criticalCount} blocking issue${criticalCount === 1 ? "" : "s"}`);
   if (warningCount) parts.push(`${warningCount} warning${warningCount === 1 ? "" : "s"}`);
   parts.push(`grade ${grade} (${score}/100)`);
-  parts.push("Apply the corrected payload below, redeploy, then settle one payment to trigger indexing");
+  parts.push("Apply the corrected payload below, redeploy, then settle one payment to trigger cataloging");
   return parts.join(". ") + ".";
 }
 
-/** Best-effort corrected v2 body using whatever inputs were valid. */
+/** Best-effort corrected v2 body (resource as the spec-canonical object form). */
 function buildCorrected(body, accepts, opts) {
   const src = accepts[0] || {};
-  const assetRaw = String(src.asset || "0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913");
-  const known = KNOWN_USDC[assetRaw.toLowerCase()];
+  const caip = parseCaip2(src.network);
+  const namespace = caip ? caip.namespace : "eip155";
   const networkRaw = String(src.network || "").toLowerCase();
-  const network = NETWORK_CAIP2[networkRaw] || known?.network || "eip155:8453";
-  const amount = String(src.amount ?? src.maxAmountRequired ?? body?.maxAmountRequired ?? "");
-  const resource =
-    (typeof body?.resource === "string" && /^https:\/\//.test(body.resource) && body.resource) ||
-    opts.sourceUrl ||
-    "https://your-host/your/path";
+  const network = caip ? src.network : NETWORK_CAIP2[networkRaw] || "eip155:8453";
+  const amount = String(src.amount ?? src.maxAmountRequired ?? body?.maxAmountRequired ?? "") || "1000000";
+  const known = KNOWN_USDC[String(src.asset || "").toLowerCase()];
+  const url =
+    /^https:\/\//.test(resourceUrlOf(body)) ? resourceUrlOf(body) : opts.sourceUrl || "https://your-host/your/path";
 
   const accept = {
     scheme: "exact",
     network,
-    asset: assetRaw,
-    amount: amount || "1000000",
-    payTo: src.payTo || "0xYourReceivingWallet",
+    asset: src.asset || (namespace === "eip155" ? "0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913" : "YourTokenMintOrContract"),
+    amount,
+    payTo: src.payTo || "YourReceivingAddress",
     maxTimeoutSeconds: Number(src.maxTimeoutSeconds) > 0 ? Number(src.maxTimeoutSeconds) : 600,
-    extra:
+  };
+  if (namespace === "eip155") {
+    accept.extra =
       src.extra && src.extra.name && src.extra.version
         ? { name: src.extra.name, version: String(src.extra.version) }
-        : { name: known?.name || "USD Coin", version: known?.version || "2" },
-  };
+        : { name: known?.name || "USD Coin", version: known?.version || "2" };
+  } else if (src.extra) {
+    accept.extra = src.extra;
+  }
 
   return {
     x402Version: 2,
-    resource,
-    description: body?.description || "Your service description",
-    mimeType: body?.mimeType || "application/json",
-    maxAmountRequired: amount || "1000000",
+    resource: {
+      url,
+      description: resourceDescriptionOf(body) || "Your service description",
+      mimeType: resourceMimeTypeOf(body) || "application/json",
+    },
     accepts: [accept],
   };
 }
