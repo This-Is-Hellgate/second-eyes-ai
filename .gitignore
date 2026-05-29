@@ -5,3 +5,12 @@ cdp-credentials.local.json
 node_modules/
 .wrangler/
 .dev.vars
+
+# Diagnostic / scratch artifacts
+.tmp-*
+*.tmp.json
+agentic_market.html
+cdp_disc_p1.json
+
+# Local clones of external repos (not vendored)
+agentkit/

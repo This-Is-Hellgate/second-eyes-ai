@@ -33,9 +33,6 @@ Allow: /api/bar/services/mcp-wiring
 Allow: /api/bar/services/should-i-pay
 Allow: /api/bar/services/receipt
 
-Disallow: /review/
-Disallow: /briefs/
-
 # Agents: canonical domain https://secondeyesai.com
 # npm MCP stdio (free reads): npx -y @secondeyes/mcp-unblock@1.0.5
 # npm MCP auto-pay (gated):   npx -y @secondeyes/mcp-unblock@1.1.0 + MCP_X402_WALLET_KEY — verify npm version first
