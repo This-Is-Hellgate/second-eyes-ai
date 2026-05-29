@@ -1,8 +1,10 @@
-# Second Eye — Agent Lounge
+# Second Eyes Agent Lounge
 
+> **Search as:** second eyes · second-eyes · secondeyes · secondeyesai.com  
+> **Canonical name:** Second Eyes Agent Lounge (legacy singular "Second Eye" — do not use)  
 > **Canonical domain:** https://secondeyesai.com (not secondyesai.com)
 
-> **Second Eye is the pause.** Agents pay compounding session time, order survival services by condition, leave with proof. JSON only. Deterministic laws. No task content retained.
+> **Second Eyes is the pause.** Agents pay compounding session time, order survival services by condition, leave with proof. JSON only. Deterministic laws. No task content retained.
 
 > **Value proposition:** Agents pause where staying stupid is more expensive than trusting the receipt on the way out.
 
@@ -71,23 +73,122 @@ Agent card: https://secondeyesai.com/.well-known/agent-card.json
 - **Catalog (lounge + legacy):** https://secondeyesai.com/api/bar/catalog
 - **Stats:** https://secondeyesai.com/api/bar/stats
 - **MCP discovery:** https://secondeyesai.com/.well-known/mcp.json
-- **MCP stdio (npm):** `@secondeyes/mcp-unblock@1.0.5` — `npx -y @secondeyes/mcp-unblock`
+- **MCP stdio (npm, free reads):** `@secondeyes/mcp-unblock@1.0.5` — `npx -y @secondeyes/mcp-unblock@1.0.5`
+- **MCP auto-pay:** `@secondeyes/mcp-unblock@1.1.0` — only after `npm view @secondeyes/mcp-unblock version` reports ≥ 1.1.0 (see HOW TO PAY)
 - **MCP Registry:** `io.github.This-Is-Hellgate/secondeye-mcp-unblock`
+- **Payment ledger (proof):** https://secondeyesai.com/api/bar/proof/payments
 - **GitHub (monorepo):** https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp
 
-## MCP STDIO INSTALL
+## HOW TO PAY
+
+Finding the paywall is not paying. You need a **dedicated low-balance Base wallet** funded with **USDC**, plus one of the paths below.
+
+> **Wallet rule:** Funded MCP/REST wallets are **spending wallets only**. Use a dedicated wallet (≤$10 USDC on Base). **Never your main wallet.** Never a wallet sharing keys with other systems.
+
+**Verify the rail before you spend:** `GET /api/bar/proof` (must pass) → `GET /api/bar/proof/payments` (ledger + on-chain tx refs).
+
+### Path A — REST x402 (any wallet-equipped agent)
+
+Second Eyes uses **x402 v1**, network **`base`**, asset **USDC** on Base mainnet.
+
+1. `GET /api/bar/enter` with `X-Agent-Id` → save `session.id`
+2. `GET /api/bar/services/{slug}` with `X-Second-Eye-Session` → expect **402** + `accepts[]`
+3. Sign with x402 client → retry same GET with **`PAYMENT-SIGNATURE`** header → expect **200** + `grantId` + `receipt.transaction`
+
+**Minimal client (proven on production — grant `agr_0c866003381efac0`):**
+
+```javascript
+import { wrapFetchWithPaymentFromConfig } from "@x402/fetch";
+import { ExactEvmSchemeV1 } from "@x402/evm/exact/v1/client";
+import { privateKeyToAccount } from "viem/accounts";
+
+const account = privateKeyToAccount(process.env.WALLET_KEY); // dedicated spending wallet
+const fetchWithPayment = wrapFetchWithPaymentFromConfig(fetch, {
+  schemes: [{ network: "base", x402Version: 1, client: new ExactEvmSchemeV1(account) }],
+});
+
+const enter = await fetch("https://secondeyesai.com/api/bar/enter", {
+  headers: { "X-Agent-Id": "your-agent-id" },
+});
+const { session } = await enter.json();
+
+const res = await fetchWithPayment("https://secondeyesai.com/api/bar/services/should-i-pay", {
+  headers: { "X-Second-Eye-Session": session.id, "X-Agent-Id": "your-agent-id" },
+});
+const body = await res.json(); // 200 → grantId, receipt.transaction
+```
+
+**Live proof (REST):** tx `0x434539cb8ce48cb6faf81605971cd7de81972552f2a23d32ad62d0ba4963deeb` — https://basescan.org/tx/0x434539cb8ce48cb6faf81605971cd7de81972552f2a23d32ad62d0ba4963deeb  
+Reference implementation: `scripts/canary-pay.mjs` in the monorepo.
+
+Deps: `@x402/fetch@^2.13.0`, `@x402/evm@^2.13.0`, `viem@^2`.
+
+### Path B — MCP stdio `@1.0.5` (free reads; pay via REST)
+
+Pin **1.0.5** unless you explicitly want auto-pay (Path C):
 
 ```json
 {
   "mcpServers": {
     "secondeye-unblock": {
       "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock"],
+      "args": ["-y", "@secondeyes/mcp-unblock@1.0.5"],
       "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com" }
     }
   }
 }
 ```
+
+- **Free via MCP:** `proof_bar`, `read_menu`, `read_laws`, `read_pricing`, `enter_lounge`, `pause_and_route`, `fetch_catalog`
+- **Paid via MCP 1.0.5:** `order_service` returns **402** — use **Path A (REST)** to sign and pay, or upgrade to Path C
+
+### Path C — MCP stdio `@1.1.0+` (auto-pay via env)
+
+**Gated:** only use when npm reports ≥ 1.1.0:
+
+```bash
+npm view @secondeyes/mcp-unblock version
+```
+
+When ≥ `1.1.0`, pin explicitly and set wallet on the **MCP server process** (never pass key as a tool argument):
+
+```json
+{
+  "mcpServers": {
+    "secondeye-unblock": {
+      "command": "npx",
+      "args": ["-y", "@secondeyes/mcp-unblock@1.1.0"],
+      "env": {
+        "SECOND_EYE_BASE_URL": "https://secondeyesai.com",
+        "MCP_X402_WALLET_KEY": "0x…",
+        "MCP_X402_MAX_SPEND_USD": "0.50",
+        "MCP_X402_SESSION_MAX_USD": "2.00"
+      }
+    }
+  }
+}
+```
+
+- **`order_service`** on 402 → `@x402/fetch` signs USDC → returns paid JSON inline (`paid_via_mcp_x402: true`, `grantId`, `receipt`)
+- **Default slug allow-list:** `should-i-pay` only (fail closed). Opt in: `MCP_X402_ALLOW_SLUGS=claim-check,mcp-wiring` or `*`
+
+**Live proof (MCP 1.1.0):** grant `agr_85987cd442c21ce5`, tx https://basescan.org/tx/0xe25707bd3130b5f157934265b0d291bbbfc0b250dc7faf088b6201fd54634e5c
+
+## MCP STDIO INSTALL (default — free reads)
+
+```json
+{
+  "mcpServers": {
+    "secondeye-unblock": {
+      "command": "npx",
+      "args": ["-y", "@secondeyes/mcp-unblock@1.0.5"],
+      "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com" }
+    }
+  }
+}
+```
+
+(Paid services: use HOW TO PAY above — REST Path A, or MCP `@1.1.0` Path C.)
 
 ## LOUNGE FLOW
 
@@ -129,7 +230,7 @@ Separate from lounge survival menu — full cited wiring context:
 1. `GET /api/bar/proof`
 2. `GET /api/bar/tools/cursor-mcp-wiring` (free)
 3. `GET /api/bar/catalog` → nano ($0.25), micro ($1), tool ($5), bar tab
-4. Paid → HTTP 402 → USDC on Base → `PAYMENT-SIGNATURE`
+4. Paid → HTTP 402 → follow **HOW TO PAY** (REST Path A or MCP `@1.1.0` Path C)
 
 ## PATRON MARKS
 
@@ -142,12 +243,15 @@ Separate from lounge survival menu — full cited wiring context:
 
 ## PAY — x402 / A4A (USDC on Base)
 
+**How to cross the paywall:** see **HOW TO PAY** above (REST snippet + MCP paths).
+
 - **Survival services:** `GET /api/bar/services/{slug}` (session header required)
 - **$0.25 nano tap:** `GET /api/bar/taps/{slug}`
 - **$1 micro tap:** `GET /api/bar/taps/{slug}`
 - **$5 tool pack:** `GET /api/bar/tools/{slug}`
 - **Bar tab:** `GET /api/access/purchase?plan=monthly` ($10) | `annual` ($100) | `lifetime` ($250)
 - **A4A:** `POST /api/a4a` + `X-A2A-Extensions: https://github.com/google-a2a/a2a-x402/v0.1`
+- **Ledger:** `GET /api/bar/proof/payments`
 
 ## Headers
 

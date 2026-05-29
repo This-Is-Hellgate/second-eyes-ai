@@ -2,11 +2,18 @@
   "serverInfo": {
     "name": "secondeye-mcp-unblock",
     "title": "MCP 401 Auth Fix | github PAT wiring | x402",
-    "version": "1.0.5"
+    "version": "1.1.0"
   },
   "authentication": {
     "required": false,
     "schemes": []
+  },
+  "how_to_pay": {
+    "docs": "https://secondeyesai.com/llms.txt",
+    "machine_readable": "https://secondeyesai.com/api/bar",
+    "field": "payment_activation",
+    "ledger": "https://secondeyesai.com/api/bar/proof/payments",
+    "wallet_rule": "Dedicated low-balance Base USDC wallet — never main wallet"
   },
   "tools": [
     {
@@ -53,7 +60,7 @@
     },
     {
       "name": "order_service",
-      "description": "Survival services by slug",
+      "description": "@1.0.5: returns 402 — pay via REST (llms.txt HOW TO PAY). @1.1.0+ with MCP_X402_WALLET_KEY: auto-settles USDC.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -97,10 +104,22 @@
       "registryType": "npm",
       "identifier": "@secondeyes/mcp-unblock",
       "version": "1.0.5",
-      "transport": { "type": "stdio" }
+      "transport": { "type": "stdio" },
+      "install": "npx -y @secondeyes/mcp-unblock@1.0.5",
+      "note": "Free reads; paid via REST x402"
+    },
+    {
+      "registryType": "npm",
+      "identifier": "@secondeyes/mcp-unblock",
+      "version": "1.1.0",
+      "transport": { "type": "stdio" },
+      "install": "npx -y @secondeyes/mcp-unblock@1.1.0",
+      "note": "Auto-pay when MCP_X402_WALLET_KEY set"
     }
   ],
   "websiteUrl": "https://secondeyesai.com/api/bar",
   "proof": "https://secondeyesai.com/api/bar/proof",
+  "payment_ledger": "https://secondeyesai.com/api/bar/proof/payments",
+  "llms": "https://secondeyesai.com/llms.txt",
   "repository": "https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp"
 }

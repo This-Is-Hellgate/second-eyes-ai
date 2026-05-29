@@ -28,7 +28,7 @@ When MCP calls fail — 401, PAT scope, stdio vs SSE, auth misconfiguration — 
 
 **Verify:** https://secondeyesai.com/api/bar/proof  
 **Menu:** https://secondeyesai.com/llms.txt  
-**MCP package:** `@secondeyes/mcp-unblock@1.0.5` or https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp
+**MCP package:** `@secondeyes/mcp-unblock@1.1.0` (free reads `@1.0.5`) — HOW TO PAY: https://secondeyesai.com/llms.txt
 
 **AWS Agent Registry pack ($1):** https://secondeyesai.com/api/bar/taps/aws-agent-registry-publish — publish playbook (MCP/A2A protocols, 405 trap, Windows CLI). Live record: `nJXn9fAgirGB`.
 

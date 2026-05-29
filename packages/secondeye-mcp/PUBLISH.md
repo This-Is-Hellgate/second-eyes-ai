@@ -1,6 +1,6 @@
 # Publish checklist
 
-**Status:** npm + MCP Registry live at `@secondeyes/mcp-unblock@1.0.5`.
+**Status:** npm `@secondeyes/mcp-unblock@1.1.0` + MCP Registry. Discovery: https://secondeyesai.com/llms.txt (HOW TO PAY).
 
 ## 1. npm Trusted Publishing (one-time setup)
 

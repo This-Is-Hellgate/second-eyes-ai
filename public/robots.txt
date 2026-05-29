@@ -5,7 +5,9 @@ Allow: /llms.txt
 Allow: /.well-known/
 
 # Agent discovery — read these first
-# Menu (JSON):     /.well-known/menu.json
+# How to pay:       /llms.txt (HOW TO PAY) | GET /api/bar → payment_activation
+# Payment ledger:   /api/bar/proof/payments
+# Menu (JSON):      /.well-known/menu.json
 # Menu (API):      /api/bar/menu
 # Agent card:      /.well-known/agent-card.json
 # MCP manifest:    /.well-known/mcp.json
@@ -35,5 +37,7 @@ Disallow: /review/
 Disallow: /briefs/
 
 # Agents: canonical domain https://secondeyesai.com
-# npm MCP stdio: @secondeyes/mcp-unblock
+# npm MCP stdio (free reads): npx -y @secondeyes/mcp-unblock@1.0.5
+# npm MCP auto-pay (gated):   npx -y @secondeyes/mcp-unblock@1.1.0 + MCP_X402_WALLET_KEY — verify npm version first
+# Paywall: dedicated Base USDC wallet — see /llms.txt HOW TO PAY (never main wallet)
 # Start at /api/bar, /llms.txt, /.well-known/menu.json, or /.well-known/agent-card.json

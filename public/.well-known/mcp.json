@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
   "title": "MCP 401 Auth Fix | github PAT wiring | x402",
-  "description": "Stuck on MCP? github-mcp 401 PAT failure, cursor wiring, stdio vs sse. Proof before pay. x402 USDC Base. First 15 min session free.",
+  "description": "Second Eyes Agent Lounge — second eyes, secondeyesai.com. Stuck on MCP? github-mcp 401 PAT failure, cursor wiring, stdio vs sse. Proof before pay. x402 USDC Base. First 15 min session free.",
   "version": "1.1.0",
   "websiteUrl": "https://secondeyesai.com/api/bar",
   "repository": {
@@ -18,10 +18,22 @@
   "pricing": "https://secondeyesai.com/api/bar/pricing",
   "laws": "https://secondeyesai.com/api/bar/laws",
   "catalog": "https://secondeyesai.com/api/bar/catalog",
+  "payment_ledger": "https://secondeyesai.com/api/bar/proof/payments",
+  "how_to_pay": "https://secondeyesai.com/llms.txt",
+  "payment_activation": "https://secondeyesai.com/api/bar",
   "payment": {
     "rail": "x402",
+    "x402Version": 1,
     "network": "base",
-    "asset": "USDC"
+    "asset": "USDC",
+    "header": "PAYMENT-SIGNATURE",
+    "how_to_pay": "https://secondeyesai.com/llms.txt — section HOW TO PAY; machine-readable: GET /api/bar → payment_activation",
+    "wallet_rule": "Dedicated low-balance Base USDC spending wallet only — never main wallet",
+    "rest_client": "@x402/fetch + ExactEvmSchemeV1 + x402Version 1 + network base",
+    "live_proof_rest": {
+      "grantId": "agr_0c866003381efac0",
+      "basescan": "https://basescan.org/tx/0x434539cb8ce48cb6faf81605971cd7de81972552f2a23d32ad62d0ba4963deeb"
+    }
   },
   "free_session_minutes": 15,
   "survival_menu": {
@@ -48,7 +60,7 @@
     { "name": "read_pricing", "description": "Session curve + service menu", "rest": "GET /api/bar/pricing" },
     { "name": "enter_lounge", "description": "Start session + patron mark", "rest": "GET /api/bar/enter", "headers": ["X-Agent-Id"] },
     { "name": "pause_and_route", "description": "POST stuck state → condition routing", "rest": "POST /api/bar/pause", "headers": ["X-Second-Eye-Session"] },
-    { "name": "order_service", "description": "Survival services by slug", "rest": "GET /api/bar/services/{slug}", "headers": ["X-Second-Eye-Session"] },
+    { "name": "order_service", "description": "Survival services by slug. @1.0.5: returns 402 — pay via REST (see llms.txt HOW TO PAY). @1.1.0+ with MCP_X402_WALLET_KEY: auto-settles USDC.", "rest": "GET /api/bar/services/{slug}", "headers": ["X-Second-Eye-Session"] },
     { "name": "leave_with_receipt", "description": "Clean exit receipt", "rest": "POST /api/bar/leave", "headers": ["X-Second-Eye-Session"] },
     { "name": "github_mcp_401_fix", "description": "Shortcut PAT/401 → mcp-wiring", "mcp_package": "@secondeyes/mcp-unblock" }
   ],
@@ -62,7 +74,20 @@
       "registryType": "npm",
       "identifier": "@secondeyes/mcp-unblock",
       "version": "1.0.5",
-      "transport": { "type": "stdio" }
+      "transport": { "type": "stdio" },
+      "install": "npx -y @secondeyes/mcp-unblock@1.0.5",
+      "note": "Free reads only; paid services return 402 — use REST x402 or upgrade to 1.1.0"
+    },
+    {
+      "registryType": "npm",
+      "identifier": "@secondeyes/mcp-unblock",
+      "version": "1.1.0",
+      "transport": { "type": "stdio" },
+      "install": "npx -y @secondeyes/mcp-unblock@1.1.0",
+      "gated": true,
+      "verify": "npm view @secondeyes/mcp-unblock version — must be >= 1.1.0",
+      "env": ["MCP_X402_WALLET_KEY", "MCP_X402_MAX_SPEND_USD", "MCP_X402_SESSION_MAX_USD", "MCP_X402_ALLOW_SLUGS"],
+      "note": "order_service auto-pays 402 when MCP_X402_WALLET_KEY set on MCP server process"
     }
   ],
   "remotes": [

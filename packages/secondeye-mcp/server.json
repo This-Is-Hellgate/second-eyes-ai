@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
   "title": "MCP 401 Auth Fix | github PAT wiring | x402",
-  "description": "github-mcp 401? PAT wiring. Proof before pay. x402 USDC Base. 15 min free.",
-  "version": "1.1.0",
+  "description": "github-mcp 401? PAT wiring. HOW TO PAY: llms.txt + GET /api/bar payment_activation. x402 USDC Base. MCP @1.1.0 auto-pay.",
+  "version": "1.1.1",
   "websiteUrl": "https://secondeyesai.com/api/bar",
   "repository": {
     "url": "https://github.com/This-Is-Hellgate/second-eyes-ai",
@@ -82,6 +82,9 @@
         "receipt"
       ],
       "proof_url": "https://secondeyesai.com/api/bar/proof",
+      "payment_ledger": "https://secondeyesai.com/api/bar/proof/payments",
+      "how_to_pay": "https://secondeyesai.com/llms.txt",
+      "payment_activation": "https://secondeyesai.com/api/bar",
       "llms_txt": "https://secondeyesai.com/llms.txt",
       "agent_card": "https://secondeyesai.com/.well-known/agent-card.json",
       "mcp_discovery": "https://secondeyesai.com/.well-known/mcp.json"

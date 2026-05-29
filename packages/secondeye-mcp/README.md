@@ -19,12 +19,30 @@ curl -s https://secondeyesai.com/api/bar/proof | jq .pass
 
 ## Install (Cursor / Claude Code / any MCP client)
 
+**Full payment instructions:** https://secondeyesai.com/llms.txt (section **HOW TO PAY**)
+
+Default — free reads only (`@1.0.5`):
+
 ```json
 {
   "mcpServers": {
     "secondeye-unblock": {
       "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock"],
+      "args": ["-y", "@secondeyes/mcp-unblock@1.0.5"],
+      "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com" }
+    }
+  }
+}
+```
+
+Auto-pay (`@1.1.0` — verify with `npm view @secondeyes/mcp-unblock version`):
+
+```json
+{
+  "mcpServers": {
+    "secondeye-unblock": {
+      "command": "npx",
+      "args": ["-y", "@secondeyes/mcp-unblock@1.1.0"],
       "env": {
         "SECOND_EYE_BASE_URL": "https://secondeyesai.com",
         "MCP_X402_WALLET_KEY": "0x…",

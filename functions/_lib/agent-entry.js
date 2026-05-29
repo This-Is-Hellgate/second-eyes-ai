@@ -3,53 +3,122 @@ import {
   SERVICE_NAME,
   TAGLINE,
   VALUE_PROPOSITION,
+  BRAND_ALIASES,
+  LEGACY_NAMES,
   trustSnapshot,
   receiptModel,
 } from "./brand.js";
 import { buildSurvivalMenu } from "./lounge/menu-export.js";
 
+/** Gate MCP auto-pay docs until this version is live on npm (`npm view @secondeyes/mcp-unblock version`). */
+export const MCP_AUTOPAY_NPM_VERSION = "1.1.0";
+
 /** Machine-readable x402 steps — agents without this cannot complete paid services. */
 export function buildPaymentProtocol(origin) {
   const base = origin.replace(/\/$/, "");
+  const serviceUrl = `${base}/api/bar/services/should-i-pay`;
   return {
     rail: "x402",
+    x402Version: 1,
     network: "base",
     asset: "USDC",
     header: "PAYMENT-SIGNATURE",
     alt_headers: ["X-PAYMENT-SIGNATURE", "X-PAYMENT"],
-    prerequisite: "Agent wallet with USDC on Base and x402 client support",
+    prerequisite: "Dedicated EVM wallet funded with USDC on Base mainnet + x402 v1 client (see wallet_setup)",
     free_without_wallet: ["proof", "proof/payments", "activity", "laws", "menu", "pricing", "enter", "pause (once per session)"],
     payment_ledger: `${base}/api/bar/proof/payments`,
     paid_requires_wallet: ["survival services", "nano/micro taps", "tool packs"],
+    wallet_setup: {
+      rule: "Dedicated low-balance spending wallet only — never your main wallet or a wallet shared with other systems.",
+      network: "base",
+      asset: "USDC",
+      suggested_balance_usd: 10,
+      fund: "Send USDC on Base to your payer address before calling paid endpoints.",
+    },
     cheapest_paid_service: {
       slug: "should-i-pay",
       price_usd: 0.1,
-      url: `${base}/api/bar/services/should-i-pay`,
+      url: serviceUrl,
       when: "I am about to pay",
+    },
+    live_proof: {
+      note: "Receipted REST x402 settlement on production lounge (verify on ledger + Base).",
+      grantId: "agr_0c866003381efac0",
+      transaction: "0x434539cb8ce48cb6faf81605971cd7de81972552f2a23d32ad62d0ba4963deeb",
+      basescan: "https://basescan.org/tx/0x434539cb8ce48cb6faf81605971cd7de81972552f2a23d32ad62d0ba4963deeb",
+      ledger: `${base}/api/bar/proof/payments`,
     },
     flow: [
       {
         step: 1,
-        action: "GET service URL",
-        headers: ["X-Second-Eye-Session", "X-Second-Eye-Mark"],
+        action: "GET service URL with session headers",
+        headers: ["X-Second-Eye-Session", "X-Second-Eye-Mark", "X-Agent-Id"],
         expect_status: 402,
       },
       {
         step: 2,
-        action: "Parse accepts[] from 402 JSON body",
-        note: "Pay exact USDC amount to payTo on Base per x402 spec",
+        action: "Parse accepts[] from 402 JSON (payTo, maxAmountRequired, network, asset)",
+        note: "Second Eyes uses x402Version 1, network base, USDC 0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913",
       },
       {
         step: 3,
-        action: "Retry same GET with PAYMENT-SIGNATURE header",
+        action: "Sign payment with x402 client, retry GET with PAYMENT-SIGNATURE header",
         expect_status: 200,
-        yields: ["service payload", "receipt", "work_stamp"],
+        yields: ["service payload", "grantId", "receipt.transaction", "work_stamp", "X-PAYMENT-RESPONSE"],
       },
     ],
+    rest_client: {
+      packages: ["@x402/fetch@^2.13.0", "@x402/evm@^2.13.0", "viem@^2"],
+      scheme: "ExactEvmSchemeV1",
+      x402Version: 1,
+      network: "base",
+      reference_script: "https://github.com/This-Is-Hellgate/second-eyes-ai/blob/main/scripts/canary-pay.mjs",
+      minimal_example: {
+        language: "javascript",
+        steps: [
+          "import { wrapFetchWithPaymentFromConfig } from '@x402/fetch'",
+          "import { ExactEvmSchemeV1 } from '@x402/evm/exact/v1/client'",
+          "import { privateKeyToAccount } from 'viem/accounts'",
+          "const account = privateKeyToAccount(process.env.WALLET_KEY)",
+          "const fetchWithPayment = wrapFetchWithPaymentFromConfig(fetch, { schemes: [{ network: 'base', x402Version: 1, client: new ExactEvmSchemeV1(account) }] })",
+          `const res = await fetchWithPayment('${serviceUrl}', { headers: { 'X-Second-Eye-Session': sessionId, 'X-Agent-Id': agentId } })`,
+          "const body = await res.json() // expect 200, grantId, receipt.transaction",
+        ],
+      },
+    },
+    mcp_stdio: {
+      package: "@secondeyes/mcp-unblock",
+      version_free_reads_only: "1.0.5",
+      version_with_autopay: MCP_AUTOPAY_NPM_VERSION,
+      verify_before_autopay: "npm view @secondeyes/mcp-unblock version — must be >= 1.1.0 before using MCP_X402_WALLET_KEY",
+      "1.0.5": {
+        install: "npx -y @secondeyes/mcp-unblock@1.0.5",
+        paid_services: "Returns HTTP 402 on order_service — complete payment via REST rest_client above",
+        free_tools: ["proof_bar", "read_menu", "read_laws", "read_pricing", "enter_lounge", "pause_and_route", "fetch_catalog"],
+      },
+      [MCP_AUTOPAY_NPM_VERSION]: {
+        gated: true,
+        requires_npm: `@secondeyes/mcp-unblock@${MCP_AUTOPAY_NPM_VERSION}`,
+        install: `npx -y @secondeyes/mcp-unblock@${MCP_AUTOPAY_NPM_VERSION}`,
+        env: {
+          MCP_X402_WALLET_KEY: "0x… dedicated spending wallet private key (on MCP server process, not in tool args)",
+          MCP_X402_MAX_SPEND_USD: "0.50",
+          MCP_X402_SESSION_MAX_USD: "2.00",
+          MCP_X402_ALLOW_SLUGS: "should-i-pay (default fail-closed; omit uses should-i-pay only)",
+        },
+        paid_services: "order_service auto-settles 402 via @x402/fetch when MCP_X402_WALLET_KEY is set",
+        live_proof: {
+          grantId: "agr_85987cd442c21ce5",
+          transaction: "0xe25707bd3130b5f157934265b0d291bbbfc0b250dc7faf088b6201fd54634e5c",
+          basescan: "https://basescan.org/tx/0xe25707bd3130b5f157934265b0d291bbbfc0b250dc7faf088b6201fd54634e5c",
+        },
+      },
+    },
     no_wallet_fallback: {
-      npm: "@secondeyes/mcp-unblock",
-      install: "npx -y @secondeyes/mcp-unblock",
-      note: "stdio MCP proxies free reads; paid REST still needs x402",
+      read_first: `${base}/llms.txt#how-to-pay`,
+      mcp_free_reads: "npx -y @secondeyes/mcp-unblock@1.0.5 — proof, menu, enter, pause; paid services return 402",
+      mcp_autopay_when_published: `When npm >= @${MCP_AUTOPAY_NPM_VERSION}: pin @secondeyes/mcp-unblock@${MCP_AUTOPAY_NPM_VERSION} + MCP_X402_WALLET_KEY on MCP server`,
+      rest_paid: "Any agent with a funded Base USDC wallet uses rest_client above",
     },
   };
 }
@@ -181,6 +250,9 @@ export function buildAgentEntry(origin) {
     service: SERVICE_ID,
     name: SERVICE_NAME,
     tagline: TAGLINE,
+    aliases: BRAND_ALIASES,
+    also_known_as: LEGACY_NAMES,
+    search_terms: BRAND_ALIASES,
     value_proposition: VALUE_PROPOSITION,
     survival_menu: buildSurvivalMenu(base),
     ...flow,
