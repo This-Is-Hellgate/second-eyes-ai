@@ -21,6 +21,7 @@ import {
 } from "../../../_lib/bar-pay.js";
 import { accessJson } from "../../../_lib/access.js";
 import { fetchWithTimeout, DEFAULT_FETCH_TIMEOUT_MS } from "../../../_lib/resilience.js";
+import { isSafeHttpUrl } from "../../../_lib/url-guard.js";
 
 const TOOL_SLUG = "x402-survival";
 const TAP_SLUG = "x402-doctor";
@@ -121,7 +122,7 @@ async function runDiagnosis(input) {
   }
 
   if (input.url) {
-    if (!isSafeUrl(input.url)) {
+    if (!isSafeHttpUrl(input.url)) {
       return {
         tool: TAP_SLUG,
         error: "unsafe_url",
@@ -175,25 +176,4 @@ async function runDiagnosis(input) {
   }
 
   return diagnose402(input.body, {});
-}
-
-function isSafeUrl(raw) {
-  let u;
-  try {
-    u = new URL(raw);
-  } catch {
-    return false;
-  }
-  if (u.protocol !== "https:") return false;
-  const h = u.hostname.toLowerCase();
-  if (h === "localhost" || h.endsWith(".local") || h.endsWith(".internal")) return false;
-  if (h === "[::1]" || h.startsWith("[fc") || h.startsWith("[fd") || h.startsWith("[fe80")) return false;
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(h)) {
-    const p = h.split(".").map(Number);
-    if (p[0] === 0 || p[0] === 10 || p[0] === 127) return false;
-    if (p[0] === 169 && p[1] === 254) return false;
-    if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return false;
-    if (p[0] === 192 && p[1] === 168) return false;
-  }
-  return true;
 }

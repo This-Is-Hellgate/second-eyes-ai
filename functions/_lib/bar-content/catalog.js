@@ -258,6 +258,26 @@ export const BARS = [
           "endpoint not returning 402 on a bare crawl",
         ],
       },
+      {
+        slug: "bazaar-index-check",
+        name: "bazaar-index-check",
+        kind: "tap",
+        dynamic: true,
+        session_required: false,
+        priceUsd: 0.25,
+        method: "GET|POST",
+        path: "/api/bar/x402/index-check",
+        lead: "Is your x402 endpoint indexed on the CDP Bazaar? If not, tells you format vs backlog and the next step.",
+        usage: {
+          by_wallet: "GET /api/bar/x402/index-check?payTo=0xYourWallet",
+          by_url: "GET /api/bar/x402/index-check?url=https://your-host/your/endpoint",
+        },
+        answers: [
+          "indexed: yes/no, and where (cdp_merchant / cdp_search)",
+          "reason if not: format (run x402-doctor) vs backlog/no-settlement",
+          "wallet resource count + quality of indexed entries",
+        ],
+      },
     ],
   },
 ];
