@@ -226,14 +226,34 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
         }
       );
     }
-    const paywall = payment402BodyForProduct(requirements, product, settled.error, origin);
+    // Do NOT echo the raw facilitator response to unauthenticated callers — it can
+    // carry internal detail. Log the full upstream context server-side under a
+    // requestId and surface only a stable code + (short) invalidReason categorization.
+    const requestId = makeId("req");
+    console.log(
+      JSON.stringify({
+        requestId,
+        event: "facilitator_settle_failed",
+        product: product.slug,
+        stage: settled.stage || null,
+        facilitatorStatus: settled.facilitatorStatus || null,
+        invalidReason: settled.invalidReason || null,
+        facilitatorResponse: settled.facilitatorResponse || null,
+      })
+    );
+    const paywall = payment402BodyForProduct(
+      requirements,
+      product,
+      "Payment verification failed.",
+      origin
+    );
+    paywall.code = "payment_verification_failed";
+    paywall.requestId = requestId;
     if (settled.invalidReason) paywall.invalidReason = settled.invalidReason;
-    if (settled.facilitatorStatus) paywall.facilitatorStatus = settled.facilitatorStatus;
-    if (settled.facilitatorResponse) paywall.facilitatorResponse = settled.facilitatorResponse;
     return accessJson(
       paywall,
       402,
-      payment402Headers(requirements, settled.error, {
+      payment402Headers(requirements, "Payment verification failed.", {
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": CACHE.payment402,
       })
