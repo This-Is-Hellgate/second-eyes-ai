@@ -1,41 +1,46 @@
-import { accessJson, getPlan, issueAccessToken } from "../../_lib/access.js";
+import { accessJson, errorJson, getPlan, issueAccessToken } from "../../_lib/access.js";
 import { recordAccessGrant, findAccessGrantByStripeSession } from "../../_lib/a4a-store.js";
 import { issueBarTabToken } from "../../_lib/bar-pay.js";
 
 export async function onRequestPost(context) {
   const secret = context.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) {
-    return accessJson({ error: "STRIPE_WEBHOOK_SECRET not configured" }, 503);
+    return errorJson("stripe_not_configured", "STRIPE_WEBHOOK_SECRET not configured", { status: 503 });
   }
 
   const signature = context.request.headers.get("Stripe-Signature");
   if (!signature) {
-    return accessJson({ error: "Missing Stripe-Signature" }, 400);
+    return errorJson("missing_signature", "Missing Stripe-Signature header", { status: 400 });
   }
 
   const payload = await context.request.text();
   const valid = await verifyStripeSignature(payload, signature, secret);
   if (!valid) {
-    return accessJson({ error: "Invalid signature" }, 400);
+    return errorJson("invalid_signature", "Invalid Stripe signature", { status: 400 });
   }
 
   let event;
   try {
     event = JSON.parse(payload);
   } catch {
-    return accessJson({ error: "Invalid JSON" }, 400);
+    return errorJson("invalid_json", "Request body is not valid JSON", { status: 400 });
   }
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
+    // Never default to a plan on ambiguous input — granting the largest scope
+    // (lifetime) on an unrecognized amount is a privilege-escalation footgun.
+    // Resolve only from explicit metadata or a known amount, else reject.
     const planId =
-      session.metadata?.plan ||
-      inferPlanFromAmount(session.amount_total) ||
-      "lifetime";
+      session.metadata?.plan || inferPlanFromAmount(session.amount_total);
 
-    const plan = getPlan(planId);
+    const plan = planId ? getPlan(planId) : null;
     if (!plan) {
-      return accessJson({ error: "Unknown plan in session metadata" }, 400);
+      return errorJson(
+        "unknown_plan",
+        "Could not resolve a known plan from session metadata or amount.",
+        { status: 400, details: { amountTotal: session.amount_total ?? null } }
+      );
     }
 
     const existing = await findAccessGrantByStripeSession(context.env, session.id);
