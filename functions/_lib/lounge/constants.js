@@ -94,6 +94,33 @@ export const SERVICE_PRICES = {
   "proof-of-work": { price_usd: 0.1 },
 };
 
+/**
+ * Survival slugs also reachable session-less via /api/bar/x402/{slug}.
+ * Autonomous one-shot agents (AWS AgentCore, x402 buyers, cron agents) cannot
+ * hold a Second Eye session, so every session-gated /api/bar/services/{slug}
+ * with an entry here has a session-less twin they can pay in one shot.
+ */
+export const X402_TWIN_SLUGS = new Set([
+  "tool-verify",
+  "should-i-pay",
+  "receipt",
+  "claim-check",
+  "scope-check",
+  "pitstop",
+  "handoff-summary",
+  "loop-detect",
+  "context-compress",
+  "pre-run-context",
+  "context-recover",
+  "cascade-break",
+  "mcp-wiring",
+]);
+
+/** Session-less x402 route for a slug, or null when no twin exists. */
+export function x402TwinRoute(slug, origin = "") {
+  return X402_TWIN_SLUGS.has(slug) ? `${origin}/api/bar/x402/${slug}` : null;
+}
+
 /** Honeypots — plausible decoys; legitimate lounge flow never needs these */
 export const HONEYPOT_SLUGS = new Set([
   "admin-override",
@@ -105,7 +132,14 @@ export const MENU = {
   survival: Object.fromEntries(
     SURVIVAL_MENU.map(({ key, slug, when, price_usd }) => [
       key,
-      { path: `/api/bar/services/${slug}`, when, price_usd },
+      {
+        path: `/api/bar/services/${slug}`,
+        // Session-less one-shot route for autonomous agents that cannot hold a session.
+        x402: X402_TWIN_SLUGS.has(slug) ? `/api/bar/x402/${slug}` : undefined,
+        session_required: !X402_TWIN_SLUGS.has(slug),
+        when,
+        price_usd,
+      },
     ])
   ),
   orientation: {
@@ -126,6 +160,15 @@ export const MENU = {
 export const CONDITION_ROUTES = Object.fromEntries(
   SURVIVAL_MENU.map(({ key, slug, when, price_usd }) => [
     key,
-    { condition: key, when, recommendation: key, next_call: `/api/bar/services/${slug}`, price_usd },
+    {
+      condition: key,
+      when,
+      recommendation: key,
+      next_call: `/api/bar/services/${slug}`,
+      // Session-less one-shot route — autonomous agents pay this directly, no session.
+      x402_call: X402_TWIN_SLUGS.has(slug) ? `/api/bar/x402/${slug}` : undefined,
+      session_required: !X402_TWIN_SLUGS.has(slug),
+      price_usd,
+    },
   ])
 );

@@ -24,12 +24,21 @@ import {
   hasBarTabAccess,
   hasToolAccess,
   consumeMicroAccess,
+  bearerToken,
+  completePaidNanoDelivery,
+  paymentVerifyFailureResponse,
 } from "../../../_lib/bar-pay.js";
 import { accessJson, verifyAccessToken } from "../../../_lib/access.js";
 import { fetchWithTimeout } from "../../../_lib/resilience.js";
 import { isSafeHttpUrl } from "../../../_lib/url-guard.js";
 import { callGemini } from "../../../_lib/llm-openrouter.js";
 import { validateDoc, DOC_SCHEMAS, DOC_TYPES } from "../../../_lib/doc-validate.js";
+import {
+  buildProductPaymentRequirements,
+  readPaymentHeader,
+  settleBuiltPayment,
+  verifyPaymentHeader,
+} from "../../../_lib/x402.js";
 
 const TOOL_SLUG = "doc-intelligence";
 const TAP_SLUG = "doc-extract";
@@ -131,8 +140,10 @@ async function peekAccess(token, env) {
 
 async function handle(context, input) {
   const { request, env } = context;
-  const paymentHeader = readAnyPaymentHeader(request);
-  const token = bearer(request);
+  const paymentHeader = readPaymentHeader(request);
+  const token = bearerToken(request);
+  const url = new URL(request.url);
+  const origin = `${url.protocol}//${url.host}`;
 
   // Bare / unauthenticated request → standard x402 paywall (402). No model work,
   // no outbound fetch. The CDP Bazaar crawler must receive 402 on a bare GET to
@@ -140,6 +151,27 @@ async function handle(context, input) {
   const credible = paymentHeader || (token && (await peekAccess(token, env)));
   if (!credible) {
     return handlePaidFetch(context, PRODUCT, async () => ({}), (t) => accessCheck(t, env));
+  }
+
+  let verifiedPayment = null;
+  if (paymentHeader) {
+    const requirements = buildProductPaymentRequirements(PRODUCT, request.url, env);
+    if (!requirements) {
+      return accessJson(
+        {
+          error: "x402_not_configured",
+          product: PRODUCT.id,
+          priceUsd: PRODUCT.priceUsd,
+          hint: "Set X402_PAYTO and X402_FACILITATOR_URL",
+        },
+        503,
+        CORS
+      );
+    }
+    verifiedPayment = await verifyPaymentHeader(paymentHeader, requirements, env);
+    if (!verifiedPayment.ok) {
+      return paymentVerifyFailureResponse(context, PRODUCT, requirements, verifiedPayment, origin);
+    }
   }
 
   // Cheap input validation — never charge for malformed input or an unsafe URL.
@@ -208,6 +240,21 @@ async function handle(context, input) {
     },
     model_usage: extracted.usage,
   };
+
+  if (verifiedPayment) {
+    const settled = await settleBuiltPayment(verifiedPayment.built, verifiedPayment.accept, env);
+    if (!settled.ok) {
+      return paymentVerifyFailureResponse(
+        context,
+        PRODUCT,
+        verifiedPayment.requirement,
+        settled,
+        origin
+      );
+    }
+    return completePaidNanoDelivery(context, PRODUCT, body, settled);
+  }
+
   return handlePaidFetch(context, PRODUCT, async () => body, (t) => accessCheck(t, env));
 }
 
@@ -331,18 +378,4 @@ function bytesToBase64(bytes) {
     binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
   }
   return btoa(binary);
-}
-
-function readAnyPaymentHeader(request) {
-  return (
-    request.headers.get("PAYMENT-SIGNATURE") ||
-    request.headers.get("X-PAYMENT-SIGNATURE") ||
-    request.headers.get("X-PAYMENT") ||
-    ""
-  );
-}
-
-function bearer(request) {
-  const auth = request.headers.get("Authorization") || "";
-  return auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
 }

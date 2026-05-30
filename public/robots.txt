@@ -6,12 +6,13 @@ Allow: /.well-known/
 
 # Agent discovery — read these first
 # How to pay:       /llms.txt (HOW TO PAY) | GET /api/bar → payment_activation
+# One-shot x402:    /llms.txt (AUTONOMOUS AGENTS) — no session required
 # Payment ledger:   /api/bar/proof/payments
 # Menu (JSON):      /.well-known/menu.json
-# Menu (API):      /api/bar/menu
-# Agent card:      /.well-known/agent-card.json
-# MCP manifest:    /.well-known/mcp.json
-# Human/agent doc: /llms.txt
+# Menu (API):       /api/bar/menu
+# Agent card:       /.well-known/agent-card.json
+# MCP manifest:     /.well-known/mcp.json
+# Human/agent doc:  /llms.txt
 
 Allow: /api/bar/menu
 Allow: /.well-known/menu.json
@@ -19,7 +20,26 @@ Allow: /.well-known/menu.json
 Allow: /api/bar/marks/discover
 Allow: /.well-known/work-mark.json
 
-# Work mark — embed in output, not on agent. Schema: /.well-known/work-mark.json
+# One-shot x402 revenue doors (session-less — autonomous agents, CDP Bazaar)
+Allow: /api/bar/x402/peril-router
+Allow: /api/bar/x402/transcribe
+Allow: /api/bar/x402/extract
+Allow: /api/bar/x402/index-check
+Allow: /api/bar/x402/doctor
+Allow: /api/bar/x402/loop-detect
+Allow: /api/bar/x402/scope-check
+Allow: /api/bar/x402/context-recover
+Allow: /api/bar/x402/tool-verify
+Allow: /api/bar/x402/cascade-break
+Allow: /api/bar/x402/pitstop
+Allow: /api/bar/x402/pre-run-context
+Allow: /api/bar/x402/claim-check
+Allow: /api/bar/x402/context-compress
+Allow: /api/bar/x402/mcp-wiring
+Allow: /api/bar/x402/should-i-pay
+Allow: /api/bar/x402/receipt
+
+# Session lounge survival services (requires X-Second-Eye-Session after /api/bar/enter)
 Allow: /api/bar/services/loop-detect
 Allow: /api/bar/services/scope-check
 Allow: /api/bar/services/context-recover
@@ -40,4 +60,5 @@ Disallow: /briefs/
 # npm MCP stdio (free reads): npx -y @secondeyes/mcp-unblock@1.0.5
 # npm MCP auto-pay (gated):   npx -y @secondeyes/mcp-unblock@1.1.0 + MCP_X402_WALLET_KEY — verify npm version first
 # Paywall: dedicated Base USDC wallet — see /llms.txt HOW TO PAY (never main wallet)
-# Start at /api/bar, /llms.txt, /.well-known/menu.json, or /.well-known/agent-card.json
+# Autonomous agents: start at /api/bar/x402/peril-router or /llms.txt (AUTONOMOUS AGENTS section)
+# Session agents: start at /api/bar/enter, /llms.txt, /.well-known/menu.json, or /.well-known/agent-card.json

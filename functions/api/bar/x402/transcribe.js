@@ -28,6 +28,9 @@ import {
   hasBarTabAccess,
   hasToolAccess,
   consumeMicroAccess,
+  bearerToken,
+  completePaidNanoDelivery,
+  paymentVerifyFailureResponse,
 } from "../../../_lib/bar-pay.js";
 import { accessJson, verifyAccessToken } from "../../../_lib/access.js";
 import { fetchWithTimeout } from "../../../_lib/resilience.js";
@@ -38,6 +41,12 @@ import {
   TRANSCRIPT_OUTPUT_SCHEMA,
 } from "../../../_lib/transcribe-validate.js";
 import { CANONICAL_HOST } from "../../../_lib/brand.js";
+import {
+  buildProductPaymentRequirements,
+  readPaymentHeader,
+  settleBuiltPayment,
+  verifyPaymentHeader,
+} from "../../../_lib/x402.js";
 
 const TOOL_SLUG = "x402-survival";
 const TAP_SLUG = "transcribe-extract";
@@ -163,12 +172,35 @@ async function peekAccess(token, env) {
 
 async function handle(context, input) {
   const { request, env } = context;
-  const paymentHeader = readAnyPaymentHeader(request);
-  const token = bearer(request);
+  const paymentHeader = readPaymentHeader(request);
+  const token = bearerToken(request);
+  const url = new URL(request.url);
+  const origin = `${url.protocol}//${url.host}`;
 
   const credible = paymentHeader || (token && (await peekAccess(token, env)));
   if (!credible) {
     return handlePaidFetch(context, PRODUCT, async () => ({}), (t) => accessCheck(t, env));
+  }
+
+  let verifiedPayment = null;
+  if (paymentHeader) {
+    const requirements = buildProductPaymentRequirements(PRODUCT, request.url, env);
+    if (!requirements) {
+      return accessJson(
+        {
+          error: "x402_not_configured",
+          product: PRODUCT.id,
+          priceUsd: PRODUCT.priceUsd,
+          hint: "Set X402_PAYTO and X402_FACILITATOR_URL",
+        },
+        503,
+        CORS
+      );
+    }
+    verifiedPayment = await verifyPaymentHeader(paymentHeader, requirements, env);
+    if (!verifiedPayment.ok) {
+      return paymentVerifyFailureResponse(context, PRODUCT, requirements, verifiedPayment, origin);
+    }
   }
 
   if (!input.url) {
@@ -229,7 +261,6 @@ async function handle(context, input) {
   }
 
   const structured = transcribed.data.structured;
-  const origin = canonicalOrigin(request);
   const attestation = await buildAttestation(env, validation, {
     resource: `${origin}/api/bar/x402/transcribe`,
     media_kind: kind,
@@ -248,6 +279,20 @@ async function handle(context, input) {
     attestation,
     usage: transcribed.data.usage,
   };
+
+  if (verifiedPayment) {
+    const settled = await settleBuiltPayment(verifiedPayment.built, verifiedPayment.accept, env);
+    if (!settled.ok) {
+      return paymentVerifyFailureResponse(
+        context,
+        PRODUCT,
+        verifiedPayment.requirement,
+        settled,
+        origin
+      );
+    }
+    return completePaidNanoDelivery(context, PRODUCT, body, settled);
+  }
 
   return handlePaidFetch(context, PRODUCT, async () => body, (t) => accessCheck(t, env));
 }
@@ -292,20 +337,6 @@ async function transcribeMedia(env, input, kind, isVideoRef) {
   }
 
   return { ok: true, data: { structured: llm.json, usage: llm.usage || null } };
-}
-
-function readAnyPaymentHeader(request) {
-  return (
-    request.headers.get("PAYMENT-SIGNATURE") ||
-    request.headers.get("X-PAYMENT-SIGNATURE") ||
-    request.headers.get("X-PAYMENT") ||
-    ""
-  );
-}
-
-function bearer(request) {
-  const auth = request.headers.get("Authorization") || "";
-  return auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
 }
 
 function resolveKind(hint, url) {
@@ -443,15 +474,6 @@ async function buildAttestation(env, validation, meta) {
 function numberOrNull(v) {
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? n : null;
-}
-
-function canonicalOrigin(request) {
-  try {
-    const u = new URL(request.url);
-    return `${u.protocol}//${u.host}`;
-  } catch {
-    return `https://${CANONICAL_HOST}`;
-  }
 }
 
 function fileNameFromUrl(url, fallback) {

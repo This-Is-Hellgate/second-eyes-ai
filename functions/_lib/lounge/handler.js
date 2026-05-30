@@ -2,7 +2,7 @@ import { accessJson } from "../access.js";
 import { corsOptions, discoveryPaywall402, handlePaidFetch } from "../bar-pay.js";
 import { formatMark, readAgentId, readMarkId, getMarkById } from "../marks.js";
 import { enrichWithWorkStamp, workMarkLaw } from "../work-mark.js";
-import { SERVICE_PRICES, MENU, LOUNGE_VERSION, LAWS, FREE_SESSION_MINUTES, SURVIVAL_MENU } from "./constants.js";
+import { SERVICE_PRICES, MENU, LOUNGE_VERSION, LAWS, FREE_SESSION_MINUTES, SURVIVAL_MENU, x402TwinRoute } from "./constants.js";
 import { buildPricingPayload } from "./pricing.js";
 import { buildSurvivalMenu } from "./menu-export.js";
 import { buildPaymentProtocol } from "../agent-entry.js";
@@ -207,7 +207,15 @@ export async function handleServiceSlug(context, slug) {
   }
 
   if (SERVICE_PRICES[slug] === undefined) {
-    return loungeJson({ error: "unknown_service", catalog_menu: MENU }, 404);
+    return loungeJson(
+      {
+        error: "unknown_service",
+        catalog_menu: MENU,
+        peril_router: `${origin}/api/bar/x402/peril-router`,
+        hint: "Unknown slug. Autonomous agents: POST your state to peril_router for a session-less route.",
+      },
+      404
+    );
   }
 
   const priceMeta = SERVICE_PRICES[slug] || { price_usd: 0 };
@@ -219,7 +227,19 @@ export async function handleServiceSlug(context, slug) {
   const sessionCheck = await requireActiveSession(context.env, context.request);
   if (!sessionCheck.ok) {
     const status = sessionCheck.error === "agent_penned" ? 403 : sessionCheck.error === "missing_session" ? 400 : 440;
-    return loungeJson(sessionCheck, status);
+    const body = { ...sessionCheck };
+    // Conversion fix: an autonomous one-shot agent cannot hold a session. If this
+    // survival service has a session-less x402 twin, route it there instead of
+    // dead-ending — pay one-shot, no /api/bar/enter required.
+    const twin = x402TwinRoute(slug, origin);
+    if (twin && sessionCheck.error !== "agent_penned") {
+      body.session_required = false;
+      body.session_less_route = twin;
+      body.peril_router = `${origin}/api/bar/x402/peril-router`;
+      body.hint =
+        "Autonomous one-shot agents: pay this service session-less via x402 at session_less_route — no session or /api/bar/enter needed.";
+    }
+    return loungeJson(body, status);
   }
 
   const strikeEval = await evaluateStrike(context.env, context.request, sessionCheck.session, {

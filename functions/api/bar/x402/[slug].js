@@ -24,7 +24,7 @@ import {
   consumeMicroAccess,
 } from "../../../_lib/bar-pay.js";
 import { accessJson } from "../../../_lib/access.js";
-import { SERVICE_PRICES } from "../../../_lib/lounge/constants.js";
+import { SERVICE_PRICES, X402_TWIN_SLUGS } from "../../../_lib/lounge/constants.js";
 import { buildServicePayload } from "../../../_lib/lounge/services.js";
 
 const TOOL_SLUG = "lounge-survival";
@@ -33,23 +33,10 @@ const TOOL_SLUG = "lounge-survival";
  * Survival slugs reachable session-less via x402. One-shot, pay-per-call. Each
  * is backed by buildServicePayload() and priced from SERVICE_PRICES. Slugs not
  * in this set 404 here so honeypots and session-only lounge slugs are never
- * exposed as session-less routes.
+ * exposed as session-less routes. Shared with the lounge so /api/bar/services
+ * dead-ends can cross-link to the exact same twin.
  */
-const PERIL_SLUGS = new Set([
-  "tool-verify",
-  "should-i-pay",
-  "receipt",
-  "claim-check",
-  "scope-check",
-  "pitstop",
-  "handoff-summary",
-  "loop-detect",
-  "context-compress",
-  "pre-run-context",
-  "context-recover",
-  "cascade-break",
-  "mcp-wiring",
-]);
+const PERIL_SLUGS = X402_TWIN_SLUGS;
 
 /** Deep natural-language descriptions — primary CDP Bazaar ranking signal per route. */
 const SLUG_DESCRIPTIONS = {

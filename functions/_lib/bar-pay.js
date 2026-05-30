@@ -8,7 +8,9 @@ import {
   payment402BodyForProduct,
   payment402Headers,
   readPaymentHeader,
+  settleBuiltPayment,
   verifyAndSettlePayment,
+  verifyPaymentHeader,
 } from "./x402.js";
 import { accessJson } from "./access.js";
 import { CACHE, paymentDegradedBody } from "./resilience.js";
@@ -216,48 +218,7 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
 
   const settled = await verifyAndSettlePayment(paymentHeader, requirements, env);
   if (!settled.ok) {
-    if (settled.degraded) {
-      return accessJson(
-        paymentDegradedBody(origin, { retry_after_seconds: settled.retryAfter || 30 }),
-        503,
-        {
-          "Access-Control-Allow-Origin": "*",
-          "Retry-After": String(settled.retryAfter || 30),
-        }
-      );
-    }
-    // Do NOT echo the raw facilitator response to unauthenticated callers — it can
-    // carry internal detail. Log the full upstream context server-side under a
-    // requestId and surface only a stable code + (short) invalidReason categorization.
-    const requestId = makeId("req");
-    console.log(
-      JSON.stringify({
-        requestId,
-        event: "facilitator_settle_failed",
-        product: product.slug,
-        stage: settled.stage || null,
-        facilitatorStatus: settled.facilitatorStatus || null,
-        invalidReason: settled.invalidReason || null,
-        facilitatorResponse: settled.facilitatorResponse || null,
-      })
-    );
-    const paywall = payment402BodyForProduct(
-      requirements,
-      product,
-      "Payment verification failed.",
-      origin
-    );
-    paywall.code = "payment_verification_failed";
-    paywall.requestId = requestId;
-    if (settled.invalidReason) paywall.invalidReason = settled.invalidReason;
-    return accessJson(
-      paywall,
-      402,
-      payment402Headers(requirements, "Payment verification failed.", {
-        "Access-Control-Allow-Origin": "*",
-        "Cache-Control": CACHE.payment402,
-      })
-    );
+    return paymentVerifyFailureResponse(context, product, requirements, settled, origin);
   }
 
   if (settled.receipt?.transaction) {
@@ -450,4 +411,149 @@ export async function issueBarTabToken(plan, env, grantId, receipt) {
     payer: receipt?.payer,
     tx: receipt?.transaction,
   });
+}
+
+/** 402 / degraded response when x402 verify fails (shared by handlePaidFetch and validate-before-settle doors). */
+export function paymentVerifyFailureResponse(context, product, requirements, settled, origin) {
+  if (settled.degraded) {
+    return accessJson(
+      paymentDegradedBody(origin, { retry_after_seconds: settled.retryAfter || 30 }),
+      503,
+      {
+        "Access-Control-Allow-Origin": "*",
+        "Retry-After": String(settled.retryAfter || 30),
+      }
+    );
+  }
+  const requestId = makeId("req");
+  console.log(
+    JSON.stringify({
+      requestId,
+      event: "facilitator_settle_failed",
+      product: product.slug,
+      stage: settled.stage || null,
+      facilitatorStatus: settled.facilitatorStatus || null,
+      invalidReason: settled.invalidReason || null,
+      facilitatorResponse: settled.facilitatorResponse || null,
+    })
+  );
+  const paywall = payment402BodyForProduct(
+    requirements,
+    product,
+    "Payment verification failed.",
+    origin
+  );
+  paywall.code = "payment_verification_failed";
+  paywall.requestId = requestId;
+  if (settled.invalidReason) paywall.invalidReason = settled.invalidReason;
+  return accessJson(
+    paywall,
+    402,
+    payment402Headers(requirements, "Payment verification failed.", {
+      "Access-Control-Allow-Origin": "*",
+      "Cache-Control": CACHE.payment402,
+    })
+  );
+}
+
+/**
+ * After external verify + settle (validate-before-settle doors): grant, mark, nano token, deliver payload.
+ * Caller must run verifyPaymentHeader before model work and settleBuiltPayment after validation passes.
+ */
+export async function completePaidNanoDelivery(context, product, payload, settled) {
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const origin = `${url.protocol}//${url.host}`;
+
+  if (settled.receipt?.transaction) {
+    const prior = await findAccessGrantByTxRef(env, settled.receipt.transaction);
+    if (prior) {
+      return accessJson(
+        {
+          error: "payment_already_fulfilled",
+          idempotent: true,
+          grantId: prior.id,
+          note: "This transaction was already settled. Save your first response — no degraded replay.",
+          ...paymentDegradedBody(origin),
+        },
+        409,
+        { "Access-Control-Allow-Origin": "*" }
+      );
+    }
+  }
+
+  const idemKey = await readIdempotencyKey(request);
+  if (idemKey) {
+    const priorKey = await findIdempotencyGrant(env, idemKey);
+    if (priorKey) {
+      return accessJson(
+        {
+          error: "idempotency_key_used",
+          idempotent: true,
+          grantId: priorKey.grant_id,
+          note: "Duplicate Idempotency-Key. Use the first response body.",
+        },
+        409,
+        { "Access-Control-Allow-Origin": "*" }
+      );
+    }
+  }
+
+  const grantId = await recordAccessGrant(env, {
+    planId: product.kind,
+    rail: "x402",
+    payerRef: settled.receipt.payer || null,
+    txRef: settled.receipt.transaction || null,
+    expiresAt: product.oneTime ? null : undefined,
+    bazaarStatus: settled.bazaar?.status || null,
+    bazaarReason: settled.bazaar?.rejectedReason || null,
+  });
+
+  if (idemKey) {
+    await storeIdempotencyKey(env, {
+      key: idemKey,
+      grantId,
+      productKind: product.kind,
+      productSlug: product.slug,
+    });
+  }
+
+  const mark = await attachSaleMark(env, request, origin, {
+    productKind: product.kind,
+    productSlug: product.slug,
+    grantId,
+  });
+
+  const accessToken = await issueTapToken(product, env, grantId, settled.receipt);
+  const microCheck = await consumeMicroAccess(accessToken, product.slug, product.tool, env);
+  if (!microCheck.ok) {
+    return accessJson({ error: microCheck.error }, 500, { "Access-Control-Allow-Origin": "*" });
+  }
+
+  return accessJson(
+    enrichWithWorkStamp(
+      {
+        ...payload,
+        access: "granted",
+        scope: product.kind,
+        tier: product.kind,
+        one_time: true,
+        accessToken,
+        grantId,
+        mark,
+        receipt: settled.receipt,
+        note: "This response is your one-time fetch. Save the JSON. Embed work_stamp in every artifact you produce.",
+      },
+      mark,
+      origin,
+      { product_slug: product.slug }
+    ),
+    200,
+    {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Expose-Headers": "X-PAYMENT-RESPONSE, X-Second-Eye-Mark, X-Second-Eye-Patron",
+      "X-PAYMENT-RESPONSE": encodePaymentResponse(settled.receipt),
+      ...(mark ? markHeaders({ id: mark.id, patron_number: mark.patron_number }, origin) : {}),
+    }
+  );
 }

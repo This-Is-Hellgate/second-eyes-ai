@@ -372,6 +372,13 @@ function facilitatorVerifyError(verify) {
 }
 
 export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
+  const verified = await verifyPaymentHeader(paymentHeader, requirement, env);
+  if (!verified.ok) return verified;
+  return settleBuiltPayment(verified.built, verified.accept, env);
+}
+
+/** Verify a payment header against requirements without settling (for validate-before-settle doors). */
+export async function verifyPaymentHeader(paymentHeader, requirement, env) {
   const facilitator = env.X402_FACILITATOR_URL;
   if (!facilitator) {
     return { ok: false, error: "X402_FACILITATOR_URL not configured" };
@@ -436,6 +443,20 @@ export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
     };
   }
 
+  return { ok: true, built: built.body, accept, requirement };
+}
+
+/** Settle a payment that already passed verify (same built body CDP returned ok for). */
+export async function settleBuiltPayment(builtBody, accept, env) {
+  const facilitator = env.X402_FACILITATOR_URL;
+  if (!facilitator) {
+    return { ok: false, error: "X402_FACILITATOR_URL not configured" };
+  }
+
+  const circuit = x402Circuit();
+  const base = facilitator.replace(/\/$/, "");
+  const paths = facilitatorPaths(base);
+
   let settleAuth;
   try {
     settleAuth = await buildCdpAuthHeaders(env, "POST", paths.settlePath);
@@ -455,7 +476,7 @@ export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
       {
         method: "POST",
         headers: settleHeaders,
-        body: JSON.stringify(built.body),
+        body: JSON.stringify(builtBody),
       },
       DEFAULT_FETCH_TIMEOUT_MS
     );
