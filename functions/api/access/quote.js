@@ -1,4 +1,4 @@
-import { accessJson, getPlan } from "../../_lib/access.js";
+import { accessJson, errorJson, getPlan } from "../../_lib/access.js";
 
 import { buildPaymentRequirements, payment402Body } from "../../_lib/x402.js";
 
@@ -44,7 +44,7 @@ export async function onRequestGet(context) {
 
   if (!plan) {
 
-    return accessJson({ error: "Unknown plan. Use monthly, annual, or lifetime." }, 400);
+    return errorJson("unknown_plan", "Unknown plan. Use monthly, annual, or lifetime.", { status: 400 });
 
   }
 

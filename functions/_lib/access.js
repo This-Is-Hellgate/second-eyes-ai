@@ -134,3 +134,28 @@ export function accessJson(data, status = 200, extraHeaders = {}) {
     },
   });
 }
+
+/**
+ * Canonical error response. Stable machine `code`, human `message`, and a
+ * `requestId` that callers can quote and we can grep server-side.
+ *
+ * Transitional shape: `error` keeps the human string for back-compat with
+ * existing consumers (incl. the MCP package) while `code` is the new stable
+ * field machine callers should branch on. `extra` merges top-level fields a
+ * given endpoint must preserve (e.g. status.js `access: "none"`).
+ */
+export function errorJson(code, message, { status = 400, details, requestId, headers = {}, extra = {} } = {}) {
+  const rid = requestId || `req_${crypto.randomUUID()}`;
+  return accessJson(
+    {
+      ...extra,
+      error: message,
+      code,
+      message,
+      requestId: rid,
+      ...(details ? { details } : {}),
+    },
+    status,
+    headers
+  );
+}

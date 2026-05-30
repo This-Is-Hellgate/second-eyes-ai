@@ -1,4 +1,4 @@
-import { accessJson, verifyAccessToken } from "../../_lib/access.js";
+import { accessJson, errorJson, verifyAccessToken } from "../../_lib/access.js";
 import { bearerToken, corsOptions } from "../../_lib/bar-pay.js";
 
 export async function onRequestOptions() {
@@ -8,8 +8,10 @@ export async function onRequestOptions() {
 export async function onRequestGet(context) {
   const claims = await verifyAccessToken(bearerToken(context.request), context.env);
   if (!claims) {
-    return accessJson({ access: "none", error: "Missing or invalid Bearer token" }, 401, {
-      "Access-Control-Allow-Origin": "*",
+    return errorJson("unauthorized", "Missing or invalid Bearer token", {
+      status: 401,
+      headers: { "Access-Control-Allow-Origin": "*" },
+      extra: { access: "none" },
     });
   }
 

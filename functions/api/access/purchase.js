@@ -1,5 +1,6 @@
 import {
   accessJson,
+  errorJson,
   getPlan,
   issueAccessToken,
   verifyAccessToken,
@@ -36,7 +37,9 @@ export async function onRequestGet(context) {
   const plan = getPlan(planId);
 
   if (!plan) {
-    return accessJson({ error: "Unknown plan. Use monthly, annual, or lifetime." }, 400);
+    return errorJson("unknown_plan", "Unknown plan. Use monthly, annual, or lifetime.", {
+      status: 400,
+    });
   }
 
   const auth = request.headers.get("Authorization") || "";
@@ -56,17 +59,16 @@ export async function onRequestGet(context) {
 
   const requirements = buildPaymentRequirements(plan, request.url, env);
   if (!requirements) {
-    return accessJson(
-      {
-        error: "x402_not_configured",
+    return errorJson("x402_not_configured", "Payment rail is not configured.", {
+      status: 503,
+      details: {
         patrons: "agents_only",
         hint: "Set X402_PAYTO and X402_FACILITATOR_URL on the worker",
         plan: plan.id,
         priceUsd: plan.priceUsd,
         quoteUrl: `/api/access/quote?plan=${plan.id}`,
       },
-      503
-    );
+    });
   }
 
   const paymentHeader = readPaymentHeader(request);
