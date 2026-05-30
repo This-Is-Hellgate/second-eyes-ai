@@ -12,6 +12,7 @@ import {
   buildPaymentRequirements,
   encodePaymentResponse,
   payment402Body,
+  payment402Headers,
   readPaymentHeader,
   verifyAndSettlePayment,
 } from "../../_lib/x402.js";
@@ -70,9 +71,11 @@ export async function onRequestGet(context) {
 
   const paymentHeader = readPaymentHeader(request);
   if (!paymentHeader) {
-    return accessJson(payment402Body(requirements), 402, {
-      "Access-Control-Allow-Origin": "*",
-    });
+    return accessJson(
+      payment402Body(requirements),
+      402,
+      payment402Headers(requirements, undefined, { "Access-Control-Allow-Origin": "*" })
+    );
   }
 
   const settled = await verifyAndSettlePayment(paymentHeader, requirements, env);
@@ -88,9 +91,11 @@ export async function onRequestGet(context) {
         }
       );
     }
-    return accessJson(payment402Body(requirements, settled.error), 402, {
-      "Access-Control-Allow-Origin": "*",
-    });
+    return accessJson(
+      payment402Body(requirements, settled.error),
+      402,
+      payment402Headers(requirements, settled.error, { "Access-Control-Allow-Origin": "*" })
+    );
   }
 
   const txRef = settled.receipt.transaction || null;

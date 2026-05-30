@@ -6,6 +6,7 @@ import {
   buildProductPaymentRequirements,
   encodePaymentResponse,
   payment402BodyForProduct,
+  payment402Headers,
   readPaymentHeader,
   verifyAndSettlePayment,
 } from "./x402.js";
@@ -51,10 +52,14 @@ export function discoveryPaywall402(context, product, origin) {
   const requirements = buildProductPaymentRequirements(product, context.request.url, context.env);
   if (!requirements) return null;
 
-  return accessJson(payment402BodyForProduct(requirements, product, undefined, origin), 402, {
-    "Access-Control-Allow-Origin": "*",
-    "Cache-Control": CACHE.payment402,
-  });
+  return accessJson(
+    payment402BodyForProduct(requirements, product, undefined, origin),
+    402,
+    payment402Headers(requirements, undefined, {
+      "Access-Control-Allow-Origin": "*",
+      "Cache-Control": CACHE.payment402,
+    })
+  );
 }
 
 export async function hasBarTabAccess(token, env) {
@@ -199,10 +204,14 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
         product.kind === "lounge" ? "payment_402_lounge" : `payment_402_${product.kind}`;
       await incrementCounter(env, counterKey, 1);
     }
-    return accessJson(payment402BodyForProduct(requirements, product, undefined, origin), 402, {
-      "Access-Control-Allow-Origin": "*",
-      "Cache-Control": CACHE.payment402,
-    });
+    return accessJson(
+      payment402BodyForProduct(requirements, product, undefined, origin),
+      402,
+      payment402Headers(requirements, undefined, {
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": CACHE.payment402,
+      })
+    );
   }
 
   const settled = await verifyAndSettlePayment(paymentHeader, requirements, env);
@@ -221,10 +230,14 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
     if (settled.invalidReason) paywall.invalidReason = settled.invalidReason;
     if (settled.facilitatorStatus) paywall.facilitatorStatus = settled.facilitatorStatus;
     if (settled.facilitatorResponse) paywall.facilitatorResponse = settled.facilitatorResponse;
-    return accessJson(paywall, 402, {
-      "Access-Control-Allow-Origin": "*",
-      "Cache-Control": CACHE.payment402,
-    });
+    return accessJson(
+      paywall,
+      402,
+      payment402Headers(requirements, settled.error, {
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": CACHE.payment402,
+      })
+    );
   }
 
   if (settled.receipt?.transaction) {

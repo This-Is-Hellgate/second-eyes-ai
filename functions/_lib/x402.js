@@ -195,6 +195,56 @@ export function payment402BodyForProduct(requirements, product, error, origin) {
   };
 }
 
+/**
+ * Standard base64 (matches @x402/core safeBase64Encode: UTF-8 → btoa) of the v2
+ * payment-required object. The @x402 client's Base64EncodedRegex is /^[A-Za-z0-9+/]*={0,2}$/.
+ */
+export function encodePaymentRequiredHeader(obj) {
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+/**
+ * Canonical x402 v2 payment-required object — the shape the official @x402 client
+ * decodes from the PAYMENT-REQUIRED header (see coinbase/agentkit x402ActionProvider:
+ * "v2 sends requirements in PAYMENT-REQUIRED header; v1 sends in body").
+ *
+ * resource is an OBJECT { url, description, mimeType } (oatp-shaped, indexer-canonical);
+ * accepts[] stays clean; discovery metadata rides top-level resource + extensions.bazaar.
+ */
+export function paymentRequiredObject(requirements, error) {
+  const resourceUrl =
+    typeof requirements.resource === "string"
+      ? requirements.resource
+      : requirements.resource?.url;
+  return {
+    x402Version: 2,
+    error: error || "PAYMENT-SIGNATURE header is required",
+    resource: {
+      url: resourceUrl,
+      description: requirements.description || "",
+      mimeType: requirements.mimeType || "application/json",
+    },
+    accepts: requirements.accepts,
+    ...(requirements.extensions ? { extensions: requirements.extensions } : {}),
+  };
+}
+
+/**
+ * Headers every 402 must carry so a real v2 agent can actually pay:
+ *  - PAYMENT-REQUIRED: base64 v2 object (the ONLY place v2 clients read requirements)
+ *  - Access-Control-Expose-Headers: lets browser/agent fetch read it cross-origin
+ */
+export function payment402Headers(requirements, error, extra = {}) {
+  return {
+    "PAYMENT-REQUIRED": encodePaymentRequiredHeader(paymentRequiredObject(requirements, error)),
+    "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, X-PAYMENT-RESPONSE",
+    ...extra,
+  };
+}
+
 export function buildPaymentRequirements(plan, requestUrl, env) {
   const payTo = env.X402_PAYTO;
   if (!payTo) return null;
@@ -276,19 +326,24 @@ export function buildFacilitatorRequestBody(paymentHeader, requirement) {
   const x402Version =
     paymentPayload.x402Version ?? requirement.x402Version ?? 2;
 
-  // 402 response keeps accepts clean for the indexer; the facilitator still needs
-  // resource + maxAmountRequired, so reattach them from the top-level requirement.
-  const paymentRequirements = {
-    ...accept,
-    resource: requirement.resource,
-    maxAmountRequired: requirement.maxAmountRequired ?? accept.amount,
-  };
+  // v2 per-accept requirement is CLEAN (PaymentRequirementsV2Schema:
+  // scheme, network, amount, asset, payTo, maxTimeoutSeconds, extra) — no resource,
+  // no maxAmountRequired. It must equal the buyer's paymentPayload.accepted.
+  const paymentRequirements = { ...accept };
 
-  // CDP catalogs by paymentPayload.resource + extensions.bazaar.
-  const enrichedPayload = {
-    ...paymentPayload,
-    resource: paymentPayload.resource ?? requirement.resource,
-  };
+  // CDP Bazaar associates the settlement to the resource via paymentPayload.resource.
+  // v2 resource is the OBJECT form { url, description, mimeType }. The official client
+  // copies it from PAYMENT-REQUIRED; normalize/backfill defensively so it is always
+  // present as the object the indexer expects.
+  const enrichedPayload = { ...paymentPayload };
+  if (!enrichedPayload.resource) {
+    enrichedPayload.resource = paymentRequiredObject(requirement).resource;
+  } else if (typeof enrichedPayload.resource === "string") {
+    enrichedPayload.resource = paymentRequiredObject({
+      ...requirement,
+      resource: enrichedPayload.resource,
+    }).resource;
+  }
   if (requirement.extensions && !enrichedPayload.extensions) {
     enrichedPayload.extensions = requirement.extensions;
   }
