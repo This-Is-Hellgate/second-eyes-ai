@@ -27,6 +27,19 @@ export function getPlan(planId) {
   return ACCESS_PLANS[planId] || null;
 }
 
+/**
+ * Plans an AGENT may discover and buy over x402 / A4A. The lounge is agent-only
+ * and per-use micropayments are the native model; the only standing tab offered
+ * to agents is `annual`. `monthly` and `lifetime` are human checkout artifacts —
+ * they remain in ACCESS_PLANS so the Stripe webhook can still resolve existing
+ * human purchases, but they are never advertised or sold through agent rails.
+ */
+export const AGENT_PLAN_IDS = ["annual"];
+
+export function getAgentPlan(planId) {
+  return AGENT_PLAN_IDS.includes(planId) ? ACCESS_PLANS[planId] || null : null;
+}
+
 export function planFromStripeLink(env, url) {
   if (!url) return null;
   for (const plan of Object.values(ACCESS_PLANS)) {

@@ -224,13 +224,11 @@
     {
       "id": "open-bar-tab",
       "name": "Open bar tab (all legacy tools)",
-      "description": "$10/month, $100/year, $250 lifetime via x402 or A4A.",
+      "description": "$100/year standing tab via x402 or A4A.",
       "tags": ["x402", "subscription"],
       "endpoint": "https://secondeyesai.com/api/access/purchase",
       "plans": [
-        { "id": "monthly", "priceUsd": 10 },
-        { "id": "annual", "priceUsd": 100 },
-        { "id": "lifetime", "priceUsd": 250 }
+        { "id": "annual", "priceUsd": 100 }
       ]
     }
   ],
@@ -269,7 +267,7 @@
       "nano_tap_usd": 0.25,
       "micro_tap_usd": 1,
       "tool_pack_usd": 5,
-      "bar_tab": { "monthly": 10, "annual": 100, "lifetime": 250 }
+      "bar_tab": { "annual": 100 }
     }
   },
   "receipts": {

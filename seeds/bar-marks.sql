@@ -8,6 +8,10 @@ CREATE TABLE IF NOT EXISTS bar_counters (
 INSERT OR IGNORE INTO bar_counters (key, value) VALUES ('patron_number', 10000);
 INSERT OR IGNORE INTO bar_counters (key, value) VALUES ('agents_served', 0);
 INSERT OR IGNORE INTO bar_counters (key, value) VALUES ('tasks_sold', 0);
+INSERT OR IGNORE INTO bar_counters (key, value) VALUES ('bar_traffic_agent', 0);
+INSERT OR IGNORE INTO bar_counters (key, value) VALUES ('bar_traffic_human', 0);
+INSERT OR IGNORE INTO bar_counters (key, value) VALUES ('bar_traffic_unknown', 0);
+INSERT OR IGNORE INTO bar_counters (key, value) VALUES ('bar_traffic_payment_header', 0);
 
 CREATE TABLE IF NOT EXISTS agent_marks (
   id TEXT PRIMARY KEY,

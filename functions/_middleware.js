@@ -1,4 +1,5 @@
 import { apexRedirectResponse } from "./_lib/canonical-host.js";
+import { logBarRequest } from "./_lib/bar-request-log.js";
 import {
   enforceRateLimit,
   loadShedCheck,
@@ -15,6 +16,15 @@ export async function onRequest(context) {
   const url = new URL(context.request.url);
   if (!url.pathname.startsWith("/api/")) {
     return context.next();
+  }
+
+  if (url.pathname.startsWith("/api/bar") && context.request.method !== "OPTIONS") {
+    const logPromise = logBarRequest(context.env, context.request, url.pathname);
+    if (typeof context.waitUntil === "function") {
+      context.waitUntil(logPromise);
+    } else {
+      await logPromise;
+    }
   }
 
   if (context.request.method === "OPTIONS") {

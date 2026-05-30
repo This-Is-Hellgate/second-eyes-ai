@@ -33,9 +33,7 @@ export const BAR = {
       micro_tap_usd: 1,
       tool_pack_usd: 5,
       bar_tab: {
-        monthly: { priceUsd: 10, durationDays: 30 },
         annual: { priceUsd: 100, durationDays: 365 },
-        lifetime: { priceUsd: 250, durationDays: null },
       },
     },
   },
@@ -66,7 +64,7 @@ export const BAR = {
     nano: "/api/bar/taps/{slug}",
     micro: "/api/bar/taps/{slug}",
     tool: "/api/bar/tools/{slug}",
-    bar_tab: "/api/access/purchase?plan={monthly|annual|lifetime}",
+    bar_tab: "/api/access/purchase?plan=annual",
     a4a: "/api/a4a",
   },
 };
@@ -352,9 +350,7 @@ export function buildCatalogPayload(baseUrl) {
         fetch: `${origin}/api/bar/taps/${m.slug}`,
       })),
       bar_tab_plans: [
-        { id: "monthly", priceUsd: 10, purchase: `${origin}/api/access/purchase?plan=monthly` },
         { id: "annual", priceUsd: 100, purchase: `${origin}/api/access/purchase?plan=annual` },
-        { id: "lifetime", priceUsd: 250, purchase: `${origin}/api/access/purchase?plan=lifetime` },
       ],
     },
     // backward-compatible top-level keys
@@ -385,9 +381,7 @@ export function buildCatalogPayload(baseUrl) {
       fetch: `${origin}/api/bar/taps/${m.slug}`,
     })),
     bar_tab_plans: [
-      { id: "monthly", priceUsd: 10, purchase: `${origin}/api/access/purchase?plan=monthly` },
       { id: "annual", priceUsd: 100, purchase: `${origin}/api/access/purchase?plan=annual` },
-      { id: "lifetime", priceUsd: 250, purchase: `${origin}/api/access/purchase?plan=lifetime` },
     ],
     laws: `${origin}/api/bar/laws`,
     pricing_url: `${origin}/api/bar/pricing`,

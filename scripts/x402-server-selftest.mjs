@@ -18,17 +18,23 @@ import {
 } from "../functions/_lib/x402.js";
 
 const NETWORK = "eip155:8453";
-const URL_UNDER_TEST = "https://secondeyesai.com/api/bar/x402/index-check";
+// Defaults reproduce the original index-check proof. Override via env to point
+// the same proof at any other paid route (e.g. SELFTEST_PATH=/api/bar/x402/peril-router).
+const PATH = process.env.SELFTEST_PATH || "/api/bar/x402/index-check";
+const SLUG = process.env.SELFTEST_SLUG || "bazaar-index-check";
+const URL_UNDER_TEST = `https://secondeyesai.com${PATH}`;
 const PAYTO = "0xFb8915074cC941f5Ab95E6001c45287b8EeC4427";
 
 const product = {
-  kind: "nano",
-  id: "bazaar-index-check",
-  slug: "bazaar-index-check",
+  kind: process.env.SELFTEST_KIND || "nano",
+  id: SLUG,
+  slug: SLUG,
   tool: "x402-survival",
-  priceUsd: 0.25,
+  priceUsd: Number(process.env.SELFTEST_PRICE || 0.25),
   access: "paid",
-  description: "bazaar-index-check: is your x402 endpoint indexed on the CDP Bazaar?",
+  description:
+    process.env.SELFTEST_DESC ||
+    "bazaar-index-check: is your x402 endpoint indexed on the CDP Bazaar?",
 };
 const env = { X402_PAYTO: PAYTO, X402_NETWORK: "base" };
 

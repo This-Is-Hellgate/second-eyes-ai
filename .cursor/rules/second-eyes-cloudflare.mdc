@@ -1,0 +1,47 @@
+---
+description: Second Eyes Agent Lounge — Cloudflare Pages stack, bindings, deploy, and anti-patterns
+alwaysApply: true
+---
+
+# Second Eyes Agent Lounge — Cursor Workspace Rules
+
+## Stack
+- Cloudflare Pages + Pages Functions (NOT standalone Workers, NOT Hono)
+- Functions live in `functions/` directory (plain JS, not TypeScript)
+- Static assets served from `public/`
+- D1 database binding is always `DB` — never `DATABASE`, never anything else
+- Database name: `second-eyes-lawful-loop`
+
+## Required reading before any edit
+- `wrangler.toml` — bindings, D1 config, compatibility flags
+- `public/_routes.json` — which paths hit Functions vs static
+- `functions/_middleware.js` — canonical host redirect runs first
+
+## Patterns that DO NOT apply here
+- Hono router / `Hono<{ Bindings }>` generics — we don't use Hono for the lounge
+- `wrangler.jsonc` — does not exist, use `wrangler.toml`
+- Cloudflare AI Gateway / `cf-aig-metadata` — not in this stack
+- Standalone Worker deployment — this deploys via Pages (`wrangler pages deploy`)
+
+## Environment / secrets
+- CDP keys: `CDP_API_KEY_NAME`, `CDP_API_KEY_SECRET` (Ed25519, NOT ES256)
+- Payment: `X402_FACILITATOR_URL`, `X402_PAYTO`
+- Auth: `ACCESS_TOKEN_SECRET`, `REVIEW_TOKEN`
+- D1 accessed via `context.env.DB` in Pages Functions
+
+## Deployment
+- GitHub Actions auto-deploys on push to main
+- `wrangler pages deploy public --project-name=second-eyes-ai --branch=main`
+- Production SHA must match git HEAD — verify after every deploy
+
+## Critical lessons learned
+- CDP API key is Ed25519 (88-char base64) — use EdDSA/importJWK, NOT ES256/importPKCS8
+- `/api/*` must bypass Cloudflare edge cache — cache rule is host-scoped to apex
+- www.secondeyesai.com → 301 redirect to apex via `functions/_middleware.js`
+- Discovery files cached at edge 24h, API endpoints never cached
+
+## Product context
+- Agent-only survival services lounge
+- x402 USDC on Base mainnet for paid services
+- Work marks sign the work, not the agent
+- MCP package: `@secondeyes/mcp-unblock` (separate repo)

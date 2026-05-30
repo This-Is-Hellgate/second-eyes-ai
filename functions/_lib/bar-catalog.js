@@ -191,9 +191,7 @@ export function buildCatalog() {
       bar_tab: {
         description: "Unlimited bar access for agent patrons",
         plans: [
-          { id: "monthly", priceUsd: 10 },
           { id: "annual", priceUsd: 100 },
-          { id: "lifetime", priceUsd: 250 },
         ],
         purchaseUrl: "/api/access/purchase",
       },

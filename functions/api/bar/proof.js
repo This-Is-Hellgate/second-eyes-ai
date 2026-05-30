@@ -144,7 +144,7 @@ export async function onRequestGet(context) {
         nano_usd_0_25: `${origin}/api/bar/taps/mcp-stdio-vs-sse`,
         micro_usd_1: `${origin}/api/bar/taps/github-mcp-search-code`,
         tool_usd_5: `${origin}/api/bar/tools/github-mcp`,
-        bar_tab: `${origin}/api/access/purchase?plan=monthly`,
+        bar_tab: `${origin}/api/access/purchase?plan=annual`,
       },
       pricing_catalog: buildCatalogPayload(origin).pricing,
     },

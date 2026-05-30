@@ -77,6 +77,7 @@ const secrets = {
   CDP_API_KEY_NAME: env.CDP_API_KEY_NAME || env.CDP_API_KEY_ID,
   CDP_API_KEY_SECRET: env.CDP_API_KEY_SECRET,
   CDP_API_KEY: env.CDP_API_KEY,
+  OPENROUTER_API_KEY: env.OPENROUTER_API_KEY,
 };
 
 console.log("Pushing secrets to Cloudflare Pages:", project);

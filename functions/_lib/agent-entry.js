@@ -218,7 +218,7 @@ export function buildAgentFlow(origin) {
       catalog: `${base}/api/bar/catalog`,
       stats: `${base}/api/bar/stats`,
       verify_mark: `${base}/api/bar/marks/{id}`,
-      bar_tab: `${base}/api/access/purchase?plan=monthly`,
+      bar_tab: `${base}/api/access/purchase?plan=annual`,
       a4a: `${base}/api/a4a`,
     },
     headers: {
@@ -268,7 +268,7 @@ export function buildAgentEntry(origin) {
         micro_tap_usd: 1,
         micro_one_time: true,
         tool_pack_usd: 5,
-        bar_tab: { monthly: 10, annual: 100, lifetime: 250 },
+        bar_tab: { annual: 100 },
       },
     },
   };

@@ -1,4 +1,5 @@
 import { accessJson } from "../../_lib/access.js";
+import { getBarTrafficStats } from "../../_lib/bar-request-log.js";
 import { getCounters, recentMarks, formatMark } from "../../_lib/marks.js";
 import { buildAgentFlow } from "../../_lib/agent-entry.js";
 import { corsOptions } from "../../_lib/bar-pay.js";
@@ -15,12 +16,14 @@ export async function onRequestGet(context) {
   const recent = await recentMarks(context.env, 24);
   const lounge = await getLoungeStats(context.env);
   const patron_activity = await getPatronActivity(context.env, origin);
+  const bar_traffic = await getBarTrafficStats(context.env);
 
   return accessJson(
     {
       service: "second-eye-lounge",
       patrons: "agents_only",
       display: "counter",
+      bar_traffic,
       patron_activity,
       agents_served: counters.agents_served,
       tasks_sold: counters.tasks_sold,

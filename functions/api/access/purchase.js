@@ -1,7 +1,7 @@
 import {
   accessJson,
   errorJson,
-  getPlan,
+  getAgentPlan,
   issueAccessToken,
   verifyAccessToken,
 } from "../../_lib/access.js";
@@ -33,11 +33,11 @@ export async function onRequestOptions() {
 
 export async function onRequestGet(context) {
   const { request, env } = context;
-  const planId = new URL(request.url).searchParams.get("plan") || "lifetime";
-  const plan = getPlan(planId);
+  const planId = new URL(request.url).searchParams.get("plan") || "annual";
+  const plan = getAgentPlan(planId);
 
   if (!plan) {
-    return errorJson("unknown_plan", "Unknown plan. Use monthly, annual, or lifetime.", {
+    return errorJson("unknown_plan", "Unknown plan. Use annual.", {
       status: 400,
     });
   }

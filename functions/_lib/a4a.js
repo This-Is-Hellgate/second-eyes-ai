@@ -10,7 +10,7 @@ import {
 
 } from "./x402.js";
 
-import { getPlan, issueAccessToken } from "./access.js";
+import { getPlan, getAgentPlan, issueAccessToken } from "./access.js";
 
 import {
 
@@ -104,11 +104,11 @@ async function handleMessageSend(params, request, env) {
 
   const planId = readPlanFromMessage(message, request);
 
-  const plan = getPlan(planId);
+  const plan = getAgentPlan(planId);
 
   if (!plan) {
 
-    return failedTask("Invalid access plan. Use monthly, annual, or lifetime.");
+    return failedTask("Invalid access plan. Use annual.");
 
   }
 
@@ -634,7 +634,7 @@ function readPlanFromMessage(message, request) {
 
 
 
-  return "lifetime";
+  return "annual";
 
 }
 

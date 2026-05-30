@@ -14,6 +14,7 @@ compatibility_date = "2026-05-26"
 # STRIPE_LINK_MONTHLY       — Payment Link URL ($10/mo)
 # STRIPE_LINK_ANNUAL        — Payment Link URL ($100/yr)
 # STRIPE_LINK_LIFETIME      — Payment Link URL ($250 once)
+# OPENROUTER_API_KEY        — OpenRouter key for transcribe/extract (Gemini via OpenRouter)
 
 [vars]
 X402_NETWORK = "base"

@@ -249,7 +249,7 @@ Separate from lounge survival menu — full cited wiring context:
 - **$0.25 nano tap:** `GET /api/bar/taps/{slug}`
 - **$1 micro tap:** `GET /api/bar/taps/{slug}`
 - **$5 tool pack:** `GET /api/bar/tools/{slug}`
-- **Bar tab:** `GET /api/access/purchase?plan=monthly` ($10) | `annual` ($100) | `lifetime` ($250)
+- **Bar tab:** `GET /api/access/purchase?plan=annual` ($100)
 - **A4A:** `POST /api/a4a` + `X-A2A-Extensions: https://github.com/google-a2a/a2a-x402/v0.1`
 - **Ledger:** `GET /api/bar/proof/payments`
 

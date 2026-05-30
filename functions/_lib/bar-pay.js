@@ -175,7 +175,7 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
         {
           error: "Micro tap already redeemed (one-time). Purchase again or open bar tab.",
           repurchase: `/api/bar/taps/${product.slug}`,
-          bar_tab: "/api/access/purchase?plan=monthly",
+          bar_tab: "/api/access/purchase?plan=annual",
         },
         410,
         { "Access-Control-Allow-Origin": "*" }

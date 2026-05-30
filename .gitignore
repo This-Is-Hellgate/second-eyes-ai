@@ -5,3 +5,4 @@ cdp-credentials.local.json
 node_modules/
 .wrangler/
 .dev.vars
+.cursor/rules/hub-architecture-law.mdc

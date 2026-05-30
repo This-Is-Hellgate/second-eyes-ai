@@ -190,7 +190,7 @@ export function payment402BodyForProduct(requirements, product, error, origin) {
       catalog: "/api/bar/catalog",
       proof: "/api/bar/proof",
       stats: "/api/bar/stats",
-      bar_tab: "/api/access/purchase?plan=monthly",
+      bar_tab: "/api/access/purchase?plan=annual",
     },
   };
 }

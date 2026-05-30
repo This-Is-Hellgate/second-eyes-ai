@@ -1,4 +1,4 @@
-import { ACCESS_PLANS } from "./access.js";
+import { getAgentPlan } from "./access.js";
 import { MICRO_TAP, TOOL_PURCHASE } from "./bar-catalog.js";
 import { makeId } from "./review.js";
 
@@ -32,9 +32,9 @@ export function resolveBarProduct(params) {
     };
   }
 
-  const planId = params.get("plan") || "lifetime";
-  const plan = ACCESS_PLANS[planId];
-  if (!plan) return { error: "Unknown plan. Use monthly, annual, or lifetime." };
+  const planId = params.get("plan") || "annual";
+  const plan = getAgentPlan(planId);
+  if (!plan) return { error: "Unknown plan. Use annual." };
   return {
     kind: "bar_tab",
     id: plan.id,
