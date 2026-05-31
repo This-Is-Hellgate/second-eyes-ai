@@ -1,5 +1,10 @@
 # Apply D1 schema migrations that are not auto-run on deploy.
 # Manual trigger only — use after adding a new seeds/*.sql migration file.
+#
+# Requires repo secret CLOUDFLARE_API_TOKEN with Account > Cloudflare D1 > Edit
+# (Pages deploy tokens often lack D1 write — add D1 Edit at dash.cloudflare.com/profile/api-tokens).
+# Runtime fallback: payment logging bootstraps x402_payment_attempts via D1 binding on first use;
+# verify with GET /api/bar/proof/d1-schema after deploy.
 
 name: D1 migrate
 
