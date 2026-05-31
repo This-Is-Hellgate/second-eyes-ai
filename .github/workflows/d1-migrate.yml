@@ -1,0 +1,82 @@
+# Apply D1 schema migrations that are not auto-run on deploy.
+# Manual trigger only — use after adding a new seeds/*.sql migration file.
+
+name: D1 migrate
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration:
+        description: SQL file under seeds/ (relative path)
+        required: true
+        default: x402-payment-log.sql
+      remote:
+        description: Apply to remote production D1 (true) or local dev DB (false)
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Apply D1 migration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply migration
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          FILE="seeds/${{ github.event.inputs.migration }}"
+          if [ ! -f "$FILE" ]; then
+            echo "Migration file not found: $FILE" >&2
+            exit 1
+          fi
+          REMOTE_FLAG=""
+          if [ "${{ github.event.inputs.remote }}" = "true" ]; then
+            REMOTE_FLAG="--remote"
+          fi
+          echo "Applying $FILE ${REMOTE_FLAG}"
+          npx wrangler d1 execute second-eyes-lawful-loop $REMOTE_FLAG --file "$FILE" -y
+
+      - name: Verify table
+        if: github.event.inputs.migration == 'x402-payment-log.sql' && github.event.inputs.remote == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          OUT=$(npx wrangler d1 execute second-eyes-lawful-loop --remote \
+            --command "SELECT name FROM sqlite_master WHERE type='table' AND name='x402_payment_attempts';" --json -y)
+          echo "$OUT"
+          echo "$OUT" | grep -q x402_payment_attempts
+
+      - name: Write summary
+        if: always()
+        run: |
+          {
+            echo "## D1 migration"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| Migration | \`seeds/${{ github.event.inputs.migration }}\` |"
+            echo "| Remote | \`${{ github.event.inputs.remote }}\` |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
