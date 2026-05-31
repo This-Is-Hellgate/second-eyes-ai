@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.2.0] — 2026-05-30
+
+### Fixed
+
+- **x402 v2 cutover** — MCP auto-pay now uses `ExactEvmScheme`, network `eip155:8453`, `wrapFetchWithPayment` + `x402Client` + `toClientEvmSigner`. Previous 1.1.x releases incorrectly documented v2 while still registering v1 clients (`ExactEvmSchemeV1`, `network: base`), which fail against production 402 (`No client registered for x402 version: 2`).
+
+### Changed
+
+- `priceFrom402` reads v2 `accept.amount` as well as legacy `maxAmountRequired`.
+- `walletStatus()` reports `x402_version: 2` and `network: eip155:8453`.
+
 ## [1.1.1] — 2026-05-29
 
 ### Documentation

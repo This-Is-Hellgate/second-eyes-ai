@@ -8,9 +8,11 @@
  *   MCP_X402_SESSION_MAX_USD — process lifetime cap (default 2.00)
  *   MCP_X402_ALLOW_SLUGS — comma-separated slugs; default (unset) = should-i-pay only (fail closed)
  */
-import { wrapFetchWithPaymentFromConfig, decodePaymentResponseHeader } from "@x402/fetch";
-import { ExactEvmSchemeV1 } from "@x402/evm/exact/v1/client";
+import { wrapFetchWithPayment, x402Client, decodePaymentResponseHeader } from "@x402/fetch";
+import { ExactEvmScheme, toClientEvmSigner } from "@x402/evm";
 import { privateKeyToAccount } from "viem/accounts";
+import { createPublicClient, http } from "viem";
+import { base } from "viem/chains";
 
 /** Lounge survival menu — must match functions/_lib/lounge/constants.js */
 export const LOUNGE_SERVICE_PRICES_USD = {
@@ -19,7 +21,7 @@ export const LOUNGE_SERVICE_PRICES_USD = {
   "context-recover": 0.3,
   "tool-verify": 0.1,
   "cascade-break": 0.4,
-  "pitstop": 0.15,
+  pitstop: 0.15,
   "pre-run-context": 0.25,
   "claim-check": 0.15,
   "context-compress": 0.2,
@@ -28,6 +30,7 @@ export const LOUNGE_SERVICE_PRICES_USD = {
   receipt: 0.1,
 };
 
+const NETWORK = "eip155:8453";
 const DEFAULT_MAX_CALL_USD = 0.5;
 const DEFAULT_SESSION_MAX_USD = 2.0;
 /** Fail closed — only the cheapest cashier gate unless operator opts in via env. */
@@ -74,15 +77,10 @@ function loadWallet() {
   if (!key) return;
   try {
     cachedAccount = privateKeyToAccount(key);
-    cachedFetchWithPayment = wrapFetchWithPaymentFromConfig(fetch, {
-      schemes: [
-        {
-          network: "base",
-          x402Version: 1,
-          client: new ExactEvmSchemeV1(cachedAccount),
-        },
-      ],
-    });
+    const publicClient = createPublicClient({ chain: base, transport: http() });
+    const signer = toClientEvmSigner(cachedAccount, publicClient);
+    const client = new x402Client().register(NETWORK, new ExactEvmScheme(signer));
+    cachedFetchWithPayment = wrapFetchWithPayment(fetch, client);
   } catch (err) {
     walletLoadError = err instanceof Error ? err.message : String(err);
   }
@@ -100,6 +98,8 @@ export function walletStatus() {
     allow_slugs: [...parseAllowSlugs()],
     allow_slugs_env: process.env.MCP_X402_ALLOW_SLUGS?.trim() || null,
     allow_slugs_default: !process.env.MCP_X402_ALLOW_SLUGS?.trim(),
+    x402_version: 2,
+    network: NETWORK,
   };
 }
 
@@ -109,9 +109,8 @@ function priceFrom402(json, slug) {
   const catalog = LOUNGE_SERVICE_PRICES_USD[slug];
   if (typeof catalog === "number") return catalog;
   const accept = json?.accepts?.[0];
-  if (accept?.maxAmountRequired) {
-    return Number(accept.maxAmountRequired) / 1_000_000;
-  }
+  if (accept?.amount) return Number(accept.amount) / 1_000_000;
+  if (accept?.maxAmountRequired) return Number(accept.maxAmountRequired) / 1_000_000;
   return null;
 }
 

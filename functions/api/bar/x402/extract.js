@@ -33,6 +33,7 @@ import { fetchWithTimeout } from "../../../_lib/resilience.js";
 import { isSafeHttpUrl } from "../../../_lib/url-guard.js";
 import { callGemini } from "../../../_lib/llm-openrouter.js";
 import { validateDoc, DOC_SCHEMAS, DOC_TYPES } from "../../../_lib/doc-validate.js";
+import { recordX402PaymentAttempt } from "../../../_lib/x402-payment-log.js";
 import {
   buildProductPaymentRequirements,
   readPaymentHeader,
@@ -170,6 +171,13 @@ async function handle(context, input) {
     }
     verifiedPayment = await verifyPaymentHeader(paymentHeader, requirements, env);
     if (!verifiedPayment.ok) {
+      await recordX402PaymentAttempt(
+        env,
+        paymentHeader,
+        { route: new URL(request.url).pathname },
+        verifiedPayment,
+        null
+      );
       return paymentVerifyFailureResponse(context, PRODUCT, requirements, verifiedPayment, origin);
     }
   }
@@ -206,6 +214,15 @@ async function handle(context, input) {
 
   const verdict = validateDoc(input.docType, extracted.data);
   if (!verdict.pass) {
+    if (verifiedPayment && paymentHeader) {
+      await recordX402PaymentAttempt(
+        env,
+        paymentHeader,
+        { route: new URL(request.url).pathname, failure_reason: "validator_failed" },
+        verifiedPayment,
+        null
+      );
+    }
     // GUARDRAILS LAW: schema/arithmetic failure → no settle, no mark, no token burn.
     return accessJson(
       {
@@ -243,6 +260,13 @@ async function handle(context, input) {
 
   if (verifiedPayment) {
     const settled = await settleBuiltPayment(verifiedPayment.built, verifiedPayment.accept, env);
+    await recordX402PaymentAttempt(
+      env,
+      paymentHeader,
+      { route: new URL(request.url).pathname },
+      verifiedPayment,
+      settled
+    );
     if (!settled.ok) {
       return paymentVerifyFailureResponse(
         context,

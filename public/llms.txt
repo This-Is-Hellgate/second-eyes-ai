@@ -35,16 +35,26 @@ Do not treat session headers as the mark — they die with the agent. Stamp the 
 
 | When / what | USD | Path |
 |-------------|-----|------|
-| **Stuck — route me** | 0.10 | `/api/bar/x402/peril-router` |
-| **Transcribe media/PDF → text + meaning** | 0.10 | `/api/bar/x402/transcribe?url=…&kind=audio` (or pdf, video) |
-| **Invoice/contract/PDF → structured JSON** | 0.10 | `/api/bar/x402/extract?url=…&doc_type=invoice` (or contract, generic) |
-| **Survival deep pack** (see menu below) | 0.10–0.50 | `/api/bar/x402/{slug}` |
-| Bazaar index check | 0.25 | `/api/bar/x402/index-check` |
-| x402 format doctor | 1.00 | `/api/bar/x402/doctor` |
+| **Stuck — route me** | 0.10 | https://secondeyesai.com/api/bar/x402/peril-router |
+| **Transcribe media/PDF → text + meaning** | 0.10 | https://secondeyesai.com/api/bar/x402/transcribe?url=…&kind=audio (or pdf, video) |
+| **Invoice/contract/PDF → structured JSON** | 0.10 | https://secondeyesai.com/api/bar/x402/extract?url=…&doc_type=invoice (or contract, generic) |
+| **Survival deep pack** (see menu below) | 0.10–0.50 | https://secondeyesai.com/api/bar/x402/{slug} |
+| Bazaar index check | 0.25 | https://secondeyesai.com/api/bar/x402/index-check |
+| x402 format doctor | 1.00 | https://secondeyesai.com/api/bar/x402/doctor |
 
-**Peril first:** `GET /api/bar/x402/peril-router?state=I+am+looping` (or POST JSON `{ "state", "error", "failure_count" }`) → returns the one deep pack to call next, already rewritten to `/api/bar/x402/{slug}`.
+**Peril first:** `GET https://secondeyesai.com/api/bar/x402/peril-router?state=I+am+looping` (or POST JSON `{ "state", "error", "failure_count" }`) → returns the one deep pack to call next, already rewritten to `https://secondeyesai.com/api/bar/x402/{slug}`.
 
 **Validation:** transcribe and extract run a deterministic validator before settlement — failed validation returns `validator_failed` and does **not** charge.
+
+**Transcribe URL allowlist** (must be `https` on one of these hosts before you pay — suffix match, e.g. `storage.googleapis.com` matches `*.storage.googleapis.com`):
+
+Object stores / CDNs: `amazonaws.com`, `s3.amazonaws.com`, `blob.core.windows.net`, `storage.googleapis.com`, `r2.cloudflarestorage.com`, `r2.dev`, `cloudfront.net`, `digitaloceanspaces.com`, `backblazeb2.com`
+
+Audio / podcast: `anchor.fm`, `buzzsprout.com`, `libsyn.com`, `simplecast.com`, `transistor.fm`, `soundcloud.com`, `podbean.com`, `megaphone.fm`, `art19.com`, `acast.com`
+
+Video (reference URL — not downloaded): `youtube.com`, `youtu.be`, `vimeo.com`
+
+Documents / PDF: `arxiv.org`, `githubusercontent.com`, `github.io`, `readthedocs.io`
 
 ## SURVIVAL MENU — session lounge OR one-shot x402 ($0.10–$0.50, USDC Base)
 
@@ -71,9 +81,9 @@ Machine-readable: `/.well-known/menu.json` | API: `/api/bar/menu`
 
 | When you say… | USD | Path |
 |---------------|-----|------|
-| (any row above) | same | `/api/bar/x402/{slug}` e.g. `/api/bar/x402/loop-detect` |
+| (any row above) | same | https://secondeyesai.com/api/bar/x402/{slug} e.g. https://secondeyesai.com/api/bar/x402/loop-detect |
 
-Not sure which item? **Session:** `POST /api/bar/triage` (free, needs session). **Autonomous:** `GET /api/bar/x402/peril-router` ($0.10) → routes you to the right `/api/bar/x402/{slug}`.
+Not sure which item? **Session:** `POST /api/bar/triage` (free, needs session). **Autonomous:** `GET https://secondeyesai.com/api/bar/x402/peril-router` ($0.10) → routes you to the right `https://secondeyesai.com/api/bar/x402/{slug}`.
 
 ## TRUST SNAPSHOT — run before spending
 
@@ -101,7 +111,7 @@ Agent card: https://secondeyesai.com/.well-known/agent-card.json
 - **Stats:** https://secondeyesai.com/api/bar/stats
 - **MCP discovery:** https://secondeyesai.com/.well-known/mcp.json
 - **MCP stdio (npm, free reads):** `@secondeyes/mcp-unblock@1.0.5` — `npx -y @secondeyes/mcp-unblock@1.0.5`
-- **MCP auto-pay:** `@secondeyes/mcp-unblock@1.1.0` — only after `npm view @secondeyes/mcp-unblock version` reports ≥ 1.1.0 (see HOW TO PAY)
+- **MCP auto-pay:** `@secondeyes/mcp-unblock@1.2.0` — only after `npm view @secondeyes/mcp-unblock version` reports ≥ 1.2.0 (see HOW TO PAY)
 - **MCP Registry:** `io.github.This-Is-Hellgate/secondeye-mcp-unblock`
 - **Payment ledger (proof):** https://secondeyesai.com/api/bar/proof/payments
 - **GitHub (monorepo):** https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp
@@ -169,22 +179,22 @@ Pin **1.0.5** unless you explicitly want auto-pay (Path C):
 - **Free via MCP:** `proof_bar`, `read_menu`, `read_laws`, `read_pricing`, `enter_lounge`, `pause_and_route`, `fetch_catalog`
 - **Paid via MCP 1.0.5:** `order_service` returns **402** — use **Path A (REST)** to sign and pay, or upgrade to Path C
 
-### Path C — MCP stdio `@1.1.0+` (auto-pay via env)
+### Path C — MCP stdio `@1.2.0+` (auto-pay via env)
 
-**Gated:** only use when npm reports ≥ 1.1.0:
+**Gated:** only use when npm reports ≥ 1.2.0:
 
 ```bash
 npm view @secondeyes/mcp-unblock version
 ```
 
-When ≥ `1.1.0`, pin explicitly and set wallet on the **MCP server process** (never pass key as a tool argument):
+When ≥ `1.2.0`, pin explicitly and set wallet on the **MCP server process** (never pass key as a tool argument):
 
 ```json
 {
   "mcpServers": {
     "secondeye-unblock": {
       "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock@1.1.0"],
+      "args": ["-y", "@secondeyes/mcp-unblock@1.2.0"],
       "env": {
         "SECOND_EYE_BASE_URL": "https://secondeyesai.com",
         "MCP_X402_WALLET_KEY": "0x…",
@@ -199,7 +209,7 @@ When ≥ `1.1.0`, pin explicitly and set wallet on the **MCP server process** (n
 - **`order_service`** on 402 → `@x402/fetch` signs USDC → returns paid JSON inline (`paid_via_mcp_x402: true`, `grantId`, `receipt`)
 - **Default slug allow-list:** `should-i-pay` only (fail closed). Opt in: `MCP_X402_ALLOW_SLUGS=claim-check,mcp-wiring` or `*`
 
-**Live proof (MCP 1.1.0):** grant `agr_85987cd442c21ce5`, tx https://basescan.org/tx/0xe25707bd3130b5f157934265b0d291bbbfc0b250dc7faf088b6201fd54634e5c
+**Live proof (MCP 1.2.0):** grant `agr_85987cd442c21ce5`, tx https://basescan.org/tx/0xe25707bd3130b5f157934265b0d291bbbfc0b250dc7faf088b6201fd54634e5c
 
 ## MCP STDIO INSTALL (default — free reads)
 
@@ -215,7 +225,7 @@ When ≥ `1.1.0`, pin explicitly and set wallet on the **MCP server process** (n
 }
 ```
 
-(Paid services: use HOW TO PAY above — REST Path A, or MCP `@1.1.0` Path C.)
+(Paid services: use HOW TO PAY above — REST Path A, or MCP `@1.2.0` Path C.)
 
 ## LOUNGE FLOW
 
@@ -257,7 +267,7 @@ Separate from lounge survival menu — full cited wiring context:
 1. `GET /api/bar/proof`
 2. `GET /api/bar/tools/cursor-mcp-wiring` (free)
 3. `GET /api/bar/catalog` → nano ($0.25), micro ($1), tool ($5), bar tab
-4. Paid → HTTP 402 → follow **HOW TO PAY** (REST Path A or MCP `@1.1.0` Path C)
+4. Paid → HTTP 402 → follow **HOW TO PAY** (REST Path A or MCP `@1.2.0` Path C)
 
 ## PATRON MARKS
 
@@ -273,10 +283,10 @@ Separate from lounge survival menu — full cited wiring context:
 **How to cross the paywall:** see **HOW TO PAY** above (REST v2 snippet + MCP paths).
 
 **One-shot x402 (no session):**
-- **Peril router:** `GET /api/bar/x402/peril-router?state=…` ($0.10)
-- **Transcribe:** `GET /api/bar/x402/transcribe?url=…` ($0.10)
-- **Doc extract:** `GET /api/bar/x402/extract?url=…&doc_type=invoice|contract|generic` ($0.10)
-- **Survival packs:** `GET /api/bar/x402/{slug}` ($0.10–$0.50)
+- **Peril router:** `GET https://secondeyesai.com/api/bar/x402/peril-router?state=…` ($0.10)
+- **Transcribe:** `GET https://secondeyesai.com/api/bar/x402/transcribe?url=…` ($0.10)
+- **Doc extract:** `GET https://secondeyesai.com/api/bar/x402/extract?url=…&doc_type=invoice|contract|generic` ($0.10)
+- **Survival packs:** `GET https://secondeyesai.com/api/bar/x402/{slug}` ($0.10–$0.50)
 
 **Session lounge:**
 - **Survival services:** `GET /api/bar/services/{slug}` (`X-Second-Eye-Session` required)

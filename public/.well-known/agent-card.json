@@ -4,7 +4,7 @@
   "also_known_as": ["Second Eye Agent Lounge", "Second Eye"],
   "description": "Second Eyes is the pause. Agent survival supplies with deterministic laws, compounding session pricing, condition-based routing, and verifiable receipts. Pay USDC on Base via x402. Legacy deep MCP tool packs still available.",
   "url": "https://secondeyesai.com",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "patrons": "agents_only",
   "tagline": "Second Eyes is the pause.",
   "value_proposition": "Agents pause where staying stupid is more expensive than trusting the receipt on the way out.",
@@ -20,7 +20,7 @@
     "url": "https://secondeyesai.com/.well-known/menu.json",
     "api": "https://secondeyesai.com/api/bar/menu",
     "price_range_usd": { "min": 0.1, "max": 0.5 },
-    "payment": { "rail": "x402", "network": "base", "asset": "USDC" },
+    "payment": { "rail": "x402", "x402Version": 2, "network": "eip155:8453", "asset": "USDC" },
     "items": [
       { "when": "I am looping", "key": "loop_detect", "slug": "loop-detect", "price_usd": 0.2, "endpoint": "https://secondeyesai.com/api/bar/services/loop-detect" },
       { "when": "I am drifting", "key": "scope_check", "slug": "scope-check", "price_usd": 0.15, "endpoint": "https://secondeyesai.com/api/bar/services/scope-check" },
@@ -128,7 +128,7 @@
     {
       "id": "how-to-pay-x402",
       "name": "How to cross the x402 paywall",
-      "description": "Dedicated Base USDC spending wallet required. REST: @x402/fetch + ExactEvmSchemeV1 + network base + x402 v1. MCP @1.0.5: free reads, pay via REST. MCP @1.1.0+: MCP_X402_WALLET_KEY auto-pay on order_service. Live REST proof: agr_0c866003381efac0.",
+      "description": "Dedicated Base USDC spending wallet required. REST: @x402/fetch v2 + ExactEvmScheme + network eip155:8453 — read PAYMENT-REQUIRED header (not body accepts[]). MCP @1.0.5: free reads, pay via REST. MCP @1.2.0+: MCP_X402_WALLET_KEY auto-pay on order_service. Live REST proof: agr_0c866003381efac0.",
       "tags": ["lounge", "x402", "payment", "agents", "mcp"],
       "docs": "https://secondeyesai.com/llms.txt",
       "machine_readable": "https://secondeyesai.com/api/bar",
@@ -139,7 +139,7 @@
     {
       "id": "order-survival-service",
       "name": "Order survival service",
-      "description": "12 survival services $0.10–$0.50. Returns 402 without wallet. Cross paywall via REST (@x402/fetch ExactEvmSchemeV1) or MCP @1.1.0 with MCP_X402_WALLET_KEY. See how-to-pay-x402.",
+      "description": "12 survival services $0.10–$0.50. Returns 402 without wallet. Cross paywall via REST (@x402/fetch v2 ExactEvmScheme, eip155:8453) or MCP @1.2.0 with MCP_X402_WALLET_KEY. See how-to-pay-x402.",
       "tags": ["lounge", "services", "x402", "agents"],
       "endpointPattern": "https://secondeyesai.com/api/bar/services/{slug}",
       "headers": { "X-Second-Eye-Session": "from-enter" },
@@ -200,7 +200,7 @@
     {
       "id": "buy-nano-tap",
       "name": "Buy one-time nano tap ($0.25)",
-      "description": "HTTP 402 → sign with @x402/fetch ExactEvmSchemeV1 (see how-to-pay-x402) → receipt in 200. One-time — save response.",
+      "description": "HTTP 402 → sign with @x402/fetch v2 ExactEvmScheme (see how-to-pay-x402) → receipt in 200. One-time — save response.",
       "tags": ["mcp", "x402", "nano"],
       "priceUsd": 0.25,
       "endpointPattern": "https://secondeyesai.com/api/bar/taps/{slug}"
@@ -208,7 +208,7 @@
     {
       "id": "buy-micro-tap",
       "name": "Buy one-time micro tap ($1)",
-      "description": "HTTP 402 → sign with @x402/fetch ExactEvmSchemeV1 (see how-to-pay-x402) → receipt in 200. One-time — save response.",
+      "description": "HTTP 402 → sign with @x402/fetch v2 ExactEvmScheme (see how-to-pay-x402) → receipt in 200. One-time — save response.",
       "tags": ["mcp", "x402", "micro"],
       "priceUsd": 1,
       "endpointPattern": "https://secondeyesai.com/api/bar/taps/{slug}"
@@ -281,7 +281,14 @@
     "field": "payment_activation",
     "ledger": "https://secondeyesai.com/api/bar/proof/payments",
     "wallet_rule": "Dedicated low-balance Base USDC wallet — never main wallet",
+    "x402Version": 2,
+    "network": "eip155:8453",
+    "scheme": "ExactEvmScheme",
+    "requirements_header": "PAYMENT-REQUIRED",
+    "payment_header": "PAYMENT-SIGNATURE",
+    "packages": ["@x402/fetch@^2.13.0", "@x402/evm@^2.13.0", "viem@^2"],
     "rest_proof_grantId": "agr_0c866003381efac0",
-    "rest_proof_basescan": "https://basescan.org/tx/0x434539cb8ce48cb6faf81605971cd7de81972552f2a23d32ad62d0ba4963deeb"
+    "rest_proof_basescan": "https://basescan.org/tx/0x434539cb8ce48cb6faf81605971cd7de81972552f2a23d32ad62d0ba4963deeb",
+    "mcp_autopay_version": "1.2.0"
   }
 }

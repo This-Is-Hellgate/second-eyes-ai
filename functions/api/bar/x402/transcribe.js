@@ -41,6 +41,7 @@ import {
   TRANSCRIPT_OUTPUT_SCHEMA,
 } from "../../../_lib/transcribe-validate.js";
 import { CANONICAL_HOST } from "../../../_lib/brand.js";
+import { recordX402PaymentAttempt } from "../../../_lib/x402-payment-log.js";
 import {
   buildProductPaymentRequirements,
   readPaymentHeader,
@@ -84,36 +85,33 @@ const PRODUCT = {
       },
     },
     output: {
-      type: "json",
-      example: {
-        tool: TAP_SLUG,
-        media_kind: "audio",
-        language: "en",
-        transcript: "Welcome back to the show. Today we are talking about…",
-        summary: "A 30-minute interview on agent payment rails and why settlement reputation compounds.",
-        key_points: [
-          "x402 indexes individual routes, not sites",
-          "Distinct-buyer signal compounds on one wallet",
-          "Recency tax: surfaces drop after 30 days without settlement",
-        ],
-        qa: [
-          {
-            question: "Why keep one wallet?",
-            answer: "On-chain reputation and buyer-reach are keyed to a single payTo; splitting fragments the signal.",
-          },
-        ],
-        attestation: {
-          schema: "second-eye/transcription-attestation/v1",
-          validated: [
-            "schema-valid structured output",
-            "words/min in range (164)",
-            "no repetition loop",
-            "meaning grounded in transcript",
-          ],
-          disclaimer:
-            "Evidence-only. Validates structure, plausibility, and grounding — NOT factual accuracy of the transcript.",
-          signature: "hmac-sha256:…",
+      tool: TAP_SLUG,
+      media_kind: "audio",
+      language: "en",
+      transcript: "Welcome back to the show. Today we are talking about…",
+      summary: "A 30-minute interview on agent payment rails and why settlement reputation compounds.",
+      key_points: [
+        "x402 indexes individual routes, not sites",
+        "Distinct-buyer signal compounds on one wallet",
+        "Recency tax: surfaces drop after 30 days without settlement",
+      ],
+      qa: [
+        {
+          question: "Why keep one wallet?",
+          answer: "On-chain reputation and buyer-reach are keyed to a single payTo; splitting fragments the signal.",
         },
+      ],
+      attestation: {
+        schema: "second-eye/transcription-attestation/v1",
+        validated: [
+          "schema-valid structured output",
+          "words/min in range (164)",
+          "no repetition loop",
+          "meaning grounded in transcript",
+        ],
+        disclaimer:
+          "Evidence-only. Validates structure, plausibility, and grounding — NOT factual accuracy of the transcript.",
+        signature: "hmac-sha256:…",
       },
     },
   },
@@ -199,6 +197,13 @@ async function handle(context, input) {
     }
     verifiedPayment = await verifyPaymentHeader(paymentHeader, requirements, env);
     if (!verifiedPayment.ok) {
+      await recordX402PaymentAttempt(
+        env,
+        paymentHeader,
+        { route: new URL(request.url).pathname },
+        verifiedPayment,
+        null
+      );
       return paymentVerifyFailureResponse(context, PRODUCT, requirements, verifiedPayment, origin);
     }
   }
@@ -244,6 +249,15 @@ async function handle(context, input) {
     durationSeconds: input.durationSeconds,
   });
   if (!validation.pass) {
+    if (verifiedPayment && paymentHeader) {
+      await recordX402PaymentAttempt(
+        env,
+        paymentHeader,
+        { route: new URL(request.url).pathname, failure_reason: "validator_failed" },
+        verifiedPayment,
+        null
+      );
+    }
     return accessJson(
       {
         tool: TAP_SLUG,
@@ -282,6 +296,13 @@ async function handle(context, input) {
 
   if (verifiedPayment) {
     const settled = await settleBuiltPayment(verifiedPayment.built, verifiedPayment.accept, env);
+    await recordX402PaymentAttempt(
+      env,
+      paymentHeader,
+      { route: new URL(request.url).pathname },
+      verifiedPayment,
+      settled
+    );
     if (!settled.ok) {
       return paymentVerifyFailureResponse(
         context,

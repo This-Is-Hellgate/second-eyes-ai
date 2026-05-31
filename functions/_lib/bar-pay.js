@@ -216,7 +216,8 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
     );
   }
 
-  const settled = await verifyAndSettlePayment(paymentHeader, requirements, env);
+  const route = new URL(request.url).pathname;
+  const settled = await verifyAndSettlePayment(paymentHeader, requirements, env, { route });
   if (!settled.ok) {
     return paymentVerifyFailureResponse(context, product, requirements, settled, origin);
   }

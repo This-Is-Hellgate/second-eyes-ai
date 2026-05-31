@@ -371,10 +371,17 @@ function facilitatorVerifyError(verify) {
   );
 }
 
-export async function verifyAndSettlePayment(paymentHeader, requirement, env) {
+import { recordX402PaymentAttempt } from "./x402-payment-log.js";
+
+export async function verifyAndSettlePayment(paymentHeader, requirement, env, logMeta = {}) {
   const verified = await verifyPaymentHeader(paymentHeader, requirement, env);
+  let settled = null;
+  if (verified.ok) {
+    settled = await settleBuiltPayment(verified.built, verified.accept, env);
+  }
+  await recordX402PaymentAttempt(env, paymentHeader, logMeta, verified, settled);
   if (!verified.ok) return verified;
-  return settleBuiltPayment(verified.built, verified.accept, env);
+  return settled;
 }
 
 /** Verify a payment header against requirements without settling (for validate-before-settle doors). */
