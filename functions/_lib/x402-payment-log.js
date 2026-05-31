@@ -53,6 +53,90 @@ export async function checkX402PaymentLogTable(env) {
   return { exists: Boolean(row?.name), table: row?.name || null };
 }
 
+/** Public-safe wallet display: first 6 + last 4 chars. */
+export function truncateWallet(wallet) {
+  if (!wallet) return null;
+  const w = String(wallet);
+  if (w.length <= 12) return w;
+  return `${w.slice(0, 6)}…${w.slice(-4)}`;
+}
+
+/**
+ * Parse since filter: ISO timestamp, or relative e.g. 24h, 7d.
+ * @returns {string | null} ISO lower bound
+ */
+export function parseSinceFilter(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  const rel = /^(\d+)(h|d)$/i.exec(trimmed);
+  if (rel) {
+    const n = Number(rel[1]);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    const ms = rel[2].toLowerCase() === "d" ? n * 86_400_000 : n * 3_600_000;
+    return new Date(Date.now() - ms).toISOString();
+  }
+  const d = new Date(trimmed);
+  if (!Number.isNaN(d.getTime())) return d.toISOString();
+  return null;
+}
+
+/**
+ * Recent payment attempts for the public proof dashboard.
+ * @param {object} env
+ * @param {{ limit?: number, since?: string | null }} opts
+ */
+export async function listX402PaymentAttempts(env, { limit = 50, since = null } = {}) {
+  if (!env?.DB) {
+    return { ok: false, reason: "no_db_binding", attempts: [], summary: {} };
+  }
+  await ensureX402PaymentLogTable(env);
+
+  const capped = Math.min(Math.max(Number(limit) || 50, 1), 200);
+  let rows;
+  if (since) {
+    rows = await env.DB.prepare(
+      `SELECT id, created_at, route, wallet, x402_version, verify_result, settle_result, failure_reason
+       FROM x402_payment_attempts
+       WHERE created_at >= ?
+       ORDER BY created_at DESC
+       LIMIT ?`
+    )
+      .bind(since, capped)
+      .all();
+  } else {
+    rows = await env.DB.prepare(
+      `SELECT id, created_at, route, wallet, x402_version, verify_result, settle_result, failure_reason
+       FROM x402_payment_attempts
+       ORDER BY created_at DESC
+       LIMIT ?`
+    )
+      .bind(capped)
+      .all();
+  }
+
+  const attempts = (rows.results || []).map((row) => ({
+    id: row.id,
+    timestamp: row.created_at,
+    route: row.route,
+    wallet: truncateWallet(row.wallet),
+    x402_version: row.x402_version,
+    verify_result: row.verify_result,
+    settle_result: row.settle_result,
+    failure_reason: row.failure_reason,
+  }));
+
+  const summary = {
+    returned: attempts.length,
+    verify_ok: attempts.filter((a) => a.verify_result === "ok").length,
+    verify_fail: attempts.filter((a) => a.verify_result === "fail").length,
+    settle_ok: attempts.filter((a) => a.settle_result === "ok").length,
+    settle_fail: attempts.filter((a) => a.settle_result === "fail").length,
+    settle_skipped: attempts.filter((a) => a.settle_result === "skipped").length,
+  };
+
+  return { ok: true, attempts, summary };
+}
+
 /**
  * @param {object} env
  * @param {string} paymentHeader
