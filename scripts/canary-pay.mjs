@@ -29,6 +29,7 @@ const CDP_MERCHANT = `https://api.cdp.coinbase.com/platform/v2/x402/discovery/me
 // No-session bar taps. Settling each one indexes that resource on the Bazaar.
 // Cheapest first; new revenue doors before the $1 doctor.
 const TARGETS = [
+  { name: "aws-agent-survival", price: "$0.05", url: `${BASE}/api/bar/x402/aws-agent-survival` },
   { name: "peril-router", price: "$0.10", url: `${BASE}/api/bar/x402/peril-router?state=I+am+looping` },
   { name: "loop-detect", price: "$0.20", url: `${BASE}/api/bar/x402/loop-detect` },
   { name: "bazaar-index-check", price: "$0.25", url: `${BASE}/api/bar/x402/index-check?payTo=${PAYTO}` },
