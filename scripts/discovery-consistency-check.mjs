@@ -142,6 +142,37 @@ function checkPackages(where, packages) {
   checkNoLegacyStrings(where, raw);
 }
 
+// --- packages/secondeye-mcp/README.md (the published buyer-facing surface) ---
+{
+  const where = "README.md";
+  const raw = readFileSync(join(ROOT, "packages/secondeye-mcp/README.md"), "utf8");
+  const canonRe = new RegExp(`@secondeyes/mcp-unblock@${CANONICAL_VERSION.replace(/\./g, "\\.")}\\b`);
+  if (!canonRe.test(raw)) {
+    fail(where, `does not document the canonical autopay install @${CANONICAL_VERSION}`);
+  }
+  // The 1.1.x line registered x402 v1 clients that fail prod 402s. Allow it only
+  // when prefixed by a negation ("not", "don't", "avoid", "broken") so a warning
+  // is fine but a bare install instruction is not.
+  for (const m of raw.matchAll(/@secondeyes\/mcp-unblock@(1\.1\.\d+)/g)) {
+    const preceding = raw.slice(Math.max(0, m.index - 60), m.index).toLowerCase();
+    if (!/(not|n['’]t|never|avoid|broken|do not)/.test(preceding)) {
+      fail(where, `presents @${m[1]} as a usable install (1.1.x is broken — keep only as a negated warning)`);
+    }
+  }
+}
+
+// --- packages/secondeye-mcp/src/index.js (MCP runtime version must not drift) ---
+{
+  const where = "src/index.js";
+  const raw = readFileSync(join(ROOT, "packages/secondeye-mcp/src/index.js"), "utf8");
+  // A hardcoded "version": "x.y.z" in the McpServer constructor is drift unless
+  // it equals canonical. Reading it from package.json (no literal) is preferred.
+  const hardcoded = raw.match(/version:\s*"(\d+\.\d+\.\d+)"/);
+  if (hardcoded && hardcoded[1] !== CANONICAL_VERSION) {
+    fail(where, `McpServer version "${hardcoded[1]}" != canonical ${CANONICAL_VERSION} (prefer importing package.json version)`);
+  }
+}
+
 if (failures.length) {
   console.error("Discovery consistency check FAILED:\n");
   for (const f of failures) console.error(`  ✗ ${f}`);

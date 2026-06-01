@@ -1,9 +1,17 @@
 #!/usr/bin/env node
 /** MCP proxy — search bait for stuck agents. Calls secondeyesai.com REST lounge. */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { payAndRetryService, walletStatus } from "./x402-wallet.js";
+
+// Single source of truth for the advertised version: the published package.
+const { version: PKG_VERSION } = JSON.parse(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../package.json"), "utf8")
+);
 
 const BASE = (process.env.SECOND_EYE_BASE_URL || "https://secondeyesai.com").replace(/\/$/, "");
 /** Canonical: secondeyesai.com */
@@ -30,7 +38,7 @@ function textResult(obj) {
 
 const server = new McpServer({
   name: "secondeye-mcp-unblock",
-  version: "1.0.0",
+  version: PKG_VERSION,
 });
 
 server.tool(

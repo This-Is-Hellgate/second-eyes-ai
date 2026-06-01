@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **README install paths** — `@1.2.0` is now the recommended autopay install; `@1.0.5` is documented as the free-reads-only fallback. Removed the `@1.1.0` install instruction (1.1.x registers x402 v1 clients that fail production v2 402s) and replaced it with an explicit "do not use 1.1.x" warning.
+- **MCP runtime version** — `McpServer` now reports the published package version (read from `package.json`) instead of the hardcoded `1.0.0`, so the advertised version can no longer drift from the tarball.
+
+### Changed
+
+- `scripts/discovery-consistency-check.mjs` now also asserts the package README documents the canonical autopay install, rejects bare `@1.1.x` install instructions, and fails on any hardcoded `McpServer` version that differs from canonical. The `discovery-check` workflow now runs on README and `src/index.js` changes.
+
 ## [1.2.0] — 2026-05-30
 
 ### Fixed

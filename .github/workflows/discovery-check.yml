@@ -11,6 +11,8 @@ on:
       - "public/llms.txt"
       - "packages/secondeye-mcp/package.json"
       - "packages/secondeye-mcp/server.json"
+      - "packages/secondeye-mcp/README.md"
+      - "packages/secondeye-mcp/src/index.js"
       - "scripts/discovery-consistency-check.mjs"
       - ".github/workflows/discovery-check.yml"
   push:
