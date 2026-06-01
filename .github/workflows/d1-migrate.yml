@@ -43,15 +43,38 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Preflight — token can reach D1
+        if: github.event.inputs.remote == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -uo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN and/or CLOUDFLARE_ACCOUNT_ID repo secrets are unset." >&2
+            exit 1
+          fi
+          # A read-only probe surfaces auth/permission problems (code 10000) before
+          # we attempt a write, so the failure points at the token, not the SQL.
+          if ! npx wrangler d1 execute second-eyes-lawful-loop --remote \
+                 --command "SELECT 1;" --json -y > /tmp/d1-preflight.txt 2>&1; then
+            echo "::error::D1 preflight failed — the API token cannot access this D1 database." >&2
+            echo "::error::Most common cause: the token lacks 'Account > D1 > Edit'. Pages deploy tokens often do not include it." >&2
+            echo "::error::Fix at dash.cloudflare.com/profile/api-tokens (add D1 Edit), then re-run this workflow. Live endpoints self-heal via the runtime ensure meanwhile." >&2
+            cat /tmp/d1-preflight.txt >&2
+            exit 1
+          fi
+          echo "D1 preflight OK — token can reach the database."
+
       - name: Apply migration
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           FILE="seeds/${{ github.event.inputs.migration }}"
           if [ ! -f "$FILE" ]; then
-            echo "Migration file not found: $FILE" >&2
+            echo "::error::Migration file not found: $FILE" >&2
             exit 1
           fi
           REMOTE_FLAG=""
@@ -59,7 +82,13 @@ jobs:
             REMOTE_FLAG="--remote"
           fi
           echo "Applying $FILE ${REMOTE_FLAG}"
-          npx wrangler d1 execute second-eyes-lawful-loop $REMOTE_FLAG --file "$FILE" -y
+          if ! npx wrangler d1 execute second-eyes-lawful-loop $REMOTE_FLAG --file "$FILE" -y 2>&1 | tee /tmp/d1-apply.txt; then
+            if grep -qiE "code: ?10000|Authentication error|not authorized|7403" /tmp/d1-apply.txt; then
+              echo "::error::D1 apply failed with an auth/permission error (code 10000 / 7403)." >&2
+              echo "::error::The CLOUDFLARE_API_TOKEN secret needs 'Account > D1 > Edit'. Add it at dash.cloudflare.com/profile/api-tokens and re-run." >&2
+            fi
+            exit 1
+          fi
 
       - name: Verify table
         if: github.event.inputs.migration == 'x402-payment-log.sql' && github.event.inputs.remote == 'true'

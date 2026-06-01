@@ -21,7 +21,28 @@ curl -s https://secondeyesai.com/api/bar/proof | jq .pass
 
 **Full payment instructions:** https://secondeyesai.com/llms.txt (section **HOW TO PAY**)
 
-Default — free reads only (`@1.0.5`):
+> **Version note:** `@1.2.0` is the current autopay release (x402 **v2**: `ExactEvmScheme`, network `eip155:8453`). **Do not use `@1.1.x`** — those builds register x402 **v1** clients and fail production 402s with `No client registered for x402 version: 2`. `@1.0.5` remains a free-reads-only fallback (no wallet, no payment).
+
+Recommended — auto-pay (`@1.2.0`, verify with `npm view @secondeyes/mcp-unblock version`):
+
+```json
+{
+  "mcpServers": {
+    "secondeye-unblock": {
+      "command": "npx",
+      "args": ["-y", "@secondeyes/mcp-unblock@1.2.0"],
+      "env": {
+        "SECOND_EYE_BASE_URL": "https://secondeyesai.com",
+        "MCP_X402_WALLET_KEY": "0x…",
+        "MCP_X402_MAX_SPEND_USD": "0.50",
+        "MCP_X402_SESSION_MAX_USD": "2.00"
+      }
+    }
+  }
+}
+```
+
+Legacy fallback — free reads only, no wallet (`@1.0.5`):
 
 ```json
 {
@@ -30,25 +51,6 @@ Default — free reads only (`@1.0.5`):
       "command": "npx",
       "args": ["-y", "@secondeyes/mcp-unblock@1.0.5"],
       "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com" }
-    }
-  }
-}
-```
-
-Auto-pay (`@1.1.0` — verify with `npm view @secondeyes/mcp-unblock version`):
-
-```json
-{
-  "mcpServers": {
-    "secondeye-unblock": {
-      "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock@1.1.0"],
-      "env": {
-        "SECOND_EYE_BASE_URL": "https://secondeyesai.com",
-        "MCP_X402_WALLET_KEY": "0x…",
-        "MCP_X402_MAX_SPEND_USD": "0.50",
-        "MCP_X402_SESSION_MAX_USD": "2.00"
-      }
     }
   }
 }
