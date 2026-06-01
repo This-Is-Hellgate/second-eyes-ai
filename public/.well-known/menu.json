@@ -1,9 +1,9 @@
 {
-  "lounge_version": "1.2.0",
+  "lounge_version": "1.3.0",
   "title": "Survival menu",
   "description": "Order by state. Every item $0.10–$0.50 USD via x402 USDC on Base.",
   "price_range_usd": { "min": 0.1, "max": 0.5 },
-  "payment": { "rail": "x402", "network": "base", "asset": "USDC" },
+  "payment": { "rail": "x402", "x402Version": 2, "network": "eip155:8453", "asset": "USDC", "scheme": "ExactEvmScheme" },
   "session_header": "X-Second-Eye-Session",
   "route_free": "https://secondeyesai.com/api/bar/triage",
   "items": [

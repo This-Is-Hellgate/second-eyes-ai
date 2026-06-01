@@ -264,6 +264,8 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
     expiresAt: product.oneTime ? null : undefined,
     bazaarStatus: settled.bazaar?.status || null,
     bazaarReason: settled.bazaar?.rejectedReason || null,
+    productKind: product.kind,
+    productSlug: product.slug,
   });
 
   if (idemKey) {
@@ -508,6 +510,8 @@ export async function completePaidNanoDelivery(context, product, payload, settle
     expiresAt: product.oneTime ? null : undefined,
     bazaarStatus: settled.bazaar?.status || null,
     bazaarReason: settled.bazaar?.rejectedReason || null,
+    productKind: product.kind,
+    productSlug: product.slug,
   });
 
   if (idemKey) {

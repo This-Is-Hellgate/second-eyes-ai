@@ -57,6 +57,8 @@ export async function onRequestPost(context) {
       expiresAt: plan.durationDays
         ? new Date(Date.now() + plan.durationDays * 86400000).toISOString()
         : null,
+      productKind: "bar_tab",
+      productSlug: plan.id,
     });
 
     await issueBarTabToken(plan, context.env, grantId);

@@ -1,6 +1,7 @@
 /** Aggregate lounge intelligence — no PII, no task content. */
 
 import { getSessionHealth } from "./sessions.js";
+import { MAX_SESSION_SECONDS } from "./constants.js";
 
 export async function getLoungeStats(env) {
   const base = {
@@ -24,11 +25,19 @@ export async function getLoungeStats(env) {
   ).all();
   for (const row of counters.results || []) base[row.key] = row.value;
 
+  // Duration ends at last_activity_at for still-open rows (not updated_at, which a
+  // sweep can bump), and is clamped to MAX_SESSION_SECONDS so any legacy row with an
+  // unbounded left_at (settled before the closeStaleSessions fix) cannot inflate the average.
   const avgRow = await env.DB.prepare(
     `SELECT AVG(
-      (julianday(COALESCE(left_at, updated_at)) - julianday(entered_at)) * 86400
+      MIN(
+        (julianday(COALESCE(left_at, last_activity_at)) - julianday(entered_at)) * 86400,
+        ?
+      )
     ) AS avg_sec FROM bar_sessions WHERE entered_at > datetime('now', '-1 day')`
-  ).first();
+  )
+    .bind(MAX_SESSION_SECONDS)
+    .first();
   if (avgRow?.avg_sec) base.average_session_seconds = Math.round(avgRow.avg_sec);
 
   const condRow = await env.DB.prepare(

@@ -2,6 +2,30 @@ import { makeId, nowIso } from "./review.js";
 
 const TASK_TTL_SECONDS = 600;
 
+// Lazily add product_kind/product_slug to access_grants when the D1 migration
+// (seeds/grant-product-metadata.sql) has not been applied yet. ALTER ADD COLUMN
+// is not idempotent, so we gate on pragma_table_info. Cached per worker instance.
+let grantMetaColsReady = false;
+async function ensureGrantProductColumns(env) {
+  if (grantMetaColsReady || !env?.DB) return grantMetaColsReady;
+  try {
+    const cols = await env.DB.prepare(
+      `SELECT name FROM pragma_table_info('access_grants') WHERE name IN ('product_kind','product_slug')`
+    ).all();
+    const have = new Set((cols.results || []).map((r) => r.name));
+    if (!have.has("product_kind")) {
+      await env.DB.prepare(`ALTER TABLE access_grants ADD COLUMN product_kind TEXT`).run();
+    }
+    if (!have.has("product_slug")) {
+      await env.DB.prepare(`ALTER TABLE access_grants ADD COLUMN product_slug TEXT`).run();
+    }
+    grantMetaColsReady = true;
+  } catch (err) {
+    console.log(JSON.stringify({ grant_product_cols_error: String(err?.message || err).slice(0, 200) }));
+  }
+  return grantMetaColsReady;
+}
+
 export async function createA4ATask(env, { id, planId, requirements }) {
   const ts = nowIso();
   const expires = new Date(Date.now() + TASK_TTL_SECONDS * 1000).toISOString();
@@ -86,27 +110,52 @@ export async function recordAccessGrant(env, grant) {
 
   const id = grant.id || makeId("agr");
   const ts = nowIso();
+  const hasProductCols = await ensureGrantProductColumns(env);
 
   try {
-    await env.DB.prepare(
-      `INSERT INTO access_grants
-        (id, plan_id, rail, payer_ref, tx_ref, task_id, stripe_session_id, created_at, expires_at, bazaar_status, bazaar_reason)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-      .bind(
-        id,
-        grant.planId,
-        grant.rail,
-        grant.payerRef || null,
-        grant.txRef || null,
-        grant.taskId || null,
-        grant.stripeSessionId || null,
-        ts,
-        grant.expiresAt || null,
-        grant.bazaarStatus || null,
-        grant.bazaarReason || null
+    if (hasProductCols) {
+      await env.DB.prepare(
+        `INSERT INTO access_grants
+          (id, plan_id, rail, payer_ref, tx_ref, task_id, stripe_session_id, created_at, expires_at, bazaar_status, bazaar_reason, product_kind, product_slug)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run();
+        .bind(
+          id,
+          grant.planId,
+          grant.rail,
+          grant.payerRef || null,
+          grant.txRef || null,
+          grant.taskId || null,
+          grant.stripeSessionId || null,
+          ts,
+          grant.expiresAt || null,
+          grant.bazaarStatus || null,
+          grant.bazaarReason || null,
+          grant.productKind || null,
+          grant.productSlug || null
+        )
+        .run();
+    } else {
+      await env.DB.prepare(
+        `INSERT INTO access_grants
+          (id, plan_id, rail, payer_ref, tx_ref, task_id, stripe_session_id, created_at, expires_at, bazaar_status, bazaar_reason)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+        .bind(
+          id,
+          grant.planId,
+          grant.rail,
+          grant.payerRef || null,
+          grant.txRef || null,
+          grant.taskId || null,
+          grant.stripeSessionId || null,
+          ts,
+          grant.expiresAt || null,
+          grant.bazaarStatus || null,
+          grant.bazaarReason || null
+        )
+        .run();
+    }
   } catch (err) {
     if (grant.txRef) {
       const existing = await findAccessGrantByTxRef(env, grant.txRef);

@@ -129,6 +129,8 @@ export async function onRequestGet(context) {
     expiresAt: plan.durationDays
       ? new Date(Date.now() + plan.durationDays * 86400000).toISOString()
       : null,
+    productKind: "bar_tab",
+    productSlug: plan.id,
   });
 
   const token = await issueBarTabToken(plan, env, grantId, settled.receipt);

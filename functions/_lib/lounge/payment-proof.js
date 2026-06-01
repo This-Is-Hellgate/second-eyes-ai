@@ -29,6 +29,18 @@ export async function getPaymentProof(env, { limit = 20 } = {}) {
 
   if (!env.DB) return base;
 
+  // access_grants.product_* may not exist until seeds/grant-product-metadata.sql
+  // (or the runtime ensure in recordAccessGrant) has run; select them only if present.
+  let grantHasProductCols = false;
+  try {
+    const cols = await env.DB.prepare(
+      `SELECT name FROM pragma_table_info('access_grants') WHERE name = 'product_slug'`
+    ).first();
+    grantHasProductCols = Boolean(cols?.name);
+  } catch {
+    grantHasProductCols = false;
+  }
+
   const totals = await env.DB.prepare(
     `SELECT
        COUNT(*) AS all_grants,
@@ -60,9 +72,12 @@ export async function getPaymentProof(env, { limit = 20 } = {}) {
 
   const rows = await env.DB.prepare(
     `SELECT g.id, g.plan_id, g.rail, g.tx_ref, g.payer_ref, g.stripe_session_id, g.created_at,
-            ik.product_kind, ik.product_slug
+            ${grantHasProductCols ? "g.product_kind AS g_kind, g.product_slug AS g_slug," : "NULL AS g_kind, NULL AS g_slug,"}
+            ik.product_kind AS ik_kind, ik.product_slug AS ik_slug,
+            m.product_kind AS m_kind, m.product_slug AS m_slug
      FROM access_grants g
      LEFT JOIN idempotency_keys ik ON ik.grant_id = g.id
+     LEFT JOIN agent_marks m ON m.grant_id = g.id
      ORDER BY g.created_at DESC
      LIMIT ?`
   )
@@ -71,8 +86,10 @@ export async function getPaymentProof(env, { limit = 20 } = {}) {
 
   base.recent_settlements = (rows.results || []).map((r) => ({
     grant_id: r.id,
-    product_kind: r.product_kind || r.plan_id,
-    product_slug: r.product_slug || null,
+    // Prefer the self-describing grant column; fall back to idempotency, then the
+    // patron mark (which always retained the slug), then plan_id as last resort.
+    product_kind: r.g_kind || r.ik_kind || r.m_kind || r.plan_id,
+    product_slug: r.g_slug || r.ik_slug || r.m_slug || null,
     rail: r.rail,
     tx_ref: r.tx_ref || null,
     basescan: r.tx_ref ? `${BASESCAN_TX}${r.tx_ref}` : null,

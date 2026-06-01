@@ -248,6 +248,8 @@ export async function handleStripeX402(context, product, payload) {
     payerRef: settled.receipt.payer || null,
     txRef: settled.receipt.transaction || null,
     expiresAt: product.oneTime ? null : undefined,
+    productKind: product.kind,
+    productSlug: product.slug,
   });
 
   return accessJson(
