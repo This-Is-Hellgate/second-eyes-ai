@@ -142,20 +142,28 @@ export async function closeStaleSessions(env) {
 
   const ts = nowIso();
 
+  // left_at is bounded to the policy boundary, not wall-clock now: an abandoned
+  // session that sat open for hours ended (for billing/stats) at its last activity,
+  // not when the cleanup sweep happened to run. Without this, left_at - entered_at
+  // inflates average_session_seconds far past MAX_SESSION_SECONDS.
   const idle = await env.DB.prepare(
-    `UPDATE bar_sessions SET status = 'closed', left_at = ?, exit_type = 'idle_timeout', updated_at = ?
+    `UPDATE bar_sessions SET status = 'closed',
+       left_at = datetime(julianday(last_activity_at) + ? / 86400.0),
+       exit_type = 'idle_timeout', updated_at = ?
      WHERE status = 'active'
        AND (julianday('now') - julianday(last_activity_at)) * 86400 > ?`
   )
-    .bind(ts, ts, IDLE_TIMEOUT_SECONDS)
+    .bind(IDLE_TIMEOUT_SECONDS, ts, IDLE_TIMEOUT_SECONDS)
     .run();
 
   const maxTtl = await env.DB.prepare(
-    `UPDATE bar_sessions SET status = 'closed', left_at = ?, exit_type = 'max_ttl', updated_at = ?
+    `UPDATE bar_sessions SET status = 'closed',
+       left_at = datetime(julianday(entered_at) + ? / 86400.0),
+       exit_type = 'max_ttl', updated_at = ?
      WHERE status = 'active'
        AND (julianday('now') - julianday(entered_at)) * 86400 > ?`
   )
-    .bind(ts, ts, MAX_SESSION_SECONDS)
+    .bind(MAX_SESSION_SECONDS, ts, MAX_SESSION_SECONDS)
     .run();
 
   return {

@@ -1,0 +1,34 @@
+# Guard against stale discovery metadata: blocks merges that re-introduce
+# x402 v1, network "base", or a package version that drifts from the published
+# @secondeyes/mcp-unblock. See scripts/discovery-consistency-check.mjs.
+
+name: Discovery consistency
+
+on:
+  pull_request:
+    paths:
+      - "public/.well-known/**"
+      - "public/llms.txt"
+      - "packages/secondeye-mcp/package.json"
+      - "packages/secondeye-mcp/server.json"
+      - "scripts/discovery-consistency-check.mjs"
+      - ".github/workflows/discovery-check.yml"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Validate x402 + package discovery metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run discovery consistency check
+        run: node scripts/discovery-consistency-check.mjs

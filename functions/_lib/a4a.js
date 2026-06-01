@@ -268,6 +268,10 @@ async function completePaymentTask(taskId, metadata, env) {
 
       : null,
 
+    productKind: "bar_tab",
+
+    productSlug: plan.id,
+
   });
 
 
