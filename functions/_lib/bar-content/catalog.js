@@ -303,6 +303,27 @@ export const BARS = [
           "coverage — meaning is grounded in the transcript",
         ],
       },
+      {
+        slug: "aws-agent-survival",
+        name: "aws-agent-survival",
+        kind: "tap",
+        dynamic: true,
+        session_required: false,
+        priceUsd: 0.05,
+        method: "GET|POST",
+        path: "/api/bar/x402/aws-agent-survival",
+        lead: "Entry door for autonomous agents on Amazon Bedrock AgentCore, Strands, and AgentKit that discover paid tools via AgentCore Gateway + the Coinbase x402 Bazaar. One-shot: returns the full session-less survival map so a no-session agent can pay-and-go.",
+        usage: {
+          one_shot: "GET /api/bar/x402/aws-agent-survival",
+          with_hint: 'POST /api/bar/x402/aws-agent-survival  { "state": "I am looping" }',
+        },
+        answers: [
+          "survival_doors: every session-less /api/bar/x402/{slug} pack with price + trigger condition",
+          "specialist_doors: doctor, index-check, transcribe, extract",
+          "payment: x402 v2, eip155:8453, USDC, X-PAYMENT header, single payTo",
+          "when_stuck: peril-router routes you to the one pack to call next",
+        ],
+      },
     ],
   },
 ];
