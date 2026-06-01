@@ -276,6 +276,33 @@ export const BARS = [
           "wallet resource count + quality of indexed entries",
         ],
       },
+      {
+        slug: "transcribe-extract",
+        name: "transcribe-extract",
+        kind: "tap",
+        dynamic: true,
+        session_required: false,
+        priceUsd: 0.1,
+        method: "GET|POST",
+        path: "/api/bar/x402/transcribe",
+        lead: "Turn any public audio, voice note, podcast, PDF, or video URL into a transcript plus its meaning — summary, ranked key points, and grounded Q&A. Deterministically validated before it is served.",
+        usage: {
+          audio: "GET /api/bar/x402/transcribe?url=https://host/episode.mp3&kind=audio&duration_seconds=1830",
+          pdf: 'POST /api/bar/x402/transcribe  { "url": "https://host/paper.pdf", "kind": "pdf" }',
+          video: "GET /api/bar/x402/transcribe?url=https://youtu.be/VIDEO_ID&kind=video",
+        },
+        answers: [
+          "transcript: verbatim transcription (audio/video) or extracted text (PDF)",
+          "meaning: summary, ranked key_points, grounded qa",
+          "attestation: evidence-only (schema-valid, words/min in range, no loop, grounded) — never a claim of accuracy",
+        ],
+        validates: [
+          "strict structured-output schema",
+          "plausibility (words/min in range, language detected, non-empty)",
+          "n-gram repetition / decode-loop detection",
+          "coverage — meaning is grounded in the transcript",
+        ],
+      },
     ],
   },
 ];
