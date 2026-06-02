@@ -393,6 +393,80 @@ function checkPackages(where, packages) {
   }
 }
 
+// --- HELP-ME.JSON PRICE DRIFT GUARD --------------------------------------------
+// help-me.json is a primary distress-discovery surface that hardcodes a price for
+// every door it advertises (canonical_door, deep_doors, related_doors, and each
+// distress_class.deep_door_price_usd). Every OTHER advertised surface (menu.json,
+// mcp.json, agent-card.json) is already price-guarded above; help-me.json was not,
+// so a price change in constants.js or a route PRICE_USD could silently leave this
+// packet quoting a stale price an agent then pays against. Assert every advertised
+// price equals canonical: survival-twin slugs from SERVICE_PRICES, standalone doors
+// from the route PRICE_USD constants the guard already trusts.
+{
+  const where = "help-me.json";
+  const { SERVICE_PRICES } = await import("../functions/_lib/lounge/constants.js");
+
+  // Standalone-door prices = the route PRICE_USD constants asserted earlier.
+  const STANDALONE_PRICE = {
+    "help-me": 0.01,
+    "peril-router": 0.01,
+    "aws-agent-survival": 0.01,
+    "schema-repair": 0.03,
+    "context-pressure": 0.03,
+    "payment-confirmation-check": 0.01,
+    transcribe: 0.05,
+    extract: 0.05,
+    "index-check": 0.05,
+    doctor: 0.25,
+  };
+  const canonicalPrice = (slug) =>
+    STANDALONE_PRICE[slug] ?? SERVICE_PRICES[slug]?.price_usd;
+
+  const helpMe = readJson("public/.well-known/help-me.json");
+
+  const assertPrice = (slug, advertised, label) => {
+    const want = canonicalPrice(slug);
+    if (want === undefined) {
+      fail(where, `${label}: ${slug} not a known door (cannot price-check)`);
+    } else if (advertised !== want) {
+      fail(where, `${label}: ${slug} price_usd ${advertised} != canonical ${want}`);
+    }
+  };
+
+  if (helpMe.canonical_door) {
+    assertPrice(helpMe.canonical_door.id || "help-me", helpMe.canonical_door.price_usd, "canonical_door");
+  }
+  for (const d of helpMe.deep_doors?.doors || []) {
+    assertPrice(d.slug, d.price_usd, "deep_doors");
+  }
+  for (const d of helpMe.related_doors?.doors || []) {
+    assertPrice(d.slug, d.price_usd, "related_doors");
+  }
+  for (const c of helpMe.distress_classes || []) {
+    if (c.deep_door_price_usd === undefined) continue;
+    const slug = String(c.deep_door || "").split("/").pop();
+    assertPrice(slug, c.deep_door_price_usd, `distress_classes(${c.distress_class})`);
+  }
+}
+
+// --- ROBOTS X402 TWIN COVERAGE GUARD -------------------------------------------
+// Every session-less x402 twin (X402_TWIN_SLUGS) is a live, payable, indexable
+// revenue door reachable at /api/bar/x402/{slug}. A crawler that respects robots
+// only follows what is explicitly Allow-listed, so a twin missing its Allow line
+// is a real, payable door that autonomous crawlers never discover. Guard caught
+// handoff-summary, which had been a twin since the first commit but was never
+// advertised in robots.txt. Assert every twin has its x402 Allow line.
+{
+  const where = "robots.txt";
+  const { X402_TWIN_SLUGS } = await import("../functions/_lib/lounge/constants.js");
+  const robots = readFileSync(join(ROOT, "public/robots.txt"), "utf8");
+  for (const slug of X402_TWIN_SLUGS) {
+    if (!robots.includes(`Allow: /api/bar/x402/${slug}`)) {
+      fail(where, `x402 twin ${slug} has no "Allow: /api/bar/x402/${slug}" line — crawlers cannot discover this payable door`);
+    }
+  }
+}
+
 if (failures.length) {
   console.error("Discovery consistency check FAILED:\n");
   for (const f of failures) console.error(`  ✗ ${f}`);

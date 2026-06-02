@@ -50,6 +50,7 @@ Allow: /api/bar/x402/pitstop
 Allow: /api/bar/x402/pre-run-context
 Allow: /api/bar/x402/claim-check
 Allow: /api/bar/x402/context-compress
+Allow: /api/bar/x402/handoff-summary
 Allow: /api/bar/x402/mcp-wiring
 Allow: /api/bar/x402/should-i-pay
 Allow: /api/bar/x402/receipt
