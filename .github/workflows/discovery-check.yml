@@ -147,3 +147,6 @@ jobs:
 
       - name: Run MCP order-routing self-test (C-019 / C-020)
         run: node test/x402-wallet/order-routing.test.mjs
+
+      - name: Run wallet-agent-target routing self-test (no /api/bar/services dead-ends)
+        run: node test/x402-wallet/wallet-target-routes.test.mjs
