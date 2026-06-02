@@ -71,7 +71,17 @@ export function composeFailureReason(result, fallback) {
     tags.push(`invalidReason=${result.invalidReason}`);
   }
   if (result.facilitatorStatus) tags.push(`status=${result.facilitatorStatus}`);
-  if (result.declaredNetwork) tags.push(`network=${result.declaredNetwork}`);
+  // The rail the verify/settle actually ran against — the selected accept, not
+  // just the client-declared network. On a multi-rail mismatch the declared and
+  // selected rails differ, and which rail was tried is the load-bearing
+  // diagnostic. Tag both so the failure_reason audit string is unambiguous.
+  const selectedNetwork = result.network || result.accept?.network || null;
+  if (selectedNetwork) tags.push(`selected=${selectedNetwork}`);
+  // Surface the declared rail only when it adds information: no selected rail
+  // resolved, or it differs from the selected one (a multi-rail mismatch).
+  if (result.declaredNetwork && result.declaredNetwork !== selectedNetwork) {
+    tags.push(`declared=${result.declaredNetwork}`);
+  }
   const composed = tags.length ? `${base} (${tags.join(" ")})` : String(base);
   return composed.slice(0, 500);
 }

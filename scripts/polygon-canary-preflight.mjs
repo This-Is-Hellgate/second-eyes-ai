@@ -59,8 +59,14 @@ function log(line = "") {
  * the public payTo / flag shape — so the print matches resolveActiveNetworks() exactly.
  */
 function simulatedEnv(withPolygon) {
-  const payTo = env.X402_PAYTO || env.POLYGON_CANARY_EXPECTED_PAYTO || "0xPreflightSimPayTo";
-  const sim = { X402_PAYTO: payTo };
+  // Use the operator's REAL payTo only. A synthetic fallback (e.g.
+  // "0xPreflightSimPayTo") would make resolveActiveNetworks() report Base/Polygon
+  // as accept-ready even when NO payTo is configured — masking the exact misconfig
+  // this preflight exists to catch. With no real payTo set, leave X402_PAYTO unset
+  // so the resolver returns an empty accepts[] and the verdict flags it.
+  const payTo = env.X402_PAYTO || env.POLYGON_CANARY_EXPECTED_PAYTO || null;
+  const sim = {};
+  if (payTo) sim.X402_PAYTO = payTo;
   if (withPolygon) {
     sim[POLYGON_NETWORK.enable_env] = "1";
     if (env.X402_POLYGON_PAY_TO) sim[POLYGON_NETWORK.payto_env] = env.X402_POLYGON_PAY_TO;
@@ -128,11 +134,27 @@ async function main() {
 
   // --- Section 1: rail resolution (authoritative, from the real registry) -------
   log("[1] Rail resolution (what the Worker would advertise):");
+  const realPayTo = env.X402_PAYTO || env.POLYGON_CANARY_EXPECTED_PAYTO || null;
+  if (!realPayTo) {
+    log(
+      "  ! no X402_PAYTO / POLYGON_CANARY_EXPECTED_PAYTO set — modeling with NO payTo " +
+        "(empty accepts[] expected). Set the real payTo to model an accept-ready posture."
+    );
+  }
   printRails("Current posture (Polygon NOT enabled):", simulatedEnv(false));
   log("");
   const polySim = printRails("If X402_POLYGON_ENABLED=1 + emergency override (canary target posture):", simulatedEnv(true));
   const polyWouldActivate = polySim.active.some((a) => a.network.id === POLYGON_ID);
-  if (!polyWouldActivate) {
+  if (!polyWouldActivate && !realPayTo && env.POLYGON_CANARY_MOCK === "1") {
+    // Mock mode with no real payTo: an empty accepts[] is the EXPECTED offline
+    // posture, not a failure. The rail-resolution LOGIC is what mock mode proves
+    // (the flag+override path runs); a real payTo only resolves with secrets the
+    // CI run deliberately lacks. Do NOT fabricate one (C-018) — report and pass.
+    log(
+      `\n  ! no payTo resolved (expected in mock mode without X402_PAYTO). Rail-resolution ` +
+        `logic exercised; set X402_PAYTO to model an accept-ready Polygon posture before a live run.`
+    );
+  } else if (!polyWouldActivate) {
     fail(
       "rail-resolution",
       `Polygon would NOT enter accepts[] even with ${POLYGON_NETWORK.enable_env}=1 + the canary override — ` +

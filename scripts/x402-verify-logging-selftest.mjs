@@ -81,9 +81,13 @@ const eq = (where, got, want) => {
   if (!r.includes("stage=verify")) fail("compose", `missing stage tag: ${r}`);
 }
 
-// --- 5. composeFailureReason surfaces the declared rail on hard-reject ---
+// --- 5. composeFailureReason surfaces the SELECTED rail (C-017), plus declared
+//        when it differs. The rail the verify/settle actually ran against is the
+//        load-bearing diagnostic; declaring only the client-declared network hides
+//        which rail was tried on a multi-rail mismatch. ---
 {
-  const r = composeFailureReason(
+  // 5a. declared-only (no selected resolved): still surface the declared rail.
+  const declaredOnly = composeFailureReason(
     {
       error: "unsupported_payment_network",
       stage: "select",
@@ -92,7 +96,45 @@ const eq = (where, got, want) => {
     },
     "verify_failed"
   );
-  if (!r.includes("network=eip155:137")) fail("compose", `missing declared network: ${r}`);
+  if (!declaredOnly.includes("declared=eip155:137")) {
+    fail("compose", `missing declared network when no selected: ${declaredOnly}`);
+  }
+
+  // 5b. selected present: failure_reason names the rail actually verified against.
+  const selected = composeFailureReason(
+    {
+      error: "verify_failed",
+      stage: "verify",
+      invalidReason: "insufficient_funds",
+      network: "eip155:8453",
+    },
+    "verify_failed"
+  );
+  if (!selected.includes("selected=eip155:8453")) {
+    fail("compose", `missing selected rail: ${selected}`);
+  }
+
+  // 5c. declared != selected (multi-rail mismatch): BOTH must appear so the
+  // mismatch is unambiguous in the audit trail.
+  const mismatch = composeFailureReason(
+    {
+      error: "rail_mismatch",
+      stage: "select",
+      declaredNetwork: "eip155:137",
+      accept: { network: "eip155:8453" },
+    },
+    "verify_failed"
+  );
+  if (!mismatch.includes("selected=eip155:8453")) fail("compose", `mismatch missing selected: ${mismatch}`);
+  if (!mismatch.includes("declared=eip155:137")) fail("compose", `mismatch missing declared: ${mismatch}`);
+
+  // 5d. declared == selected: do not double-print — selected is enough.
+  const same = composeFailureReason(
+    { error: "verify_failed", stage: "verify", declaredNetwork: "eip155:8453", network: "eip155:8453" },
+    "verify_failed"
+  );
+  if (!same.includes("selected=eip155:8453")) fail("compose", `same-rail missing selected: ${same}`);
+  if (same.includes("declared=eip155:8453")) fail("compose", `same-rail should not also print declared: ${same}`);
 }
 
 // --- 6. composeFailureReason degrades gracefully ---
