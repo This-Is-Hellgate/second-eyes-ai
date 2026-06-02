@@ -22,7 +22,9 @@ import {
   markHeaders,
   readAgentId,
   readMarkId,
+  readViaMark,
   enterBar,
+  attachLineage,
 } from "./marks.js";
 import { enrichWithWorkStamp } from "./work-mark.js";
 import { recordServiceCall } from "./lounge/sessions.js";
@@ -34,7 +36,7 @@ export function corsOptions(methods = "GET, OPTIONS") {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": methods,
       "Access-Control-Allow-Headers":
-        "Authorization, Content-Type, PAYMENT-SIGNATURE, X-PAYMENT-SIGNATURE, X-PAYMENT, X-Agent-Id, X-Second-Eye-Agent-Id, X-Second-Eye-Mark, X-Second-Eye-Patron, X-Second-Eye-Session, X-Second-Eye-Verify, Idempotency-Key, X-Idempotency-Key",
+        "Authorization, Content-Type, PAYMENT-SIGNATURE, X-PAYMENT-SIGNATURE, X-PAYMENT, X-Agent-Id, X-Second-Eye-Agent-Id, X-Second-Eye-Mark, X-Second-Eye-Patron, X-Second-Eye-Session, X-Second-Eye-Verify, X-Second-Eye-Via, Idempotency-Key, X-Idempotency-Key",
       "Access-Control-Expose-Headers": "X-PAYMENT-RESPONSE, X-Second-Eye-Mark, X-Second-Eye-Patron, X-Second-Eye-Session, X-Second-Eye-Verify",
       "Access-Control-Max-Age": "86400",
     },
@@ -133,20 +135,22 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
     const body = { ...(await resolvePayload()), lounge: SERVICE_ID };
     const agentId = readAgentId(request);
     const markId = readMarkId(request);
+    const via = readViaMark(request);
     let markRow = null;
 
     if (agentId) {
-      const entered = await enterBar(env, { agentId });
+      const entered = await enterBar(env, { agentId, via });
       markRow = entered.mark;
     } else if (markId && env.DB) {
       markRow = await getMarkById(env, markId);
     }
 
     if (markRow) {
-      const formatted = formatMark(markRow, origin);
+      const { mark: formatted, lineage } = await attachLineage(env, formatMark(markRow, origin), origin);
       return accessJson(
-        enrichWithWorkStamp({ ...body, mark: formatted, lounge: SERVICE_ID }, formatted, origin, {
+        enrichWithWorkStamp({ ...body, mark: formatted, lineage, lounge: SERVICE_ID }, formatted, origin, {
           product_slug: product.slug,
+          lineage,
         }),
         200,
         {
@@ -277,11 +281,15 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
     });
   }
 
-  const mark = await attachSaleMark(env, request, origin, {
-    productKind: product.kind,
-    productSlug: product.slug,
-    grantId,
-  });
+  const { mark, lineage } = await attachLineage(
+    env,
+    await attachSaleMark(env, request, origin, {
+      productKind: product.kind,
+      productSlug: product.slug,
+      grantId,
+    }),
+    origin
+  );
 
   const paymentHeaders = {
     "Access-Control-Allow-Origin": "*",
@@ -310,7 +318,7 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
         },
         mark,
         origin,
-        { service: product.slug }
+        { service: product.slug, lineage }
       ),
       200,
       paymentHeaders
@@ -340,7 +348,7 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
         },
         mark,
         origin,
-        { product_slug: product.slug }
+        { product_slug: product.slug, lineage }
       ),
       200,
       {
@@ -369,7 +377,7 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
       },
       mark,
       origin,
-      { product_slug: product.slug }
+      { product_slug: product.slug, lineage }
     ),
     200,
     {
@@ -523,11 +531,15 @@ export async function completePaidNanoDelivery(context, product, payload, settle
     });
   }
 
-  const mark = await attachSaleMark(env, request, origin, {
-    productKind: product.kind,
-    productSlug: product.slug,
-    grantId,
-  });
+  const { mark, lineage } = await attachLineage(
+    env,
+    await attachSaleMark(env, request, origin, {
+      productKind: product.kind,
+      productSlug: product.slug,
+      grantId,
+    }),
+    origin
+  );
 
   const accessToken = await issueTapToken(product, env, grantId, settled.receipt);
   const microCheck = await consumeMicroAccess(accessToken, product.slug, product.tool, env);
@@ -551,7 +563,7 @@ export async function completePaidNanoDelivery(context, product, payload, settle
       },
       mark,
       origin,
-      { product_slug: product.slug }
+      { product_slug: product.slug, lineage }
     ),
     200,
     {

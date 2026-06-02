@@ -1,5 +1,5 @@
 import { accessJson } from "../../../_lib/access.js";
-import { formatMark, getMarkById } from "../../../_lib/marks.js";
+import { formatWithLineage, getMarkById } from "../../../_lib/marks.js";
 import { buildWorkStamp, workMarkLaw } from "../../../_lib/work-mark.js";
 import { corsOptions } from "../../../_lib/bar-pay.js";
 
@@ -19,16 +19,18 @@ export async function onRequestGet(context) {
     });
   }
 
-  const mark = formatMark(row, origin);
+  const { mark, lineage } = await formatWithLineage(context.env, row, origin);
 
   return accessJson(
     {
       valid: true,
       patrons: "agents_only",
       mark,
+      lineage,
       work_mark_law: workMarkLaw(),
-      work_stamp: buildWorkStamp(mark, origin),
-      curiosity_hook: `${mark.label} signed this work at Second Eye Agent Lounge. The agent is gone; the mark remains in the output. Enter: ${origin}/api/bar/enter`,
+      work_stamp: buildWorkStamp(mark, origin, { lineage }),
+      curiosity_hook: lineage.curiosity_hook,
+      enter_via: lineage.via_url,
       discover: `${origin}/api/bar/marks/discover`,
       enter: `${origin}/api/bar/enter`,
       stats: `${origin}/api/bar/stats`,

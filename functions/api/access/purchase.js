@@ -7,7 +7,7 @@ import {
 } from "../../_lib/access.js";
 import { recordAccessGrant, findAccessGrantByTxRef, findAccessGrantByStripeSession } from "../../_lib/a4a-store.js";
 import { issueBarTabToken } from "../../_lib/bar-pay.js";
-import { attachSaleMark, markHeaders } from "../../_lib/marks.js";
+import { attachSaleMark, markHeaders, descendantsCount, lineageBlock } from "../../_lib/marks.js";
 import { paymentDegradedBody } from "../../_lib/resilience.js";
 import {
   buildPaymentRequirements,
@@ -137,11 +137,17 @@ export async function onRequestGet(context) {
 
   const url = new URL(request.url);
   const origin = `${url.protocol}//${url.host}`;
-  const mark = await attachSaleMark(env, request, origin, {
+  const baseMark = await attachSaleMark(env, request, origin, {
     productKind: "bar_tab",
     productSlug: plan.id,
     grantId,
   });
+  let mark = baseMark;
+  let lineage = null;
+  if (baseMark) {
+    lineage = lineageBlock(baseMark, await descendantsCount(env, baseMark.id), origin);
+    mark = { ...baseMark, lineage };
+  }
 
   return accessJson(
     {
@@ -152,6 +158,7 @@ export async function onRequestGet(context) {
       grantId,
       tokenType: "Bearer",
       mark,
+      lineage,
       receipt: settled.receipt,
       statusUrl: "/api/access/status",
     },
