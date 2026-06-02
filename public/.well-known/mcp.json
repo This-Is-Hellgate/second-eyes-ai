@@ -65,12 +65,17 @@
     { "name": "pause_and_route", "description": "POST stuck state → condition routing", "rest": "POST /api/bar/pause", "headers": ["X-Second-Eye-Session"] },
     { "name": "order_service", "description": "Survival services by slug. @1.0.5: returns 402 — pay via REST (see llms.txt HOW TO PAY). @1.2.1+ with MCP_X402_WALLET_KEY: auto-settles USDC (x402 v2, ExactEvmScheme, eip155:8453).", "rest": "GET /api/bar/services/{slug}", "headers": ["X-Second-Eye-Session"] },
     { "name": "leave_with_receipt", "description": "Clean exit receipt", "rest": "POST /api/bar/leave", "headers": ["X-Second-Eye-Session"] },
+    { "name": "help_me", "description": "Canonical distress meta-tool (session-less x402, $0.01). Describe any failure state → named distress_class + the deep door to call next + stop/preserve/continue.", "rest": "GET /api/bar/x402/help-me" },
+    { "name": "schema_repair", "description": "Deep door (session-less x402, $0.03): a tool/MCP call keeps failing argument/schema validation → repair_class + fix recipe + stop/preserve/continue verdict.", "rest": "GET /api/bar/x402/schema-repair" },
+    { "name": "context_pressure", "description": "Deep door (session-less x402, $0.03, alias token-pressure): out of context/token budget → deterministic band (continue/compact/reconstruct) from your remaining figure.", "rest": "GET /api/bar/x402/context-pressure" },
+    { "name": "payment_confirmation_check", "description": "Deep door (session-less x402, $0.01): attempted a settlement, unsure it confirmed → verdict confirmed/pending/failed/already_fulfilled so you do not double-pay.", "rest": "GET /api/bar/x402/payment-confirmation-check" },
     { "name": "github_mcp_401_fix", "description": "Shortcut PAT/401 → mcp-wiring", "mcp_package": "@secondeyes/mcp-unblock" }
   ],
   "search_tags": [
     "mcp", "401", "403", "github-mcp", "cursor-mcp", "PAT", "oauth", "unauthorized",
     "wiring", "stdio", "sse", "x402", "usdc", "base", "unblock", "should-i-pay", "proof", "receipt",
-    "loop-detect", "pitstop", "context-compress", "claim-check", "tool-verify"
+    "loop-detect", "pitstop", "context-compress", "claim-check", "tool-verify",
+    "help-me", "schema-repair", "context-pressure", "token-pressure", "payment-confirmation-check", "schema-validation", "double-pay"
   ],
   "packages": [
     {

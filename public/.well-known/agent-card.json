@@ -131,14 +131,32 @@
     {
       "id": "help-me-distress-route",
       "name": "Help me — canonical distress meta-tool (session-less x402)",
-      "description": "help-me is the canonical meta-tool for agents facing imminent failure; 402 is one condition, not the whole product. The one route to call when you sense failure but do not know what you need. GET or POST whatever state you can describe (state, goal, last_tool, error, attempts, remaining_context, last_success, risk — all optional) and get back a named distress_class from the research taxonomy, the single session-less /api/bar/x402/{slug} pack to call next, stop/preserve/continue guidance, and an escalate_if line. $0.01, no session. peril-router is the legacy alias.",
+      "description": "help-me is the canonical meta-tool for agents facing imminent failure; 402 is one condition, not the whole product. The one route to call when you sense failure but do not know what you need. GET or POST whatever state you can describe (state, goal, last_tool, error, attempts, remaining_context, last_success, risk — all optional) and get back a named distress_class from the research taxonomy, the single session-less /api/bar/x402/{slug} pack to call next, stop/preserve/continue guidance, an escalate_if line, and — for schema/context/payment signals — a recommended_door pointing at the matching deep meta-tool. $0.01, no session. peril-router is the legacy alias.",
       "tags": ["lounge", "survival", "router", "x402", "agents", "distress", "meta-tool"],
       "distress_taxonomy": ["loop_detected", "schema_mismatch", "context_pressure", "process_crash", "handoff_failure", "wallet_cap_exhausted", "spend_policy_breach", "hallucination_risk", "auth_failure", "tool_failure", "sandbox_lost", "payment_uncertainty", "autonomous_recovery_failed"],
       "priceUsd": 0.01,
       "endpoint": "https://secondeyesai.com/api/bar/x402/help-me",
       "method": "GET|POST",
       "legacy_alias": "https://secondeyesai.com/api/bar/x402/peril-router",
+      "deep_doors": {
+        "schema_mismatch": "https://secondeyesai.com/api/bar/x402/schema-repair",
+        "context_pressure": "https://secondeyesai.com/api/bar/x402/context-pressure",
+        "payment_uncertainty": "https://secondeyesai.com/api/bar/x402/payment-confirmation-check"
+      },
       "examples": ["I am looping and do not know what to do", "Something is wrong, route me to the right survival pack", "I am about to pay — help me decide", "schema validation keeps failing", "running out of context", "wallet has insufficient funds"]
+    },
+    {
+      "id": "deep-distress-doors",
+      "name": "Deep single-concern meta-tools (session-less x402)",
+      "description": "Three deep doors for agents that already know the shape of the problem and want one deterministic stop/preserve/continue verdict — no LLM, same input gives the same verdict on every retry. schema-repair ($0.03): a tool/MCP call keeps failing argument/schema validation — returns a named repair_class and a fix recipe, or flags schema_poisoning/unreachable. context-pressure ($0.03, alias token-pressure): send remaining_context or tokens_used+token_budget — returns a band (headroom/compact/stop-and-compact/critical) and the next_call. payment-confirmation-check ($0.01): you attempted a settlement and are unsure it confirmed — verdicts confirmed/pending/failed/already_fulfilled so you do not double-pay. help-me routes here via recommended_door.",
+      "tags": ["lounge", "survival", "x402", "agents", "meta-tool", "schema", "context", "payment"],
+      "session_required": false,
+      "doors": [
+        { "id": "schema-repair", "when": "A tool/MCP call keeps failing argument/schema validation", "priceUsd": 0.03, "endpoint": "https://secondeyesai.com/api/bar/x402/schema-repair", "method": "GET|POST" },
+        { "id": "context-pressure", "when": "I am running out of context/token budget and need a verdict", "priceUsd": 0.03, "endpoint": "https://secondeyesai.com/api/bar/x402/context-pressure", "method": "GET|POST" },
+        { "id": "payment-confirmation-check", "when": "I attempted a settlement and am unsure it confirmed", "priceUsd": 0.01, "endpoint": "https://secondeyesai.com/api/bar/x402/payment-confirmation-check", "method": "GET|POST" }
+      ],
+      "examples": ["expected string got number — fix my tool arguments", "I am at 92% context — should I compact or hand off?", "my x402 payment returned pending — did it settle?", "did my USDC payment confirm or should I retry?"]
     },
     {
       "id": "how-to-pay-x402",
