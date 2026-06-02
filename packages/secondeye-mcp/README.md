@@ -21,16 +21,16 @@ curl -s https://secondeyesai.com/api/bar/proof | jq .pass
 
 **Full payment instructions:** https://secondeyesai.com/llms.txt (section **HOW TO PAY**)
 
-> **Version note:** `@1.2.1` is the current autopay release (x402 **v2**: `ExactEvmScheme`, network `eip155:8453`). **Do not use `@1.1.x`** — those builds register x402 **v1** clients and fail production 402s with `No client registered for x402 version: 2`. `@1.0.5` remains a free-reads-only fallback (no wallet, no payment).
+> **Version note:** `@1.2.2` is the current autopay release (x402 **v2**: `ExactEvmScheme`, network `eip155:8453`; autopay covers the full $0.01–$0.05 menu by default). **Do not use `@1.1.x`** — those builds register x402 **v1** clients and fail production 402s with `No client registered for x402 version: 2`. `@1.0.5` remains a free-reads-only fallback (no wallet, no payment).
 
-Recommended — auto-pay (`@1.2.1`, verify with `npm view @secondeyes/mcp-unblock version`):
+Recommended — auto-pay (`@1.2.2`, verify with `npm view @secondeyes/mcp-unblock version`):
 
 ```json
 {
   "mcpServers": {
     "secondeye-unblock": {
       "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock@1.2.1"],
+      "args": ["-y", "@secondeyes/mcp-unblock@1.2.2"],
       "env": {
         "SECOND_EYE_BASE_URL": "https://secondeyesai.com",
         "MCP_X402_WALLET_KEY": "0x…",
@@ -68,6 +68,8 @@ Paid services return **HTTP 402**. When `MCP_X402_WALLET_KEY` is set on the MCP 
 
 Without a wallet key, `order_service` still returns the 402 body with `x402_error.code: no_wallet_configured` and REST retry instructions.
 
+**Autopay defaults:** with only `MCP_X402_WALLET_KEY` set (the recommended config below — no `MCP_X402_ALLOW_SLUGS`), every launch-priced survival/nano slug auto-pays. All menu prices are **$0.01–$0.05 USDC** and are kept in sync between the live 402 quote, the advertised menu, and the in-package `LOUNGE_SERVICE_PRICES_USD` catalog so `guardPayment` never rejects a valid quote as `price_mismatch`. Set `MCP_X402_ALLOW_SLUGS` only to **restrict** which slugs may auto-pay.
+
 ### Threat model (read before enabling auto-pay)
 
 | Risk | Detail |
@@ -75,8 +77,8 @@ Without a wallet key, `order_service` still returns the 402 body with `x402_erro
 | **Key exposure** | Any process with MCP env can read `MCP_X402_WALLET_KEY`. Cursor logs, crash dumps, and compromised extensions are in scope. |
 | **Wallet drain** | The MCP server signs transactions. A malicious or hijacked MCP host could call `order_service` repeatedly until caps hit — or bypass caps if env is edited. |
 | **Autonomous spend path** | Auto-pay removes the 402 pause. Use a **dedicated payer wallet** funded with session budget only (e.g. $5 USDC on Base). |
-| **Slug allow-list** | Default (unset): **`should-i-pay` only** (fail closed). Set `MCP_X402_ALLOW_SLUGS` to opt in — e.g. `claim-check,mcp-wiring` or `*` for full menu. |
-| **Caps** | `MCP_X402_MAX_SPEND_USD` (default $0.50/call) and `MCP_X402_SESSION_MAX_USD` (default $2.00/process) are soft limits in Node — not on-chain. |
+| **Slug allow-list** | Default (unset): **all launch-priced survival/nano slugs** (each ≤ $0.05 USDC) so a wallet-configured agent can autopay the safe menu out of the box. Set `MCP_X402_ALLOW_SLUGS` to a comma list (e.g. `claim-check,mcp-wiring`) to **restrict**; `*` is the same as unset. The safety boundary is the spend caps + the $0.05 catalog price ceiling, not the allow-list. |
+| **Caps** | `MCP_X402_MAX_SPEND_USD` (default $0.50/call — ~10× the $0.05 ceiling, headroom for a re-quote) and `MCP_X402_SESSION_MAX_USD` (default $2.00/process) are soft limits in Node — not on-chain. At launch prices a $2.00 session covers ~40 of the priciest ($0.05) calls. |
 
 **Do not** put main-wallet keys here. **Do not** pass the key as a tool argument.
 
@@ -99,10 +101,12 @@ MCP_X402_WALLET_KEY="$CANARY_WALLET_KEY" npm run test:mcp-pay
 | `read_pricing` | First **15 min free**, then compounding session + services |
 | `enter_lounge` | Start session — get `session.id` |
 | `pause_and_route` | POST stuck state → condition routing |
-| `github_mcp_401_fix` | Shortcut for PAT/401 → mcp-wiring |
-| `order_service` | claim-check, should-i-pay, context-compress, … |
+| `github_mcp_401_fix` | Shortcut for PAT/401 → mcp-wiring ($0.05) |
+| `order_service` | **Paid $0.01–$0.05 USDC** — claim-check, should-i-pay, context-compress, mcp-wiring, … (autopays when wallet set) |
 | `leave_with_receipt` | Exit with itemized receipt |
 | `fetch_catalog` | Full menu |
+
+Read tools (`proof_bar`, `patron_activity`, `read_menu`, `read_laws`, `read_pricing`, `fetch_catalog`) are registered `readOnlyHint:true` so trusted clients auto-approve them and the proof → pay funnel doesn't stall. `order_service` / `github_mcp_401_fix` are `idempotentHint:false, openWorldHint:true` and declare their USDC cost in the tool description + `outputSchema`. (MCP has no native "this tool costs money" annotation — annotations only drive confirmation prompts, never spending; the cost signal lives in the description and the payment is handled by the server bridge.)
 
 ## Agent flow
 

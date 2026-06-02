@@ -3,7 +3,7 @@
   "name": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
   "title": "MCP 401 Auth Fix | github PAT wiring | x402",
   "description": "github-mcp 401? PAT wiring. x402 USDC Base. HOW TO PAY: secondeyesai.com/llms.txt",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "websiteUrl": "https://secondeyesai.com/api/bar",
   "repository": {
     "url": "https://github.com/This-Is-Hellgate/second-eyes-ai",
@@ -14,7 +14,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "transport": {
         "type": "stdio"
       },
@@ -44,8 +44,7 @@
         },
         {
           "name": "MCP_X402_ALLOW_SLUGS",
-          "description": "Comma-separated slugs allowed for auto-pay. Default (unset): should-i-pay only. Use * for full lounge menu.",
-          "default": "should-i-pay",
+          "description": "Comma-separated slugs allowed for auto-pay. Default (unset) or *: all launch-priced survival/nano slugs (each <= $0.05 USDC) auto-pay. Set a comma list to RESTRICT. Safety is enforced by the per-call/session caps, not this list.",
           "isRequired": false
         }
       ]

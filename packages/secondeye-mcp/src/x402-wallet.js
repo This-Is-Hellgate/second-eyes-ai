@@ -6,7 +6,12 @@
  *   CANARY_WALLET_KEY   — fallback alias for canary / CI
  *   MCP_X402_MAX_SPEND_USD — per-call cap (default 0.50)
  *   MCP_X402_SESSION_MAX_USD — process lifetime cap (default 2.00)
- *   MCP_X402_ALLOW_SLUGS — comma-separated slugs; default (unset) = should-i-pay only (fail closed)
+ *   MCP_X402_ALLOW_SLUGS — comma-separated slugs (or "*"). Default (unset) =
+ *     every launch-priced survival/nano slug in LOUNGE_SERVICE_PRICES_USD, so a
+ *     wallet-configured agent can autopay the safe menu without extra config.
+ *     Safety is enforced by the per-call/session caps and the catalog price
+ *     ceiling (every default slug is ≤ SURVIVAL_PRICE_MAX_USD = $0.05), never by
+ *     the allowlist. Set this env var to a comma-separated list to restrict.
  */
 import { wrapFetchWithPayment, x402Client, decodePaymentResponseHeader } from "@x402/fetch";
 import { ExactEvmScheme, toClientEvmSigner } from "@x402/evm";
@@ -14,27 +19,41 @@ import { privateKeyToAccount } from "viem/accounts";
 import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
 
-/** Lounge survival menu — must match functions/_lib/lounge/constants.js */
+/**
+ * Lounge launch price catalog, USD — single source of truth mirrored from
+ * functions/_lib/lounge/constants.js (SURVIVAL_MENU) plus the session-less
+ * x402 nano twins in functions/api/bar/x402/*.js. Launch recovery pricing is
+ * $0.01–$0.05: tap services that are one cheap inference are $0.01, core
+ * recovery packs $0.03, deepest recovery work $0.05. Kept in sync so the live
+ * 402 quote, the advertised menu, and guardPayment all agree.
+ */
 export const LOUNGE_SERVICE_PRICES_USD = {
-  "loop-detect": 0.2,
-  "scope-check": 0.15,
-  "context-recover": 0.3,
-  "tool-verify": 0.1,
-  "cascade-break": 0.4,
-  pitstop: 0.15,
-  "pre-run-context": 0.25,
-  "claim-check": 0.15,
-  "context-compress": 0.2,
-  "mcp-wiring": 0.5,
-  "should-i-pay": 0.1,
-  receipt: 0.1,
+  // Survival menu (session-gated /api/bar/services/{slug})
+  "loop-detect": 0.03,
+  "scope-check": 0.03,
+  "context-recover": 0.05,
+  "tool-verify": 0.01,
+  "cascade-break": 0.05,
+  pitstop: 0.03,
+  "pre-run-context": 0.03,
+  "claim-check": 0.03,
+  "context-compress": 0.03,
+  "mcp-wiring": 0.05,
+  "should-i-pay": 0.01,
+  receipt: 0.03,
+  // Session-less x402 nano twins (/api/bar/x402/{slug})
+  "help-me": 0.01,
+  "schema-repair": 0.03,
+  "transcribe-extract": 0.05,
+  "doc-extract": 0.05,
 };
+
+/** Highest launch price in the catalog — the ceiling autopay should ever sign. */
+export const SURVIVAL_PRICE_MAX_USD = Math.max(...Object.values(LOUNGE_SERVICE_PRICES_USD));
 
 const NETWORK = "eip155:8453";
 const DEFAULT_MAX_CALL_USD = 0.5;
 const DEFAULT_SESSION_MAX_USD = 2.0;
-/** Fail closed — only the cheapest cashier gate unless operator opts in via env. */
-const DEFAULT_ALLOW_SLUGS = ["should-i-pay"];
 
 let sessionSpendUsd = 0;
 let cachedAccount = null;
@@ -55,12 +74,12 @@ export function normalizePrivateKey(raw) {
   return k.startsWith("0x") ? k : `0x${k}`;
 }
 
-function parseAllowSlugs() {
+export function parseAllowSlugs() {
   const raw = process.env.MCP_X402_ALLOW_SLUGS;
-  if (raw === undefined || raw === null || !raw.trim()) {
-    return new Set(DEFAULT_ALLOW_SLUGS);
-  }
-  if (raw.trim() === "*") {
+  // Default (unset) and "*" both allow the full launch-priced catalog. A
+  // wallet-configured agent autopays the safe menu out of the box; spend caps
+  // and the price ceiling — not the allowlist — are the safety boundary.
+  if (raw === undefined || raw === null || !raw.trim() || raw.trim() === "*") {
     return new Set(Object.keys(LOUNGE_SERVICE_PRICES_USD));
   }
   return new Set(
@@ -95,6 +114,7 @@ export function walletStatus() {
     session_spend_usd: sessionSpendUsd,
     max_call_usd: envNum("MCP_X402_MAX_SPEND_USD", DEFAULT_MAX_CALL_USD),
     session_max_usd: envNum("MCP_X402_SESSION_MAX_USD", DEFAULT_SESSION_MAX_USD),
+    catalog_max_usd: SURVIVAL_PRICE_MAX_USD,
     allow_slugs: [...parseAllowSlugs()],
     allow_slugs_env: process.env.MCP_X402_ALLOW_SLUGS?.trim() || null,
     allow_slugs_default: !process.env.MCP_X402_ALLOW_SLUGS?.trim(),
@@ -103,7 +123,7 @@ export function walletStatus() {
   };
 }
 
-function priceFrom402(json, slug) {
+export function priceFrom402(json, slug) {
   const fromProduct = json?.product?.priceUsd;
   if (typeof fromProduct === "number" && fromProduct > 0) return fromProduct;
   const catalog = LOUNGE_SERVICE_PRICES_USD[slug];
@@ -114,7 +134,7 @@ function priceFrom402(json, slug) {
   return null;
 }
 
-function guardPayment(slug, priceUsd) {
+export function guardPayment(slug, priceUsd) {
   const allow = parseAllowSlugs();
   if (!allow.has(slug)) {
     return {
