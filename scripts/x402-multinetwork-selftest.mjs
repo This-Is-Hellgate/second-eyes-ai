@@ -109,6 +109,39 @@ const accepts = (env) =>
   if (!poly || poly.payTo !== "0xPolyWallet") fail("poly-override", "did not use X402_POLYGON_PAY_TO");
 }
 
+// --- 4b. Deposit/Stripe flow: X402_PAYTO_OVERRIDE forces the fresh per-request
+// deposit address onto EVERY EVM accept, including Polygon, beating the static
+// X402_POLYGON_PAY_TO. Otherwise the Polygon accept points at the merchant wallet
+// and the paid retry fails lookupDepositAddress(unknown_deposit_address). ---
+{
+  const env = {
+    X402_PAYTO: "0xFreshDepositAddr",
+    X402_PAYTO_OVERRIDE: "1",
+    X402_POLYGON_ENABLED: "true",
+    X402_POLYGON_PAY_TO: "0xStaticMerchantWallet",
+    X402_POLYGON_ACTIVATION_RECORD: PROVEN_POLYGON_RECORD,
+  };
+  const rails = resolveActiveNetworks(env);
+  const base = rails.find((r) => r.network.key === "base");
+  const poly = rails.find((r) => r.network.key === "polygon");
+  if (!base || base.payTo !== "0xFreshDepositAddr") {
+    fail("payto-override", "Base accept must use the per-request deposit address");
+  }
+  if (!poly || poly.payTo !== "0xFreshDepositAddr") {
+    fail(
+      "payto-override",
+      `Polygon accept must use the per-request deposit address, not the static merchant wallet (got ${poly?.payTo})`
+    );
+  }
+  // Without the override flag the static per-rail env wins again (unchanged default).
+  const noOverride = resolveActiveNetworks({ ...env, X402_PAYTO_OVERRIDE: undefined }).find(
+    (r) => r.network.key === "polygon"
+  );
+  if (!noOverride || noOverride.payTo !== "0xStaticMerchantWallet") {
+    fail("payto-override", "without the flag, X402_POLYGON_PAY_TO must still win");
+  }
+}
+
 // --- 5. Solana is double-gated ---
 {
   // active flag but no payTo → NOT advertised

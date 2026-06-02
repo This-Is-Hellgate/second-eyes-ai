@@ -98,11 +98,31 @@ export async function buildCdpAuthHeaders(env, method, requestPath) {
   return {};
 }
 
+/**
+ * Build the CDP facilitator verify/settle routes for a configured base URL,
+ * tolerating however much of the canonical path the operator already baked in.
+ *
+ * The canonical CDP route is `<origin>/platform/v2/x402/{verify,settle}`. Operators
+ * configure FACILITATOR_URL_BASE inconsistently — some give the origin, some
+ * `<origin>/platform`, and some the fully-qualified `<origin>/platform/v2/x402`.
+ * The old builder only special-cased a trailing `/platform`; a fully-qualified base
+ * produced `<base>/platform/v2/x402/verify` → a DUPLICATED path when concatenated.
+ *
+ * We normalize by stripping any trailing `/platform`, `/platform/v2`, or
+ * `/platform/v2/x402` from the base, then always append the full canonical suffix.
+ * Returns `{ base, verifyPath, settlePath }`:
+ *   - `base` is the normalized origin-ish prefix; callers MUST concatenate against
+ *     THIS base, not the raw input, so the URL is correct regardless of input shape.
+ *   - `verifyPath`/`settlePath` always start with `/platform/...` so the JWT `uri`
+ *     claim (which requires the full CDP route) stays valid.
+ */
 export function facilitatorPaths(baseUrl) {
-  const base = baseUrl.replace(/\/$/, "");
-  const suffix = base.endsWith("/platform") ? "/v2/x402" : "/platform/v2/x402";
+  const base = String(baseUrl)
+    .replace(/\/$/, "")
+    .replace(/\/platform(\/v2(\/x402)?)?$/, "");
   return {
-    verifyPath: `${suffix}/verify`,
-    settlePath: `${suffix}/settle`,
+    base,
+    verifyPath: "/platform/v2/x402/verify",
+    settlePath: "/platform/v2/x402/settle",
   };
 }

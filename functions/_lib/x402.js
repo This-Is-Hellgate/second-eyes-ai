@@ -508,7 +508,7 @@ export async function verifyPaymentHeader(paymentHeader, requirement, env) {
   let verifyRes;
   try {
     verifyRes = await fetchWithTimeout(
-      `${base}${paths.verifyPath}`,
+      `${paths.base}${paths.verifyPath}`,
       {
         method: "POST",
         headers,
@@ -572,7 +572,7 @@ export async function settleBuiltPayment(builtBody, accept, env) {
   let settleRes;
   try {
     settleRes = await fetchWithTimeout(
-      `${base}${paths.settlePath}`,
+      `${paths.base}${paths.settlePath}`,
       {
         method: "POST",
         headers: settleHeaders,

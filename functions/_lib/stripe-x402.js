@@ -185,9 +185,13 @@ export async function handleStripeX402(context, product, payload) {
     });
 
     // Reuse the CDP 402 builder, but with the Stripe deposit address as payTo.
+    // X402_PAYTO_OVERRIDE forces this fresh deposit address onto EVERY EVM accept
+    // (incl. Polygon) so no rail keeps pointing at the static merchant wallet — the
+    // paid retry's lookupDepositAddress only knows the minted address.
     const requirements = buildProductPaymentRequirements(product, request.url, {
       ...env,
       X402_PAYTO: minted.address,
+      X402_PAYTO_OVERRIDE: "1",
     });
     if (!requirements) {
       return accessJson({ error: "x402_not_configured" }, 503, CORS);
@@ -214,7 +218,11 @@ export async function handleStripeX402(context, product, payload) {
     );
   }
 
-  const requirements = buildProductPaymentRequirements(product, request.url, { ...env, X402_PAYTO: payTo });
+  const requirements = buildProductPaymentRequirements(product, request.url, {
+    ...env,
+    X402_PAYTO: payTo,
+    X402_PAYTO_OVERRIDE: "1",
+  });
   if (!requirements) return accessJson({ error: "x402_not_configured" }, 503, CORS);
 
   const settled = await verifyAndSettlePayment(paymentHeader, requirements, env);

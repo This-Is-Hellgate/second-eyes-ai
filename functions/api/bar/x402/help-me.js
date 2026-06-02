@@ -139,11 +139,29 @@ const DISTRESS_TAXONOMY = [
     test: (t) => /tool\s?(fail|error|broke)|mcp\s?(fail|error|broke|down)|server\s?(down|unreachable|error)|connection\s?(refused|reset|fail)|timeout|502|503|504/.test(t),
   },
   {
-    signal: "payment_uncertainty",
+    // SETTLEMENT uncertainty — the agent has ALREADY sent (or thinks it sent) a
+    // payment and is unsure it confirmed. This is the only case that routes to
+    // payment-confirmation-check, whose verdict prevents a double-pay. Pre-payment
+    // phrasing is handled by payment_decision below; keep this matcher to
+    // post-send signals (tx submitted, settle pending, "did it go through?").
+    signal: "payment_settlement_uncertainty",
     meta_tool: "MT-06",
     category: "wallet_replenisher_policy_unlocker",
     escalate_if: "—",
-    test: (t) => /\b402\b|payment\s?required|about\s?to\s?pay|should\s?i\s?pay|worth\s?(it|paying)|pay\s?wall|paywall/.test(t),
+    test: (t) =>
+      /already\s?(paid|sent|charged)|did\s?(it|the\s?payment|my\s?payment)\s?(go\s?through|settle|confirm)|payment\s?(pending|submitted|confirm|settl)|settle(d|ment)?\s?(status|pending|fail|uncertain)|tx\s?(pending|submitted|confirm)|double[\s_-]?(pay|charge)|idempot|receipt|\b409\b/.test(t),
+  },
+  {
+    // PRE-payment decision — the agent is deciding WHETHER to pay and has NOT yet
+    // sent anything ("about to pay", "should I pay", "is it worth it", a fresh 402
+    // / paywall). This must route to should-i-pay (the cashier decision tree), NOT
+    // payment-confirmation-check — recommending a settlement check before any
+    // payment exists is wrong and confuses the agent.
+    signal: "payment_decision",
+    meta_tool: "MT-06",
+    category: "wallet_replenisher_policy_unlocker",
+    escalate_if: "—",
+    test: (t) => /\b402\b|payment\s?required|about\s?to\s?pay|should\s?i\s?pay|worth\s?(it|paying)|pay\s?wall|paywall|whether\s?to\s?pay|is\s?it\s?worth/.test(t),
   },
   {
     signal: "autonomous_recovery_failed",
@@ -175,11 +193,17 @@ const DOOR_BY_SIGNAL = {
     price_usd: 0.03,
     why: "Running out of context/token budget — context-pressure returns a deterministic band (continue/compact/reconstruct) from your remaining figure.",
   },
-  payment_uncertainty: {
+  payment_settlement_uncertainty: {
     slug: "payment-confirmation-check",
     path: "/api/bar/x402/payment-confirmation-check",
     price_usd: 0.01,
     why: "Already attempted a settlement and unsure it confirmed — payment-confirmation-check verdicts confirmed/pending/failed so you do not double-pay.",
+  },
+  payment_decision: {
+    slug: "should-i-pay",
+    path: "/api/bar/x402/should-i-pay",
+    price_usd: 0.01,
+    why: "Deciding WHETHER to pay (not yet sent) — should-i-pay runs the cashier decision tree (proof first, free sample, default) so you pay or skip deliberately.",
   },
 };
 
@@ -261,7 +285,7 @@ const PRODUCT = {
   access: "paid",
   oneTime: true,
   description:
-    "help-me is the canonical meta-tool for agents facing imminent failure; 402 is one condition, not the whole product. The broad agent-distress door for stuck autonomous agents — sensing looping, schema mismatch, context pressure/collapse, process crash or checkpoint loss, handoff failure, wallet/spend-policy distress, hallucination/grounding risk, auth failure, tool/MCP failure, browser/sandbox loss, or payment/402 uncertainty? POST whatever state you can describe and get back: a named distress_class (research taxonomy: loop_detected, schema_mismatch, context_pressure, process_crash, handoff_failure, wallet_cap_exhausted, spend_policy_breach, hallucination_risk, auth_failure, tool_failure, sandbox_lost, payment_uncertainty), the single survival pack to call next, stop/preserve/continue guidance, an escalate_if line, and a price estimate. When the signal is schema_mismatch, context_pressure, or payment_uncertainty, the response also carries a recommended_door pointing at the deep single-concern route (schema-repair, context-pressure, payment-confirmation-check) that returns a verdict for exactly that problem. Every recommendation is rewritten to a session-less /api/bar/x402/{slug} route a one-shot x402 agent can pay and reach (no /api/bar/enter session required).",
+    "help-me is the canonical meta-tool for agents facing imminent failure; 402 is one condition, not the whole product. The broad agent-distress door for stuck autonomous agents — sensing looping, schema mismatch, context pressure/collapse, process crash or checkpoint loss, handoff failure, wallet/spend-policy distress, hallucination/grounding risk, auth failure, tool/MCP failure, browser/sandbox loss, or payment/402 uncertainty? POST whatever state you can describe and get back: a named distress_class (research taxonomy: loop_detected, schema_mismatch, context_pressure, process_crash, handoff_failure, wallet_cap_exhausted, spend_policy_breach, hallucination_risk, auth_failure, tool_failure, sandbox_lost, payment_decision, payment_settlement_uncertainty), the single survival pack to call next, stop/preserve/continue guidance, an escalate_if line, and a price estimate. When the signal is schema_mismatch, context_pressure, payment_decision, or payment_settlement_uncertainty, the response also carries a recommended_door pointing at the deep single-concern route (schema-repair, context-pressure, should-i-pay for a pre-payment decision, payment-confirmation-check for post-payment settlement uncertainty) that returns a verdict for exactly that problem. Every recommendation is rewritten to a session-less /api/bar/x402/{slug} route a one-shot x402 agent can pay and reach (no /api/bar/enter session required).",
   bazaarOutputSchema: {
     input: {
       type: "http",
@@ -308,7 +332,7 @@ const PRODUCT = {
         escalate_if: ">3 recovery attempts — autonomous loop-break has failed, escalate",
         recommended_door: null,
         recommended_doors: [],
-        note: "Research taxonomy (MAST + MT-01..MT-09 meta-tool map). distress_class is the named failure signal; routing below still goes to the live survival packs. 402 / payment is one signal of many. recommended_door, when present (schema_mismatch→schema-repair, context_pressure→context-pressure, payment_uncertainty→payment-confirmation-check), is a deep session-less x402 door returning a stop/preserve/continue verdict for exactly that signal.",
+        note: "Research taxonomy (MAST + MT-01..MT-09 meta-tool map). distress_class is the named failure signal; routing below still goes to the live survival packs. 402 / payment is one signal of many. recommended_door, when present (schema_mismatch→schema-repair, context_pressure→context-pressure, payment_decision→should-i-pay, payment_settlement_uncertainty→payment-confirmation-check), is a deep session-less x402 door returning a stop/preserve/continue verdict for exactly that signal.",
       },
       estimated_cost_usd: 0.03,
       price_usd: 0.03,
@@ -353,19 +377,25 @@ export async function onRequestGet(context) {
 }
 
 export async function onRequestPost(context) {
-  let input;
-  try {
-    const data = await context.request.json();
-    input = data && typeof data === "object" ? data : {};
-  } catch {
-    return accessJson(
-      {
-        error: "invalid_json",
-        note: "POST a JSON body describing your distress: { state, goal, last_tool, error, attempts, remaining_context, last_success, risk }. All fields optional.",
-      },
-      400,
-      { "Access-Control-Allow-Origin": "*" }
-    );
+  // Every help-me field is optional, so a bodyless POST is a valid distress call
+  // ("just route me") and MUST reach the x402 paywall (402), not bounce as 400.
+  // An empty body → {}. Only a NON-empty body that fails to parse is malformed → 400.
+  const raw = (await context.request.text()).trim();
+  let input = {};
+  if (raw) {
+    try {
+      const data = JSON.parse(raw);
+      input = data && typeof data === "object" ? data : {};
+    } catch {
+      return accessJson(
+        {
+          error: "invalid_json",
+          note: "POST a JSON body describing your distress: { state, goal, last_tool, error, attempts, remaining_context, last_success, risk }. All fields optional — an empty body is fine.",
+        },
+        400,
+        { "Access-Control-Allow-Origin": "*" }
+      );
+    }
   }
   return handle(context, input);
 }
@@ -431,7 +461,7 @@ function normalize(input = {}) {
  * looping AND under context pressure. Pure read of the payload — no routing
  * decision is made here; triageResponse owns that.
  */
-function classifyDistress(input = {}, origin = "") {
+export function classifyDistress(input = {}, origin = "") {
   const text = [
     input.state,
     input.error,

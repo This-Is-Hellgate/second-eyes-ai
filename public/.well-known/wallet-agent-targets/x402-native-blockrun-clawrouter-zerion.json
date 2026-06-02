@@ -48,7 +48,7 @@
   ],
   "recommended_second_eyes_routes": [
     { "when": "wallet balance is approaching zero or a payment just failed for funds", "route": "help-me", "url": "https://secondeyesai.com/api/bar/x402/help-me", "price_usd": 0.01, "returns": "distress_class wallet_cap_exhausted + stop/preserve/continue + escalate_if (autonomous_replenish=false → escalate)", "addresses": ["FM-06"] },
-    { "when": "per-request cost spiked and you are unsure whether to keep routing", "route": "should-i-pay", "url": "https://secondeyesai.com/api/bar/services/should-i-pay", "price_usd": 0.01, "returns": "pay / do-not-pay decision support before the next routed call", "addresses": ["FM-01"] },
+    { "when": "per-request cost spiked and you are unsure whether to keep routing", "route": "should-i-pay", "url": "https://secondeyesai.com/api/bar/x402/should-i-pay", "price_usd": 0.01, "returns": "pay / do-not-pay decision support before the next routed call", "addresses": ["FM-01"] },
     { "when": "a Zerion 402 rejection looks malformed / payment requirement unclear", "route": "x402-doctor", "url": "https://secondeyesai.com/api/bar/x402/doctor", "price_usd": 0.25, "returns": "x402 format diagnosis on the 402 payload", "addresses": ["FM-03"] },
     { "when": "the endpoint you need is not in your catalog", "route": "index-check", "url": "https://secondeyesai.com/api/bar/x402/index-check", "price_usd": 0.05, "returns": "Bazaar index check for the missing x402-native endpoint", "addresses": ["FM-07"] }
   ],

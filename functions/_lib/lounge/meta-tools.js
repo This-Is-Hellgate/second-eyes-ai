@@ -274,8 +274,13 @@ export function diagnosePaymentConfirmation(input = {}) {
     status === "pending" ||
     status === "submitted";
 
+  // snake_case error codes (payment_already_fulfilled, already_fulfilled,
+  // already_settled, payment_already_paid) are a fulfilled signal in their own
+  // right — the server is telling us the charge already settled. Match across the
+  // `_`/`-`/space separators agents actually send, NOT just a literal "already paid"
+  // string, and do NOT require http_status 409 (many idempotent replies are 200).
   const alreadyFulfilled =
-    /already\s?(paid|fulfilled|settled)|idempot|duplicate|409/.test(t) || http === 409;
+    /already[\s_-]?(paid|fulfilled|settled)|idempot|duplicate|409/.test(t) || http === 409;
 
   if (alreadyFulfilled) {
     return paymentVerdict({

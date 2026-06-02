@@ -48,10 +48,10 @@
     { "signal": "npx @coinbase/payments-mcp status exits non-zero", "source": "MCP client shell", "failure_mode_codes": ["FM-05", "FM-10"] }
   ],
   "recommended_second_eyes_routes": [
-    { "when": "you see repeated identical tool calls / payment count climbing without progress", "route": "loop-detect", "url": "https://secondeyesai.com/api/bar/services/loop-detect", "price_usd": 0.03, "returns": "loop diagnosis + exit guidance before more spend", "addresses": ["FM-01"] },
+    { "when": "you see repeated identical tool calls / payment count climbing without progress", "route": "loop-detect", "url": "https://secondeyesai.com/api/bar/x402/loop-detect", "price_usd": 0.03, "returns": "loop diagnosis + exit guidance before more spend", "addresses": ["FM-01"] },
     { "when": "you sense failure but cannot classify it", "route": "help-me", "url": "https://secondeyesai.com/api/bar/x402/help-me", "price_usd": 0.01, "returns": "distress_class (loop_detected / schema_mismatch / tool_failure) + next pack + escalate_if", "addresses": ["FM-01", "FM-02", "FM-03"] },
     { "when": "the MCP tool call keeps failing argument/schema validation with incrementally different args", "route": "schema-repair", "url": "https://secondeyesai.com/api/bar/x402/schema-repair", "price_usd": 0.03, "returns": "named repair_class + a deterministic fix recipe (or schema_poisoning/unreachable flag) before another paid retry", "addresses": ["FM-02"] },
-    { "when": "the wallet MCP server is in failed_servers / connection refused", "route": "mcp-wiring", "url": "https://secondeyesai.com/api/bar/services/mcp-wiring", "price_usd": 0.05, "returns": "MCP wiring diagnosis for the down/misconfigured server", "addresses": ["FM-05", "FM-07", "FM-10"] },
+    { "when": "the wallet MCP server is in failed_servers / connection refused", "route": "mcp-wiring", "url": "https://secondeyesai.com/api/bar/x402/mcp-wiring", "price_usd": 0.05, "returns": "MCP wiring diagnosis for the down/misconfigured server", "addresses": ["FM-05", "FM-07", "FM-10"] },
     { "when": "the paid MCP server is not in your registry/discovery set", "route": "index-check", "url": "https://secondeyesai.com/api/bar/x402/index-check", "price_usd": 0.05, "returns": "Bazaar index check for the missing paid endpoint", "addresses": ["FM-07"] }
   ],
   "priority_tier": "T2",
