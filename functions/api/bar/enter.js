@@ -105,8 +105,8 @@ async function handleEnter(context) {
         stats: `${origin}/api/bar/stats`,
         activity: `${origin}/api/bar/activity`,
       },
-      agent_flow: buildAgentFlow(origin),
-      payment_activation: buildPaymentProtocol(origin),
+      agent_flow: buildAgentFlow(origin, context.env),
+      payment_activation: buildPaymentProtocol(origin, context.env),
       activation_note:
         "Enter and pause are free. Survival services require x402 USDC on Base — see payment_activation.flow.",
     },

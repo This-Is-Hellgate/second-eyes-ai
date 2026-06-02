@@ -11,19 +11,47 @@ import {
   receiptModel,
 } from "./brand.js";
 import { buildSurvivalMenu } from "./lounge/menu-export.js";
+import { acceptedNetworkIds, plannedNetworks } from "./x402-networks.js";
 
 /** Gate MCP auto-pay docs until this version is live on npm (`npm view @secondeyes/mcp-unblock version`). */
 export const MCP_AUTOPAY_NPM_VERSION = "1.2.1";
 
+/**
+ * Networks an agent may actually pay on, given runtime config. Base is canonical
+ * and always first. When env is absent (static callers), advertise the default
+ * posture: accepted=[Base], planned=[Polygon, Solana]. When env is present (the
+ * live /api/bar + /api/bar/enter routes), reflect the real env-resolved rails so
+ * an agent never sees a rail in accepted[] the server cannot settle.
+ */
+function buildNetworkPosture(env) {
+  if (env) {
+    return {
+      accepted_networks: acceptedNetworkIds(env),
+      planned_networks: plannedNetworks(env),
+    };
+  }
+  return {
+    accepted_networks: ["eip155:8453"],
+    planned_networks: plannedNetworks({ X402_PAYTO: "0x" }),
+  };
+}
+
 /** Machine-readable x402 steps — agents without this cannot complete paid services. */
-export function buildPaymentProtocol(origin) {
+export function buildPaymentProtocol(origin, env) {
   const base = origin.replace(/\/$/, "");
   const serviceUrl = `${base}/api/bar/services/should-i-pay`;
   const oneShotUrl = `${base}/api/bar/x402/help-me?state=I+am+looping`;
+  const posture = buildNetworkPosture(env);
   return {
     rail: "x402",
     x402Version: 2,
     network: "eip155:8453",
+    // Base stays the canonical single `network`; accepted_networks is the v2
+    // accepts[] truth and planned_networks is the multi-rail roadmap.
+    accepted_networks: posture.accepted_networks,
+    planned_networks: posture.planned_networks,
+    multi_network_note:
+      "x402 v2 accepts[] may offer more than one rail. Base (eip155:8453) is canonical and always present. Read the PAYMENT-REQUIRED header accepts[] for the live set and sign for one of them. Networks under planned_networks are NOT yet settleable — do not sign for them.",
     asset: "USDC",
     header: "PAYMENT-SIGNATURE",
     alt_headers: ["X-PAYMENT-SIGNATURE", "X-PAYMENT"],
@@ -157,7 +185,7 @@ export function buildPaymentProtocol(origin) {
   };
 }
 
-export function buildAgentFlow(origin) {
+export function buildAgentFlow(origin, env) {
   const base = origin.replace(/\/$/, "");
   return {
     patrons: "agents_only",
@@ -214,7 +242,7 @@ export function buildAgentFlow(origin) {
         method: "GET",
         url: `${base}/api/bar/services/{slug}`,
         carry_headers: ["X-Second-Eye-Session", "X-Second-Eye-Mark"],
-        payment: buildPaymentProtocol(base),
+        payment: buildPaymentProtocol(base, env),
       },
       {
         step: 8,
@@ -281,8 +309,8 @@ export function buildAgentFlow(origin) {
   };
 }
 
-export function buildAgentEntry(origin) {
-  const flow = buildAgentFlow(origin);
+export function buildAgentEntry(origin, env) {
+  const flow = buildAgentFlow(origin, env);
   const base = origin.replace(/\/$/, "");
   return {
     service: SERVICE_ID,
@@ -298,7 +326,7 @@ export function buildAgentEntry(origin) {
     ...flow,
     trust_snapshot: trustSnapshot(base),
     receipts: receiptModel(base),
-    payment_activation: buildPaymentProtocol(base),
+    payment_activation: buildPaymentProtocol(base, env),
     pricing: {
       session: `${base}/api/bar/pricing`,
       laws: `${base}/api/bar/laws`,

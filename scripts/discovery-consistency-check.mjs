@@ -173,6 +173,57 @@ function checkPackages(where, packages) {
   }
 }
 
+// --- MULTI-NETWORK GUARD -------------------------------------------------------
+// Base (eip155:8453) must always be the canonical advertised rail, and a static
+// discovery surface must NEVER list a rail under accepted_networks that the server
+// cannot settle. Solana is settle-unverified on our request shape, so it may only
+// ever appear under planned_networks in static files — never accepted_networks.
+{
+  const SOLANA_CAIP2 = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
+
+  // Normalize a planned_networks entry to its CAIP-2 id (entries may be a bare
+  // string id or an object { network, ... }).
+  const plannedId = (p) => (typeof p === "string" ? p : p?.network);
+
+  function checkNetworkBlock(where, block) {
+    if (!block) return; // some surfaces omit a payment block entirely — covered elsewhere
+    const accepted = block.accepted_networks;
+    const planned = (block.planned_networks || []).map(plannedId).filter(Boolean);
+
+    if (accepted) {
+      if (!accepted.includes(NETWORK)) {
+        fail(where, `accepted_networks ${JSON.stringify(accepted)} missing canonical ${NETWORK}`);
+      }
+      if (accepted[0] !== NETWORK) {
+        fail(where, `accepted_networks[0] ${accepted[0]} != canonical ${NETWORK} (Base must be first)`);
+      }
+      if (accepted.includes(SOLANA_CAIP2)) {
+        fail(where, "lists Solana under accepted_networks — Solana is settle-unverified and must stay in planned_networks only");
+      }
+      // A rail cannot be both accepted and planned.
+      for (const id of planned) {
+        if (accepted.includes(id)) fail(where, `network ${id} is in BOTH accepted_networks and planned_networks`);
+      }
+    }
+  }
+
+  const mcpJson = readJson("public/.well-known/mcp.json");
+  checkNetworkBlock("mcp.json (payment)", mcpJson.payment);
+
+  const agentCard = readJson("public/.well-known/agent-card.json");
+  checkNetworkBlock("agent-card.json (how_to_pay)", agentCard.how_to_pay);
+  checkNetworkBlock("agent-card.json (survival_menu.payment)", agentCard.survival_menu?.payment);
+
+  const menuJsonNet = readJson("public/.well-known/menu.json");
+  checkNetworkBlock("menu.json (payment)", menuJsonNet.payment);
+
+  const serverCard = readJson("public/.well-known/mcp/server-card.json");
+  checkNetworkBlock("server-card.json (how_to_pay)", serverCard.how_to_pay);
+
+  const helpMe = readJson("public/.well-known/help-me.json");
+  checkNetworkBlock("help-me.json (payment_flow)", helpMe.payment_flow);
+}
+
 // --- PRICE DRIFT GUARD ---------------------------------------------------------
 // Canonical survival prices live in functions/_lib/lounge/constants.js. The static
 // discovery surfaces (menu.json, mcp.json, agent-card.json) duplicate them and the

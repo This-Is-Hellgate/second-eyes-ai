@@ -9,34 +9,30 @@ import {
 } from "./resilience.js";
 import { buildCdpAuthHeaders, facilitatorPaths } from "./cdp-auth.js";
 import { CANONICAL_HOST } from "./brand.js";
+import {
+  resolveActiveNetworks,
+  buildAcceptEntry,
+  selectAcceptForPayload,
+} from "./x402-networks.js";
 
 const x402Circuit = () => getCircuit("x402_facilitator", { failureThreshold: 5, openMs: 30_000 });
 
 export const X402_EXTENSION_URI = "https://github.com/google-a2a/a2a-x402/v0.1";
-
-/** USDC on Base (6 decimals). */
-const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913";
 
 export function usdToUsdcMicros(usd) {
   return String(Math.round(usd * 1_000_000));
 }
 
 /**
- * x402 v2 requires CAIP-2 network identifiers (eip155:8453), not legacy "base".
- * CDP Bazaar only indexes v2-shaped 402 responses. X402_NETWORK may still be set
- * to a legacy value in the environment, so normalize defensively.
+ * Build the v2 accepts[] for this env. Base (eip155:8453) is always accepts[0];
+ * additional rails (Polygon, Solana) append only when an operator has configured
+ * AND gated them — see functions/_lib/x402-networks.js. Returns null when no
+ * payTo is configured at all (x402 not set up).
  */
-const NETWORK_CAIP2 = {
-  base: "eip155:8453",
-  "base-mainnet": "eip155:8453",
-  "base-sepolia": "eip155:84532",
-  "eip155:8453": "eip155:8453",
-  "eip155:84532": "eip155:84532",
-};
-
-function caip2Network(env) {
-  const raw = String(env.X402_NETWORK || "base").toLowerCase();
-  return NETWORK_CAIP2[raw] || "eip155:8453";
+function buildAccepts(amount, env) {
+  const rails = resolveActiveNetworks(env);
+  if (rails.length === 0) return null;
+  return rails.map((rail) => buildAcceptEntry(rail, amount));
 }
 
 /** Synthesize a minimal Bazaar schema so every paid product is discoverable. */
@@ -118,25 +114,15 @@ export function parseExtensionResponses(header) {
 }
 
 export function buildProductPaymentRequirements(product, requestUrl, env) {
-  const payTo = env.X402_PAYTO;
-  if (!payTo) return null;
-
-  const network = caip2Network(env);
   const resource = canonicalResource(requestUrl);
   const amount = usdToUsdcMicros(product.priceUsd);
 
   // x402 v2: accepts[] entries stay clean (CDP Bazaar indexer rejects v1-style
   // resource/description/mimeType/outputSchema inside accepts). Discovery
   // metadata lives top-level; only EIP-712 domain (name/version) goes in extra.
-  const accept = {
-    scheme: "exact",
-    network,
-    asset: USDC_BASE,
-    amount,
-    payTo,
-    maxTimeoutSeconds: 600,
-    extra: { name: "USD Coin", version: "2" },
-  };
+  // Base is accepts[0]; extra rails append only when configured + gated.
+  const accepts = buildAccepts(amount, env);
+  if (!accepts) return null;
 
   const requirements = {
     x402Version: 2,
@@ -144,7 +130,7 @@ export function buildProductPaymentRequirements(product, requestUrl, env) {
     description: product.description,
     mimeType: "application/json",
     maxAmountRequired: amount,
-    accepts: [accept],
+    accepts,
   };
 
   const schema = product.bazaarOutputSchema || defaultBazaarSchema(product);
@@ -246,12 +232,11 @@ export function payment402Headers(requirements, error, extra = {}) {
 }
 
 export function buildPaymentRequirements(plan, requestUrl, env) {
-  const payTo = env.X402_PAYTO;
-  if (!payTo) return null;
-
-  const network = caip2Network(env);
   const resource = canonicalResource(requestUrl);
   const amount = usdToUsdcMicros(plan.priceUsd);
+
+  const accepts = buildAccepts(amount, env);
+  if (!accepts) return null;
 
   return {
     x402Version: 2,
@@ -259,17 +244,7 @@ export function buildPaymentRequirements(plan, requestUrl, env) {
     description: `Second Eyes bar tab (${plan.label}) — full MCP context library for agents`,
     mimeType: "application/json",
     maxAmountRequired: amount,
-    accepts: [
-      {
-        scheme: "exact",
-        network,
-        asset: USDC_BASE,
-        amount,
-        payTo,
-        maxTimeoutSeconds: 600,
-        extra: { name: "USD Coin", version: "2" },
-      },
-    ],
+    accepts,
   };
 }
 
@@ -320,7 +295,9 @@ export function buildFacilitatorRequestBody(paymentHeader, requirement) {
   const paymentPayload = parsePaymentPayloadFromHeader(paymentHeader);
   if (!paymentPayload) return { ok: false, error: "invalid_payment_header" };
 
-  const accept = requirement.accepts?.[0];
+  // Select the accept the buyer actually signed for — with a multi-rail accepts[]
+  // a Polygon/Solana signer must NOT be verified against the Base accept[0].
+  const accept = selectAcceptForPayload(requirement.accepts, paymentPayload);
   if (!accept) return { ok: false, error: "missing_payment_requirements" };
 
   const x402Version =
@@ -350,6 +327,7 @@ export function buildFacilitatorRequestBody(paymentHeader, requirement) {
 
   return {
     ok: true,
+    accept,
     body: { x402Version, paymentPayload: enrichedPayload, paymentRequirements },
   };
 }
@@ -405,7 +383,7 @@ export async function verifyPaymentHeader(paymentHeader, requirement, env) {
   const built = buildFacilitatorRequestBody(paymentHeader, requirement);
   if (!built.ok) return { ok: false, error: built.error, stage: "parse" };
 
-  const accept = requirement.accepts[0];
+  const accept = built.accept;
   const base = facilitator.replace(/\/$/, "");
   const paths = facilitatorPaths(base);
 

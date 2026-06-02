@@ -7,6 +7,12 @@ compatibility_date = "2026-05-26"
 # ACCESS_TOKEN_SECRET       — HMAC key for issued access JWTs (auto-generate via scripts/push-coinbase-secrets.mjs)
 # X402_PAYTO                — Base wallet for USDC (A4A/x402)
 # X402_FACILITATOR_URL      — https://api.cdp.coinbase.com/platform
+# Multi-network x402 (optional, opt-in — see docs/multi-network-x402.md). Base is
+# always canonical accepts[0]; extra rails append only when gated:
+# X402_POLYGON_ENABLED      — "1" to advertise+accept Polygon (eip155:137) USDC (EVM, reuses X402_PAYTO)
+# X402_POLYGON_PAY_TO       — optional dedicated Polygon merchant wallet (defaults to X402_PAYTO)
+# X402_SOLANA_PAY_TO        — Solana USDC receive address (base58); SOLANA_PAY_TO also accepted
+# X402_SOLANA_ACTIVE        — "1" to advertise+accept Solana; double-gated with X402_SOLANA_PAY_TO
 # CDP_API_KEY_NAME          — organizations/.../apiKeys/... from CDP portal
 # CDP_API_KEY_SECRET        — EC private key PEM from CDP portal
 # CDP_API_KEY               — legacy single bearer (optional fallback)
