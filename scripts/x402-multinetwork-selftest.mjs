@@ -20,6 +20,7 @@ import {
 import {
   resolveActiveNetworks,
   acceptedNetworkIds,
+  x402ConfigWarnings,
 } from "../functions/_lib/x402-networks.js";
 
 const failures = [];
@@ -135,6 +136,62 @@ const accepts = (env) =>
     if (built.body.paymentRequirements.network !== wantNetwork) {
       fail("facilitator", `${label}: paymentRequirements.network != ${wantNetwork}`);
     }
+  }
+}
+
+// --- 6b. A declared rail NOT in accepts[] is REJECTED, never routed to Base ---
+{
+  // Base-only env, but buyer signs for Polygon (which is NOT advertised here).
+  // The old behavior fell back to accepts[0] (Base) and shipped a Polygon
+  // signature to the Base verify → 402 with no receipt. It must hard-reject.
+  const env = { X402_PAYTO: "0xW" }; // Base only — Polygon NOT enabled
+  const req = buildProductPaymentRequirements(product, URL_UNDER_TEST, env);
+  const header = (payload) => Buffer.from(JSON.stringify(payload)).toString("base64");
+
+  const built = buildFacilitatorRequestBody(
+    header({ x402Version: 2, accepted: { network: POLY } }),
+    req
+  );
+  if (built.ok) {
+    fail("hard-reject", "Polygon payload accepted against a Base-only accepts[] (should reject)");
+  }
+  if (built.error !== "unsupported_payment_network") {
+    fail("hard-reject", `expected unsupported_payment_network, got ${built.error}`);
+  }
+  if (built.declaredNetwork !== POLY) {
+    fail("hard-reject", `declaredNetwork should be ${POLY}, got ${built.declaredNetwork}`);
+  }
+  eq("hard-reject offered", built.offeredNetworks, [BASE]);
+
+  // Top-level network form is rejected too.
+  const built2 = buildFacilitatorRequestBody(header({ x402Version: 2, network: SOL }), req);
+  if (built2.ok || built2.error !== "unsupported_payment_network") {
+    fail("hard-reject", "top-level unknown network not rejected");
+  }
+}
+
+// --- 6c. Config warnings: enabled flag without a payTo is surfaced ---
+{
+  // Polygon flag on, but NO payTo anywhere → rail can't activate → warn.
+  const env = { X402_POLYGON_ENABLED: "1" };
+  const warns = x402ConfigWarnings(env);
+  if (!warns.some((w) => w.code === "polygon_enabled_but_inactive")) {
+    fail("config-warn", "expected polygon_enabled_but_inactive when flag set without payTo");
+  }
+  // Clean config → no warnings.
+  if (x402ConfigWarnings({ X402_PAYTO: "0xW" }).length !== 0) {
+    fail("config-warn", "Base-only clean config should produce no warnings");
+  }
+  if (x402ConfigWarnings({ X402_PAYTO: "0xW", X402_POLYGON_ENABLED: "1" }).length !== 0) {
+    fail("config-warn", "Polygon enabled WITH X402_PAYTO should be clean (reuses Base payTo)");
+  }
+  // Solana active flag without a Solana payTo → warn.
+  if (
+    !x402ConfigWarnings({ X402_PAYTO: "0xW", X402_SOLANA_ACTIVE: "1" }).some(
+      (w) => w.code === "solana_active_but_inactive"
+    )
+  ) {
+    fail("config-warn", "expected solana_active_but_inactive when active without Solana payTo");
   }
 }
 

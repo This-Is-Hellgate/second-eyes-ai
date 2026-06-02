@@ -53,6 +53,28 @@ export async function checkX402PaymentLogTable(env) {
   return { exists: Boolean(row?.name), table: row?.name || null };
 }
 
+/**
+ * Compact, queryable failure string for the D1 failure_reason column. Folds the
+ * CDP diagnostic fields (stage, invalidReason, facilitatorStatus, declared rail)
+ * into one bounded string so the payment-attempts audit trail explains WHY a
+ * verify failed — without adding columns (the runtime D1 bootstrap is
+ * CREATE TABLE IF NOT EXISTS only, so a new column would need a real migration).
+ */
+export function composeFailureReason(result, fallback) {
+  if (!result) return fallback;
+  const base =
+    result.error || result.invalidReason || result.stage || fallback;
+  const tags = [];
+  if (result.stage && result.stage !== base) tags.push(`stage=${result.stage}`);
+  if (result.invalidReason && result.invalidReason !== base) {
+    tags.push(`invalidReason=${result.invalidReason}`);
+  }
+  if (result.facilitatorStatus) tags.push(`status=${result.facilitatorStatus}`);
+  if (result.declaredNetwork) tags.push(`network=${result.declaredNetwork}`);
+  const composed = tags.length ? `${base} (${tags.join(" ")})` : String(base);
+  return composed.slice(0, 500);
+}
+
 /** Public-safe wallet display: first 6 + last 4 chars. */
 export function truncateWallet(wallet) {
   if (!wallet) return null;
@@ -171,18 +193,8 @@ export async function recordX402PaymentAttempt(env, paymentHeader, meta, verifyR
         ? null
         : settleOk
           ? null
-          : String(
-              settleResult?.error ||
-                settleResult?.invalidReason ||
-                settleResult?.stage ||
-                "settle_failed"
-            ).slice(0, 500)
-      : String(
-          verifyResult?.error ||
-            verifyResult?.invalidReason ||
-            verifyResult?.stage ||
-            "verify_failed"
-        ).slice(0, 500));
+          : composeFailureReason(settleResult, "settle_failed")
+      : composeFailureReason(verifyResult, "verify_failed"));
 
   const record = {
     timestamp: nowIso(),

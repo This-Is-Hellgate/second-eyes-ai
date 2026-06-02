@@ -15,8 +15,10 @@ on:
       - "packages/secondeye-mcp/src/index.js"
       - "scripts/discovery-consistency-check.mjs"
       - "scripts/x402-multinetwork-selftest.mjs"
+      - "scripts/x402-verify-logging-selftest.mjs"
       - "functions/_lib/x402.js"
       - "functions/_lib/x402-networks.js"
+      - "functions/_lib/x402-payment-log.js"
       - "functions/_lib/agent-entry.js"
       - "scripts/mark-lineage-selftest.mjs"
       - "scripts/mark-lineage-smoke.mjs"
@@ -56,6 +58,9 @@ jobs:
 
       - name: Run x402 multi-network self-test
         run: node scripts/x402-multinetwork-selftest.mjs
+
+      - name: Run x402 verify-logging self-test
+        run: node scripts/x402-verify-logging-selftest.mjs
 
       - name: Run work-mark lineage self-test
         run: node scripts/mark-lineage-selftest.mjs

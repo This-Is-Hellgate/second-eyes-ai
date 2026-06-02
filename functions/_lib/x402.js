@@ -13,6 +13,7 @@ import {
   resolveActiveNetworks,
   buildAcceptEntry,
   selectAcceptForPayload,
+  payloadNetwork,
 } from "./x402-networks.js";
 
 const x402Circuit = () => getCircuit("x402_facilitator", { failureThreshold: 5, openMs: 30_000 });
@@ -298,7 +299,22 @@ export function buildFacilitatorRequestBody(paymentHeader, requirement) {
   // Select the accept the buyer actually signed for — with a multi-rail accepts[]
   // a Polygon/Solana signer must NOT be verified against the Base accept[0].
   const accept = selectAcceptForPayload(requirement.accepts, paymentPayload);
-  if (!accept) return { ok: false, error: "missing_payment_requirements" };
+  if (!accept) {
+    // Distinguish "buyer named a rail we don't advertise" from "no accepts at all"
+    // so the failure log/diagnostics show which rail was signed for. Verifying a
+    // declared-but-unmatched payload against accepts[0] is the multi-rail trap.
+    const declared = payloadNetwork(paymentPayload);
+    if (declared) {
+      const offered = (requirement.accepts || []).map((a) => a.network);
+      return {
+        ok: false,
+        error: "unsupported_payment_network",
+        declaredNetwork: declared,
+        offeredNetworks: offered,
+      };
+    }
+    return { ok: false, error: "missing_payment_requirements" };
+  }
 
   const x402Version =
     paymentPayload.x402Version ?? requirement.x402Version ?? 2;
@@ -349,6 +365,41 @@ function facilitatorVerifyError(verify) {
   );
 }
 
+/**
+ * A CDP /verify error body is small and useful for diagnosis (invalidReason,
+ * status, payer) but may echo back signature material. Keep only the diagnostic
+ * fields, drop anything that looks like a signature/authorization, and bound the
+ * size so an unexpected body can never blow up a log line.
+ */
+const REDACTED = "[redacted]";
+const SECRET_KEY_RE = /signature|authorization|secret|privatekey|private_key|seed|mnemonic/i;
+
+export function redactFacilitatorBody(body) {
+  if (!body || typeof body !== "object") return body ?? null;
+  const out = {};
+  for (const [k, v] of Object.entries(body)) {
+    if (SECRET_KEY_RE.test(k)) {
+      out[k] = REDACTED;
+    } else if (v && typeof v === "object") {
+      out[k] = REDACTED;
+    } else if (typeof v === "string") {
+      out[k] = v.length > 200 ? `${v.slice(0, 200)}…` : v;
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+/** One structured, secret-free log line per verify failure — fires for EVERY caller. */
+function logVerifyFailure(fields) {
+  try {
+    console.log(JSON.stringify({ event: "x402_verify_failed", ...fields }));
+  } catch {
+    console.log(JSON.stringify({ event: "x402_verify_failed", error: "log_serialize_failed" }));
+  }
+}
+
 import { recordX402PaymentAttempt } from "./x402-payment-log.js";
 
 export async function verifyAndSettlePayment(paymentHeader, requirement, env, logMeta = {}) {
@@ -381,7 +432,25 @@ export async function verifyPaymentHeader(paymentHeader, requirement, env) {
   }
 
   const built = buildFacilitatorRequestBody(paymentHeader, requirement);
-  if (!built.ok) return { ok: false, error: built.error, stage: "parse" };
+  if (!built.ok) {
+    if (built.error === "unsupported_payment_network") {
+      logVerifyFailure({
+        stage: "select",
+        error: built.error,
+        declaredNetwork: built.declaredNetwork,
+        offeredNetworks: built.offeredNetworks,
+      });
+      return {
+        ok: false,
+        error: built.error,
+        stage: "select",
+        invalidReason: "unsupported_payment_network",
+        declaredNetwork: built.declaredNetwork,
+        offeredNetworks: built.offeredNetworks,
+      };
+    }
+    return { ok: false, error: built.error, stage: "parse" };
+  }
 
   const accept = built.accept;
   const base = facilitator.replace(/\/$/, "");
@@ -418,13 +487,22 @@ export async function verifyPaymentHeader(paymentHeader, requirement, env) {
 
   const verify = await verifyRes.json().catch(() => ({}));
   if (facilitatorVerifyFailed(verifyRes, verify)) {
+    const redacted = redactFacilitatorBody(verify);
+    logVerifyFailure({
+      stage: "verify",
+      network: accept.network,
+      facilitatorStatus: verifyRes.status,
+      invalidReason: verify.invalidReason || null,
+      facilitatorBody: redacted,
+    });
     return {
       ok: false,
       error: facilitatorVerifyError(verify),
       stage: "verify",
+      network: accept.network,
       invalidReason: verify.invalidReason || null,
       facilitatorStatus: verifyRes.status,
-      facilitatorResponse: verify,
+      facilitatorResponse: redacted,
     };
   }
 

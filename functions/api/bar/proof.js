@@ -11,6 +11,7 @@ import {
   trustSnapshot,
   receiptModel,
 } from "../../_lib/brand.js";
+import { x402ConfigWarnings } from "../../_lib/x402-networks.js";
 
 const PROOF_CHECK_TIMEOUT_MS = 4000;
 
@@ -111,7 +112,8 @@ export async function onRequestGet(context) {
       [...statusChecks.map(([n]) => n), "enter_has_session", "laws_versioned", "pricing_curve", "catalog_lounge", "agent_card_lounge"].indexOf(b.name)
   );
 
-  const pass = checks.every((c) => c.pass);
+  const configWarnings = x402ConfigWarnings(context.env);
+  const pass = checks.every((c) => c.pass) && configWarnings.length === 0;
 
   return accessJson(
     {
@@ -123,7 +125,10 @@ export async function onRequestGet(context) {
       pass,
       summary: pass
         ? "Second Eye Agent Lounge is live. Laws and pricing published. Enter returns session. Paid paths return 402 until x402 payment."
-        : "One or more proof checks failed.",
+        : configWarnings.length
+          ? `x402 rail misconfiguration: ${configWarnings.map((w) => w.code).join(", ")}.`
+          : "One or more proof checks failed.",
+      x402_config_warnings: configWarnings,
       trust_snapshot: trustSnapshot(origin),
       receipts: receiptModel(origin),
       payment_ledger: `${origin}/api/bar/proof/payments`,
