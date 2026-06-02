@@ -58,8 +58,8 @@ to this test.
 ## Layer 2 — Dry run (no spend, reachability only)
 
 ```sh
-export TEST_FACILITATOR_URL_BASE_SEPOLIA=https://api.cdp.coinbase.com/platform/v2/x402
-export TEST_FACILITATOR_URL_SOLANA_DEVNET=https://api.cdp.coinbase.com/platform/v2/x402
+export TEST_FACILITATOR_URL_BASE_SEPOLIA=https://api.cdp.coinbase.com/platform
+export TEST_FACILITATOR_URL_SOLANA_DEVNET=https://api.cdp.coinbase.com/platform
 export TEST_FACILITATOR_URL_POLYGON_AMOY=https://x402-amoy.polygon.technology
 node test/x402-facilitator/dry-run.test.mjs
 ```
@@ -144,9 +144,9 @@ or any Layer 2 probe fails or hangs.
 
 | Var | Layer | Default | Purpose |
 |---|---|---|---|
-| `TEST_FACILITATOR_URL_BASE_SEPOLIA` | 2/3 | `https://api.cdp.coinbase.com/platform/v2/x402` | Base Sepolia facilitator (CDP same URL; payload network selects rail) |
+| `TEST_FACILITATOR_URL_BASE_SEPOLIA` | 2/3 | `https://api.cdp.coinbase.com/platform` | Base Sepolia facilitator (CDP same URL; payload network selects rail) |
 | `TEST_FACILITATOR_URL_POLYGON_AMOY` | 2/3 | `https://x402-amoy.polygon.technology` | Amoy facilitator (CDP does NOT cover Amoy) |
-| `TEST_FACILITATOR_URL_SOLANA_DEVNET` | 2/3 | `https://api.cdp.coinbase.com/platform/v2/x402` | Solana Devnet facilitator |
+| `TEST_FACILITATOR_URL_SOLANA_DEVNET` | 2/3 | `https://api.cdp.coinbase.com/platform` | Solana Devnet facilitator |
 | `TEST_EVM_PRIVATE_KEY` | 3 | unset | `0x` hex testnet key for Base Sepolia + Polygon Amoy. NEVER mainnet-funded. |
 | `TEST_EVM_PAY_TO` | 3 | unset | Where test EVM payments land. MUST differ from `X402_PAYTO`. |
 | `TEST_SOLANA_SECRET_KEY` | 3 | unset | base58 testnet Solana payer key |

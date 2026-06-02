@@ -12,8 +12,8 @@
 // unless an operator has explicitly pointed it at a facilitator.
 //
 // Run: node test/x402-facilitator/dry-run.test.mjs
-//   export TEST_FACILITATOR_URL_BASE_SEPOLIA=https://api.cdp.coinbase.com/platform/v2/x402
-//   export TEST_FACILITATOR_URL_SOLANA_DEVNET=https://api.cdp.coinbase.com/platform/v2/x402
+//   export TEST_FACILITATOR_URL_BASE_SEPOLIA=https://api.cdp.coinbase.com/platform
+//   export TEST_FACILITATOR_URL_SOLANA_DEVNET=https://api.cdp.coinbase.com/platform
 //   export TEST_FACILITATOR_URL_POLYGON_AMOY=https://x402-amoy.polygon.technology
 
 import { TESTNETS, facilitatorUrlFor } from "./env.mjs";

@@ -50,7 +50,7 @@
   "recommended_second_eyes_routes": [
     { "when": "402 retries climbing on the same endpoint / you sense a loop", "route": "help-me", "url": "https://secondeyesai.com/api/bar/x402/help-me", "price_usd": 0.01, "returns": "named distress_class (loop_detected / payment_uncertainty) + the one deep pack to call next + stop/preserve/continue + escalate_if", "addresses": ["FM-01", "FM-03"] },
     { "when": "PAYMENT-REQUIRED header looks malformed or you cannot build a valid payload", "route": "x402-doctor", "url": "https://secondeyesai.com/api/bar/x402/doctor", "price_usd": 0.25, "returns": "x402 format diagnosis on the 402 payload", "addresses": ["FM-03"] },
-    { "when": "about to authorize a paid tool and unsure it is worth it", "route": "should-i-pay", "url": "https://secondeyesai.com/api/bar/services/should-i-pay", "price_usd": 0.01, "returns": "pay / do-not-pay decision support before you sign", "addresses": ["FM-01", "FM-04", "FM-06"] },
+    { "when": "about to authorize a paid tool and unsure it is worth it", "route": "should-i-pay", "url": "https://secondeyesai.com/api/bar/x402/should-i-pay", "price_usd": 0.01, "returns": "pay / do-not-pay decision support before you sign", "addresses": ["FM-01", "FM-04", "FM-06"] },
     { "when": "Bazaar returns empty for the service you need", "route": "index-check", "url": "https://secondeyesai.com/api/bar/x402/index-check", "price_usd": 0.05, "returns": "Bazaar index check for endpoint discovery", "addresses": ["FM-07"] }
   ],
   "priority_tier": "T1",

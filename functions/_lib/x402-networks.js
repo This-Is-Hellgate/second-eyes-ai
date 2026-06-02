@@ -96,8 +96,23 @@ function truthy(v) {
   return s === "1" || s === "true" || s === "yes" || s === "on";
 }
 
-/** EVM payTo for a network: explicit override, else the canonical Base payTo. */
+/**
+ * EVM payTo for a network.
+ *
+ * Resolution order:
+ *  - X402_PAYTO_OVERRIDE truthy → X402_PAYTO wins for ALL EVM rails, ignoring any
+ *    per-rail static env (e.g. X402_POLYGON_PAY_TO). This is the deposit/Stripe
+ *    flow: handleStripeX402 mints a fresh per-request deposit address, spreads env
+ *    with X402_PAYTO=<deposit addr> + this flag, and EVERY EVM accept must point at
+ *    that address. Without the override, a Polygon accept would keep sending agents
+ *    to the static merchant wallet, and the paid retry's lookupDepositAddress would
+ *    then fail unknown_deposit_address. The override keeps every EVM rail consistent
+ *    with the address the buyer was actually quoted.
+ *  - else per-rail static env (X402_POLYGON_PAY_TO) when set.
+ *  - else the canonical Base payTo (X402_PAYTO).
+ */
 function evmPayTo(network, env) {
+  if (truthy(env.X402_PAYTO_OVERRIDE) && env.X402_PAYTO) return env.X402_PAYTO;
   if (network.payto_env && env[network.payto_env]) return env[network.payto_env];
   return env.X402_PAYTO || null;
 }

@@ -30,13 +30,13 @@ Layer 2 probe is red.
 node test/x402-facilitator/mocked.test.mjs
 
 # Layer 2 — set the facilitator URLs you want to probe (no spend)
-TEST_FACILITATOR_URL_BASE_SEPOLIA=https://api.cdp.coinbase.com/platform/v2/x402 \
+TEST_FACILITATOR_URL_BASE_SEPOLIA=https://api.cdp.coinbase.com/platform \
   node test/x402-facilitator/dry-run.test.mjs
 
 # Layer 3 — triple-gated, testnet wallets only (see test README)
 RUN_X402_SETTLEMENT_TESTS=1 MAX_TEST_SPEND_USD=0.05 \
 TEST_EVM_PRIVATE_KEY=0x... TEST_EVM_PAY_TO=0x... \
-TEST_FACILITATOR_URL_BASE_SEPOLIA=https://api.cdp.coinbase.com/platform/v2/x402 \
+TEST_FACILITATOR_URL_BASE_SEPOLIA=https://api.cdp.coinbase.com/platform \
   node test/x402-facilitator/settlement.test.mjs
 ```
 

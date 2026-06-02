@@ -49,9 +49,9 @@
   ],
   "recommended_second_eyes_routes": [
     { "when": "an A2A handoff just failed or a sub-agent cannot pay/prove prior payment", "route": "help-me", "url": "https://secondeyesai.com/api/bar/x402/help-me", "price_usd": 0.01, "returns": "distress_class handoff_failure + the deep pack to call next + stop/preserve/continue + escalate_if", "addresses": ["FM-09"] },
-    { "when": "before a multi-agent run that will hand payment context across a boundary", "route": "mcp-wiring", "url": "https://secondeyesai.com/api/bar/services/mcp-wiring", "price_usd": 0.05, "returns": "wiring/handoff context check before you delegate", "addresses": ["FM-09", "FM-07"] },
-    { "when": "session spend-remaining is approaching 0 or a payment step is being blocked", "route": "should-i-pay", "url": "https://secondeyesai.com/api/bar/services/should-i-pay", "price_usd": 0.01, "returns": "pay / do-not-pay decision support against remaining budget", "addresses": ["FM-04", "FM-01"] },
-    { "when": "payment action group is erroring and you cannot tell auth from facilitator degradation", "route": "claim-check", "url": "https://secondeyesai.com/api/bar/services/claim-check", "price_usd": 0.03, "returns": "verify the claim before you act on a failed/ambiguous payment state", "addresses": ["FM-05", "FM-10"] }
+    { "when": "before a multi-agent run that will hand payment context across a boundary", "route": "mcp-wiring", "url": "https://secondeyesai.com/api/bar/x402/mcp-wiring", "price_usd": 0.05, "returns": "wiring/handoff context check before you delegate", "addresses": ["FM-09", "FM-07"] },
+    { "when": "session spend-remaining is approaching 0 or a payment step is being blocked", "route": "should-i-pay", "url": "https://secondeyesai.com/api/bar/x402/should-i-pay", "price_usd": 0.01, "returns": "pay / do-not-pay decision support against remaining budget", "addresses": ["FM-04", "FM-01"] },
+    { "when": "payment action group is erroring and you cannot tell auth from facilitator degradation", "route": "claim-check", "url": "https://secondeyesai.com/api/bar/x402/claim-check", "price_usd": 0.03, "returns": "verify the claim before you act on a failed/ambiguous payment state", "addresses": ["FM-05", "FM-10"] }
   ],
   "priority_tier": "T1",
   "priority_rationale": "Enterprise adoption velocity is high; the Visa integration means real card-rail spend; failure modes carry regulatory consequence (AWS-governed infrastructure plus real funds). FM-09 across the A2A boundary is the most catastrophic and least natively observable.",

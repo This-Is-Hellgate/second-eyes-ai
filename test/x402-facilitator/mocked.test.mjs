@@ -30,6 +30,7 @@ import {
   settleBuiltPayment,
   usdToUsdcMicros,
 } from "../../functions/_lib/x402.js";
+import { facilitatorPaths } from "../../functions/_lib/cdp-auth.js";
 import { installMockFacilitator, makeSyntheticPaymentHeader } from "./mock-facilitator.mjs";
 import { usdToAtomic, assertTestPayToIsolation } from "./env.mjs";
 
@@ -496,6 +497,36 @@ await (async () => {
     threwSol = true;
   }
   ok("isolation", threwSol, "isolation gate did NOT fire on Solana payTo collision");
+}
+
+// ===========================================================================
+// 10. facilitatorPaths() composes to the canonical CDP route for EVERY base
+// shape an operator might configure — no duplicated /platform/v2/x402 segment.
+// The verify/settle URL is `${paths.base}${paths.verifyPath}` (see x402.js).
+// ===========================================================================
+{
+  const WANT_VERIFY = "https://api.cdp.coinbase.com/platform/v2/x402/verify";
+  const WANT_SETTLE = "https://api.cdp.coinbase.com/platform/v2/x402/settle";
+  const bases = [
+    "https://api.cdp.coinbase.com",
+    "https://api.cdp.coinbase.com/",
+    "https://api.cdp.coinbase.com/platform",
+    "https://api.cdp.coinbase.com/platform/",
+    "https://api.cdp.coinbase.com/platform/v2",
+    "https://api.cdp.coinbase.com/platform/v2/x402",
+    "https://api.cdp.coinbase.com/platform/v2/x402/",
+  ];
+  for (const input of bases) {
+    const p = facilitatorPaths(input);
+    eqJson(`facilitator-path verify (${input})`, `${p.base}${p.verifyPath}`, WANT_VERIFY);
+    eqJson(`facilitator-path settle (${input})`, `${p.base}${p.settlePath}`, WANT_SETTLE);
+    // JWT uri claim needs the full /platform route — verifyPath/settlePath always lead with it.
+    ok(
+      `facilitator-path jwt-uri (${input})`,
+      p.verifyPath.startsWith("/platform/v2/x402/") && p.settlePath.startsWith("/platform/v2/x402/"),
+      `paths must keep the full /platform route for the JWT uri claim (got ${p.verifyPath})`
+    );
+  }
 }
 
 // ===========================================================================

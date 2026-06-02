@@ -7,15 +7,15 @@
   "payment": { "rail": "x402", "x402Version": 2, "network": "eip155:8453", "asset": "USDC", "scheme": "ExactEvmScheme" },
   "canonical_routes": {
     "help_me": "https://secondeyesai.com/api/bar/x402/help-me",
-    "should_i_pay": "https://secondeyesai.com/api/bar/services/should-i-pay",
+    "should_i_pay": "https://secondeyesai.com/api/bar/x402/should-i-pay",
     "x402_doctor": "https://secondeyesai.com/api/bar/x402/doctor",
-    "mcp_wiring": "https://secondeyesai.com/api/bar/services/mcp-wiring",
+    "mcp_wiring": "https://secondeyesai.com/api/bar/x402/mcp-wiring",
     "transcribe": "https://secondeyesai.com/api/bar/x402/transcribe",
     "extract": "https://secondeyesai.com/api/bar/x402/extract",
     "index_check": "https://secondeyesai.com/api/bar/x402/index-check",
-    "loop_detect": "https://secondeyesai.com/api/bar/services/loop-detect",
-    "claim_check": "https://secondeyesai.com/api/bar/services/claim-check",
-    "cascade_break": "https://secondeyesai.com/api/bar/services/cascade-break"
+    "loop_detect": "https://secondeyesai.com/api/bar/x402/loop-detect",
+    "claim_check": "https://secondeyesai.com/api/bar/x402/claim-check",
+    "cascade_break": "https://secondeyesai.com/api/bar/x402/cascade-break"
   },
   "failure_mode_taxonomy": {
     "FM-01": "Tool call loop / cascade — repeated paid call, no exit condition; drains session budget",

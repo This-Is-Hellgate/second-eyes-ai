@@ -97,6 +97,14 @@ eq(toFraction("nonsense"), null, "toFraction garbage");
   eq(fulfilled.payment_class, "already_fulfilled", "payment already_fulfilled class");
   eq(fulfilled.verdict, "stop", "already_fulfilled verdict stop");
 
+  // snake_case fulfilled error codes are a fulfilled signal even WITHOUT http 409
+  // (many idempotent replies come back 200). The agent must not double-pay.
+  for (const code of ["payment_already_fulfilled", "already_fulfilled", "already_settled", "payment_already_paid"]) {
+    const snake = diagnosePaymentConfirmation({ error: code });
+    eq(snake.payment_class, "already_fulfilled", `snake_case ${code} → already_fulfilled (no 409)`);
+    eq(snake.verdict, "stop", `snake_case ${code} → stop (no double-pay)`);
+  }
+
   const failed = diagnosePaymentConfirmation({ status: "failed", error: "insufficient funds" });
   eq(failed.payment_class, "failed", "payment failed class");
   ok(/escalate|approval|boundary/.test(failed.escalate_if), "failed insufficient escalates");
@@ -120,18 +128,35 @@ eq(toFraction("nonsense"), null, "toFraction garbage");
 
 /* ---------- help-me recommended_door wiring ---------- */
 {
-  // Import the help-me handler module's classifier indirectly by exercising the
-  // GET handler path is heavy; instead assert the taxonomy → door map directly by
-  // reading the source so the three signals each map to the live deep door.
-  const { readFileSync } = await import("node:fs");
-  const { fileURLToPath } = await import("node:url");
-  const { dirname, join } = await import("node:path");
-  const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-  const helpMe = readFileSync(join(ROOT, "functions/api/bar/x402/help-me.js"), "utf8");
-  ok(/schema_mismatch:\s*\{[\s\S]*?schema-repair/.test(helpMe), "help-me maps schema_mismatch → schema-repair");
-  ok(/context_pressure:\s*\{[\s\S]*?context-pressure/.test(helpMe), "help-me maps context_pressure → context-pressure");
-  ok(/payment_uncertainty:\s*\{[\s\S]*?payment-confirmation-check/.test(helpMe), "help-me maps payment_uncertainty → payment-confirmation-check");
-  ok(/recommended_door/.test(helpMe), "help-me emits recommended_door");
+  const { classifyDistress } = await import("../functions/api/bar/x402/help-me.js");
+  const ORIGIN = "https://secondeyesai.com";
+
+  const schema = classifyDistress({ error: "schema validation failed" }, ORIGIN);
+  eq(schema.distress_class, "schema_mismatch", "classify schema_mismatch");
+  eq(schema.recommended_door.slug, "schema-repair", "schema_mismatch → schema-repair door");
+
+  const ctx = classifyDistress({ state: "running out of context window" }, ORIGIN);
+  eq(ctx.distress_class, "context_pressure", "classify context_pressure");
+  eq(ctx.recommended_door.slug, "context-pressure", "context_pressure → context-pressure door");
+
+  // PRE-payment phrasing must route to should-i-pay, NOT payment-confirmation-check.
+  // Recommending a settlement check before any payment exists is the bug we fixed.
+  for (const phrase of ["about to pay", "should I pay for this?", "is it worth paying", "hit a 402 paywall"]) {
+    const pre = classifyDistress({ risk: phrase }, ORIGIN);
+    eq(pre.distress_class, "payment_decision", `pre-payment "${phrase}" → payment_decision`);
+    eq(pre.recommended_door.slug, "should-i-pay", `pre-payment "${phrase}" → should-i-pay door`);
+    ok(
+      pre.recommended_door.path === "/api/bar/x402/should-i-pay",
+      `pre-payment "${phrase}" door path is the session-less x402 twin`
+    );
+  }
+
+  // POST-payment / settlement uncertainty still routes to payment-confirmation-check.
+  for (const phrase of ["already paid, did it go through?", "tx submitted, settle pending", "worried about a double charge"]) {
+    const post = classifyDistress({ state: phrase }, ORIGIN);
+    eq(post.distress_class, "payment_settlement_uncertainty", `post-payment "${phrase}" → settlement uncertainty`);
+    eq(post.recommended_door.slug, "payment-confirmation-check", `post-payment "${phrase}" → payment-confirmation-check door`);
+  }
 }
 
 if (failures.length) {
