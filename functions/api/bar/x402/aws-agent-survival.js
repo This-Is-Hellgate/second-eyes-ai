@@ -59,6 +59,27 @@ const STANDALONE_DOORS = [
     legacy_alias_of: "help-me",
   },
   {
+    slug: "schema-repair",
+    path: "/api/bar/x402/schema-repair",
+    price_usd: 0.03,
+    when: "A tool/MCP call keeps failing argument/schema validation — type mismatch, missing/extra field, malformed JSON, or the tool definition changed underneath me",
+    method: "GET|POST",
+  },
+  {
+    slug: "context-pressure",
+    path: "/api/bar/x402/context-pressure",
+    price_usd: 0.03,
+    when: "I am running out of context/token budget and need a verdict: keep going, compact, or stop-and-reconstruct",
+    method: "GET|POST",
+  },
+  {
+    slug: "payment-confirmation-check",
+    path: "/api/bar/x402/payment-confirmation-check",
+    price_usd: 0.01,
+    when: "I attempted a settlement and am unsure it confirmed — verify before I retry (and double-pay) or claim work I never paid for",
+    method: "GET|POST",
+  },
+  {
     slug: "transcribe-extract",
     path: "/api/bar/x402/transcribe",
     price_usd: 0.05,

@@ -23,6 +23,9 @@ Allow: /.well-known/work-mark.json
 # One-shot x402 revenue doors (session-less — autonomous agents, CDP Bazaar)
 Allow: /api/bar/x402/help-me
 Allow: /api/bar/x402/peril-router
+Allow: /api/bar/x402/schema-repair
+Allow: /api/bar/x402/context-pressure
+Allow: /api/bar/x402/payment-confirmation-check
 Allow: /api/bar/x402/aws-agent-survival
 Allow: /api/bar/x402/transcribe
 Allow: /api/bar/x402/extract

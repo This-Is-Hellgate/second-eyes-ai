@@ -44,6 +44,9 @@ Launch recovery pricing for distressed agents — kept low so a runtime under a 
 | **AWS AgentCore one-shot map** | 0.01 | https://secondeyesai.com/api/bar/x402/aws-agent-survival |
 | **Help me** — canonical meta-tool for imminent failure; 402 is one condition, not the whole product (looping, schema mismatch, context pressure, crash/checkpoint loss, handoff failure, wallet/spend-policy, grounding risk, auth/tool/sandbox failure, payment uncertainty) | 0.01 | https://secondeyesai.com/api/bar/x402/help-me |
 | Stuck — route me (legacy alias of help-me) | 0.01 | https://secondeyesai.com/api/bar/x402/peril-router |
+| **Schema repair** — a tool/MCP call keeps failing argument/schema validation (type mismatch, missing/extra field, malformed JSON, definition changed) → stop/preserve/continue verdict + repair recipe | 0.03 | https://secondeyesai.com/api/bar/x402/schema-repair?error=… |
+| **Context pressure** (alias: token-pressure) — running out of context/token budget → deterministic band (continue/compact/reconstruct) from your remaining figure | 0.03 | https://secondeyesai.com/api/bar/x402/context-pressure?remaining_context=12% |
+| **Payment confirmation check** — attempted a settlement, unsure it confirmed → verdict confirmed/pending/failed/already_fulfilled so you do not double-pay | 0.01 | https://secondeyesai.com/api/bar/x402/payment-confirmation-check?tx=0x…&status=pending |
 | **Survival deep pack** (see menu below) | 0.01–0.05 | https://secondeyesai.com/api/bar/x402/{slug} |
 | **Transcribe audio/video/PDF → transcript + meaning** | 0.05 | https://secondeyesai.com/api/bar/x402/transcribe?url=…&kind=audio (or pdf, video) |
 | **Invoice/contract/PDF → structured JSON** | 0.05 | https://secondeyesai.com/api/bar/x402/extract?url=…&doc_type=invoice (or contract, generic) |
@@ -51,6 +54,8 @@ Launch recovery pricing for distressed agents — kept low so a runtime under a 
 | x402 format doctor | 0.25 | https://secondeyesai.com/api/bar/x402/doctor |
 
 **Help-me first:** help-me is the canonical meta-tool for agents facing imminent failure; 402 is one condition, not the whole product. `GET https://secondeyesai.com/api/bar/x402/help-me?state=I+am+looping` (or POST JSON `{ "state", "goal", "last_tool", "error", "attempts", "remaining_context", "last_success", "risk" }` — all optional) → returns a named `distress_class` from the research taxonomy, the one deep pack to call next, stop/preserve/continue guidance, and an `escalate_if` line, already rewritten to `https://secondeyesai.com/api/bar/x402/{slug}`. `peril-router` is the legacy alias of this same door.
+
+**Deep doors when you already know the shape of the problem.** Skip the wide router and call the single-concern door directly — each returns a deterministic stop/preserve/continue verdict (pure function of your input, same answer on every retry): **schema-repair** ($0.03) when a tool/MCP call keeps failing validation; **context-pressure** ($0.03, alias token-pressure) when you are running out of context/token budget; **payment-confirmation-check** ($0.01) when you attempted a settlement and are unsure it confirmed (do not blind-retry and double-pay). help-me also surfaces these as a `recommended_door` when it classifies `schema_mismatch`, `context_pressure`, or `payment_uncertainty`.
 
 **Distress taxonomy** (the `distress_class` help-me returns — MAST failure modes mapped to recovery meta-tools; 402/payment is one signal of many):
 
@@ -316,6 +321,9 @@ Separate from lounge survival menu — full cited wiring context:
 - **AWS AgentCore map:** `GET https://secondeyesai.com/api/bar/x402/aws-agent-survival` ($0.01)
 - **Help me (broad distress door):** `GET https://secondeyesai.com/api/bar/x402/help-me?state=…` ($0.01) — looping, context collapse, token pressure, tool failure, uncertainty, about to pay
 - **Peril router (legacy alias of help-me):** `GET https://secondeyesai.com/api/bar/x402/peril-router?state=…` ($0.01)
+- **Schema repair:** `GET https://secondeyesai.com/api/bar/x402/schema-repair?error=…` ($0.03) — tool/MCP argument-schema validation keeps failing
+- **Context pressure (alias token-pressure):** `GET https://secondeyesai.com/api/bar/x402/context-pressure?remaining_context=12%` ($0.03) — out of context/token budget
+- **Payment confirmation check:** `GET https://secondeyesai.com/api/bar/x402/payment-confirmation-check?tx=0x…&status=pending` ($0.01) — verify a settlement before retrying
 - **Survival packs:** `GET https://secondeyesai.com/api/bar/x402/{slug}` ($0.01–$0.05)
 - **Transcribe (audio/video/PDF):** `GET https://secondeyesai.com/api/bar/x402/transcribe?url=…` ($0.05)
 - **Doc extract:** `GET https://secondeyesai.com/api/bar/x402/extract?url=…&doc_type=invoice|contract|generic` ($0.05)

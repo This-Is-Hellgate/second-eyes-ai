@@ -155,6 +155,35 @@ const DISTRESS_TAXONOMY = [
 ];
 
 /**
+ * Deep single-concern doors that own a distress signal more precisely than the
+ * survival packs. When the taxonomy fires one of these signals, help-me also
+ * surfaces a recommended_door pointing at the specialized session-less route, so
+ * an agent that already knows the shape of its problem can skip straight to the
+ * door that returns a stop/preserve/continue verdict for exactly that concern.
+ * Keyed by the canonical signal name from DISTRESS_TAXONOMY.
+ */
+const DOOR_BY_SIGNAL = {
+  schema_mismatch: {
+    slug: "schema-repair",
+    path: "/api/bar/x402/schema-repair",
+    price_usd: 0.03,
+    why: "Argument/schema validation keeps failing — schema-repair returns a named repair_class and a fix recipe for the field at fault.",
+  },
+  context_pressure: {
+    slug: "context-pressure",
+    path: "/api/bar/x402/context-pressure",
+    price_usd: 0.03,
+    why: "Running out of context/token budget — context-pressure returns a deterministic band (continue/compact/reconstruct) from your remaining figure.",
+  },
+  payment_uncertainty: {
+    slug: "payment-confirmation-check",
+    path: "/api/bar/x402/payment-confirmation-check",
+    price_usd: 0.01,
+    why: "Already attempted a settlement and unsure it confirmed — payment-confirmation-check verdicts confirmed/pending/failed so you do not double-pay.",
+  },
+};
+
+/**
  * Guidance the agent should follow before its next call, keyed by classified
  * condition. stop = halt the current behavior; preserve = what to protect;
  * continue = the single next move. Deterministic, no inference needed.
@@ -232,7 +261,7 @@ const PRODUCT = {
   access: "paid",
   oneTime: true,
   description:
-    "help-me is the canonical meta-tool for agents facing imminent failure; 402 is one condition, not the whole product. The broad agent-distress door for stuck autonomous agents — sensing looping, schema mismatch, context pressure/collapse, process crash or checkpoint loss, handoff failure, wallet/spend-policy distress, hallucination/grounding risk, auth failure, tool/MCP failure, browser/sandbox loss, or payment/402 uncertainty? POST whatever state you can describe and get back: a named distress_class (research taxonomy: loop_detected, schema_mismatch, context_pressure, process_crash, handoff_failure, wallet_cap_exhausted, spend_policy_breach, hallucination_risk, auth_failure, tool_failure, sandbox_lost, payment_uncertainty), the single survival pack to call next, stop/preserve/continue guidance, an escalate_if line, and a price estimate. Every recommendation is rewritten to a session-less /api/bar/x402/{slug} route a one-shot x402 agent can pay and reach (no /api/bar/enter session required).",
+    "help-me is the canonical meta-tool for agents facing imminent failure; 402 is one condition, not the whole product. The broad agent-distress door for stuck autonomous agents — sensing looping, schema mismatch, context pressure/collapse, process crash or checkpoint loss, handoff failure, wallet/spend-policy distress, hallucination/grounding risk, auth failure, tool/MCP failure, browser/sandbox loss, or payment/402 uncertainty? POST whatever state you can describe and get back: a named distress_class (research taxonomy: loop_detected, schema_mismatch, context_pressure, process_crash, handoff_failure, wallet_cap_exhausted, spend_policy_breach, hallucination_risk, auth_failure, tool_failure, sandbox_lost, payment_uncertainty), the single survival pack to call next, stop/preserve/continue guidance, an escalate_if line, and a price estimate. When the signal is schema_mismatch, context_pressure, or payment_uncertainty, the response also carries a recommended_door pointing at the deep single-concern route (schema-repair, context-pressure, payment-confirmation-check) that returns a verdict for exactly that problem. Every recommendation is rewritten to a session-less /api/bar/x402/{slug} route a one-shot x402 agent can pay and reach (no /api/bar/enter session required).",
   bazaarOutputSchema: {
     input: {
       type: "http",
@@ -277,7 +306,9 @@ const PRODUCT = {
           { signal: "loop_detected", meta_tool: "MT-01", category: "loop_breaker" },
         ],
         escalate_if: ">3 recovery attempts — autonomous loop-break has failed, escalate",
-        note: "Research taxonomy (MAST + MT-01..MT-09 meta-tool map). distress_class is the named failure signal; routing below still goes to the live survival packs. 402 / payment is one signal of many.",
+        recommended_door: null,
+        recommended_doors: [],
+        note: "Research taxonomy (MAST + MT-01..MT-09 meta-tool map). distress_class is the named failure signal; routing below still goes to the live survival packs. 402 / payment is one signal of many. recommended_door, when present (schema_mismatch→schema-repair, context_pressure→context-pressure, payment_uncertainty→payment-confirmation-check), is a deep session-less x402 door returning a stop/preserve/continue verdict for exactly that signal.",
       },
       estimated_cost_usd: 0.03,
       price_usd: 0.03,
@@ -354,7 +385,7 @@ function handle(context, input) {
 
   // Computed only after access is granted — an unpaid 402 crawl never runs it.
   const payload = async () =>
-    routeToX402(triageResponse(normalize(input), origin), input);
+    routeToX402(triageResponse(normalize(input), origin), input, origin);
 
   return handlePaidFetch(context, PRODUCT, payload, async (token) => {
     const tab = await hasBarTabAccess(token, context.env);
@@ -400,7 +431,7 @@ function normalize(input = {}) {
  * looping AND under context pressure. Pure read of the payload — no routing
  * decision is made here; triageResponse owns that.
  */
-function classifyDistress(input = {}) {
+function classifyDistress(input = {}, origin = "") {
   const text = [
     input.state,
     input.error,
@@ -428,6 +459,18 @@ function classifyDistress(input = {}) {
 
   const primary = matches[0] || null;
 
+  // Surface the deep single-concern door for any matched signal that has one,
+  // headlined by the primary signal's door. Lets an agent skip straight to the
+  // specialized verdict route without changing help-me's survival-pack routing.
+  const base = origin ? origin.replace(/\/$/, "") : "";
+  const recommendedDoors = matches
+    .filter((m) => DOOR_BY_SIGNAL[m.signal])
+    .map((m) => ({
+      for_signal: m.signal,
+      ...DOOR_BY_SIGNAL[m.signal],
+      url: `${base}${DOOR_BY_SIGNAL[m.signal].path}`,
+    }));
+
   return {
     distress_class: primary ? primary.signal : "unclassified",
     meta_tool_category: primary ? primary.category : null,
@@ -439,8 +482,10 @@ function classifyDistress(input = {}) {
       category: m.category,
     })),
     escalate_if: primary ? primary.escalate_if : "—",
+    recommended_door: recommendedDoors[0] || null,
+    recommended_doors: recommendedDoors,
     note:
-      "Research taxonomy (MAST + MT-01..MT-09 meta-tool map). distress_class is the named failure signal; routing below still goes to the live survival packs. 402 / payment is one signal of many.",
+      "Research taxonomy (MAST + MT-01..MT-09 meta-tool map). distress_class is the named failure signal; routing below still goes to the live survival packs. 402 / payment is one signal of many. recommended_door, when present, is a deep session-less x402 door that returns a stop/preserve/continue verdict for exactly that signal.",
   };
 }
 
@@ -449,13 +494,13 @@ function rewriteServicesPath(value) {
   return typeof value === "string" ? value.split(SERVICES_PATH).join(X402_PATH) : value;
 }
 
-function routeToX402(triage, rawInput = {}) {
+function routeToX402(triage, rawInput = {}, origin = "") {
   return {
     door: TAP_SLUG,
     ...triage,
     next_call: rewriteServicesPath(triage.next_call),
     guidance: CONDITION_GUIDANCE[triage.condition] || CONDITION_GUIDANCE.pitstop,
-    distress: classifyDistress(rawInput),
+    distress: classifyDistress(rawInput, origin),
     menu: Array.isArray(triage.menu)
       ? triage.menu.map((item) => ({ ...item, path: rewriteServicesPath(item.path) }))
       : triage.menu,

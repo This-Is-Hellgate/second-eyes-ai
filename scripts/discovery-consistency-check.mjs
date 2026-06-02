@@ -236,6 +236,9 @@ function checkPackages(where, packages) {
   // re-exports help-me's handlers (no PRICE_USD of its own — checked separately below).
   const standalone = {
     "functions/api/bar/x402/help-me.js": 0.01,
+    "functions/api/bar/x402/schema-repair.js": 0.03,
+    "functions/api/bar/x402/context-pressure.js": 0.03,
+    "functions/api/bar/x402/payment-confirmation-check.js": 0.01,
     "functions/api/bar/x402/transcribe.js": 0.05,
     "functions/api/bar/x402/extract.js": 0.05,
     "functions/api/bar/x402/index-check.js": 0.05,
@@ -271,6 +274,9 @@ function checkPackages(where, packages) {
     const expect = [
       ["help-me", 0.01],
       ["peril-router", 0.01],
+      ["schema-repair", 0.03],
+      ["context-pressure", 0.03],
+      ["payment-confirmation-check", 0.01],
       ["transcribe-extract", 0.05],
       ["doc-extract", 0.05],
       ["bazaar-index-check", 0.05],
