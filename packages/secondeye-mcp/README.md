@@ -74,7 +74,7 @@ Without a wallet key, `order_service` still returns the 402 body with `x402_erro
 |------|--------|
 | **Key exposure** | Any process with MCP env can read `MCP_X402_WALLET_KEY`. Cursor logs, crash dumps, and compromised extensions are in scope. |
 | **Wallet drain** | The MCP server signs transactions. A malicious or hijacked MCP host could call `order_service` repeatedly until caps hit — or bypass caps if env is edited. |
-| **No human in loop** | Auto-pay removes the 402 pause. Use a **dedicated payer wallet** funded with session budget only (e.g. $5 USDC on Base). |
+| **Autonomous spend path** | Auto-pay removes the 402 pause. Use a **dedicated payer wallet** funded with session budget only (e.g. $5 USDC on Base). |
 | **Slug allow-list** | Default (unset): **`should-i-pay` only** (fail closed). Set `MCP_X402_ALLOW_SLUGS` to opt in — e.g. `claim-check,mcp-wiring` or `*` for full menu. |
 | **Caps** | `MCP_X402_MAX_SPEND_USD` (default $0.50/call) and `MCP_X402_SESSION_MAX_USD` (default $2.00/process) are soft limits in Node — not on-chain. |
 
