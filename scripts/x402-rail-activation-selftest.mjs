@@ -162,6 +162,61 @@ const polyState = (env) => railStates(env).find((r) => r.key === "polygon");
   eq("file-shaped accepts", acceptedNetworkIds(env), [BASE, POLY]);
 }
 
+// --- 7b. File-shaped env record that OMITS this rail is a HARD invalid ---
+// A present env secret WINS unconditionally: a {"rails":{…}} (or typo key) that does
+// not carry polygon must NOT silently fall back to the checked-in file record (which
+// could be a stale activation). The env source is authoritative even when it is
+// silent about the rail. Regression for the Codex finding.
+{
+  // The checked-in file (config/x402-rail-activations.json) ships Polygon NOT
+  // activated, so a fallback-to-file here would still be "not proven" — but the
+  // POINT is that we must NOT consult the file at all. Assert the env source and
+  // the explicit missing-rail blocker, which only the env path produces.
+  const cases = [
+    [{ version: 1, rails: {} }, "empty rails object"],
+    [{ version: 1, rails: { ploygon: VALID_RECORD } }, "typo rail key"],
+    [{ version: 1, rails: { solana: VALID_RECORD } }, "wrong rail present"],
+  ];
+  for (const [rec, label] of cases) {
+    const env = {
+      X402_PAYTO: "0xW",
+      X402_POLYGON_ENABLED: "1",
+      X402_POLYGON_ACTIVATION_RECORD: recordEnv(rec),
+    };
+    const act = resolvePolygonActivation(env);
+    ok(`omit-rail ${label} not proven`, act.proven === false, "missing per-rail record must not prove");
+    eq(`omit-rail ${label} recordSource`, act.recordSource, "env");
+    ok(
+      `omit-rail ${label} reason`,
+      act.reasons.includes("env_record_missing_rail"),
+      `expected env_record_missing_rail, got ${act.reasons.join(",")}`
+    );
+    eq(`omit-rail ${label} accepts`, acceptedNetworkIds(env), [BASE]);
+  }
+}
+
+// --- 7c. A file-shaped env record DOES win over the checked-in file ---
+// Even if config/x402-rail-activations.json were ever flipped to activated, a
+// present env secret that omits the rail must keep Polygon out — env wins, the file
+// is never consulted once an env record is present.
+{
+  const env = {
+    X402_PAYTO: "0xW",
+    X402_POLYGON_ENABLED: "1",
+    // Present env secret, file-shaped, omits polygon → hard invalid, no file fallback.
+    X402_POLYGON_ACTIVATION_RECORD: recordEnv({ rails: { polygon: { activated: false } } }),
+  };
+  const act = resolvePolygonActivation(env);
+  // polygon IS present here (activated:false) → validated, NOT the missing-rail path.
+  ok("present-but-defective not proven", act.proven === false, "activated:false must not prove");
+  eq("present-but-defective recordSource", act.recordSource, "env");
+  ok(
+    "present-but-defective reason",
+    act.reasons.includes("record_not_activated"),
+    `expected record_not_activated, got ${act.reasons.join(",")}`
+  );
+}
+
 // --- 8. Emergency override advertises Polygon but stays loud ---
 {
   const env = {

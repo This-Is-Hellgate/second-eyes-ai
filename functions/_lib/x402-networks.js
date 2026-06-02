@@ -117,6 +117,14 @@ export function resolveActiveNetworks(env) {
   const basePayTo = env.X402_PAYTO;
   if (basePayTo) active.push({ network: BASE_NETWORK, payTo: basePayTo });
 
+  // INVARIANT: Base (the canonical rail) must anchor accepts[0]. If no Base payTo
+  // resolved, an optional rail with its OWN dedicated payTo (e.g. X402_POLYGON_PAY_TO
+  // without X402_PAYTO) could otherwise produce a Base-less accepts[] led by
+  // eip155:137 — which violates "Base is always accepts[0]" and would advertise a
+  // non-canonical rail as the primary. No optional rail may be advertised without
+  // Base present. There is no emergency override for this: Base is non-negotiable.
+  if (!basePayTo) return active;
+
   // Polygon: opt-in flag + an EVM payTo + a VALID activation record (or emergency
   // override). The flag ALONE is intentionally not enough — that is the exact
   // failure mode (advertising eip155:137 before settlement was proven) this gate
@@ -290,6 +298,30 @@ export function x402ConfigWarnings(env) {
   if (!env) return [];
   const warnings = [];
   const activeIds = new Set(resolveActiveNetworks(env).map((a) => a.network.id));
+
+  // INVARIANT GUARD: an optional rail is enabled but the canonical Base payTo
+  // (X402_PAYTO) is missing. Without Base, accepts[] would either be empty (paid
+  // routes return x402_not_configured) or — if the optional rail had its own payTo —
+  // be led by a non-canonical rail, both of which violate "Base is always accepts[0]".
+  // resolveActiveNetworks already refuses to advertise the optional rail in this
+  // state; this surfaces WHY so an operator does not see a silently empty accepts[].
+  const optionalRailEnabled =
+    truthy(env[POLYGON_NETWORK.enable_env]) || truthy(env[SOLANA_NETWORK.active_env]);
+  if (!env.X402_PAYTO && optionalRailEnabled) {
+    const enabledRails = [];
+    if (truthy(env[POLYGON_NETWORK.enable_env])) enabledRails.push(POLYGON_NETWORK.id);
+    if (truthy(env[SOLANA_NETWORK.active_env])) enabledRails.push(SOLANA_NETWORK.id);
+    warnings.push({
+      code: "x402_base_payto_missing",
+      network: BASE_NETWORK.id,
+      enabled_rails: enabledRails,
+      message:
+        `An optional rail (${enabledRails.join(", ")}) is enabled but the canonical ` +
+        `Base payTo X402_PAYTO is NOT set. Base (eip155:8453) must always be accepts[0]; ` +
+        `an optional rail can never anchor or replace it. No optional rail is advertised ` +
+        `until X402_PAYTO is set. Set X402_PAYTO (the canonical Base merchant wallet).`,
+    });
+  }
 
   // Polygon flag is on but the rail did not become accept-ready. After the failed
   // canary there are now two distinct reasons, and the operator needs to know WHICH:
