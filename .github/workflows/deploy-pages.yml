@@ -7,6 +7,12 @@ name: Deploy Cloudflare Pages
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      enable_polygon:
+        description: Set X402_POLYGON_ENABLED=1 before deploy (Polygon mainnet rail)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -26,6 +32,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Enable Polygon x402 rail
+        if: github.event_name == 'workflow_dispatch' && inputs.enable_polygon
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: echo "1" | npx wrangler pages secret put X402_POLYGON_ENABLED --project-name=second-eyes-ai
 
       - name: Deploy to Cloudflare Pages
         id: deploy
