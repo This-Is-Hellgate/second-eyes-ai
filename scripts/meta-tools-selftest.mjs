@@ -97,12 +97,21 @@ eq(toFraction("nonsense"), null, "toFraction garbage");
   eq(fulfilled.payment_class, "already_fulfilled", "payment already_fulfilled class");
   eq(fulfilled.verdict, "stop", "already_fulfilled verdict stop");
 
-  // snake_case fulfilled error codes are a fulfilled signal even WITHOUT http 409
-  // (many idempotent replies come back 200). The agent must not double-pay.
-  for (const code of ["payment_already_fulfilled", "already_fulfilled", "already_settled", "payment_already_paid"]) {
+  // C-008: snake_case/kebab fulfilled error codes (bar-pay.js / stripe-x402.js
+  // emit payment_already_fulfilled / already_fulfilled) are a fulfilled signal
+  // even WITHOUT http 409 — many idempotent replies come back 200. Space-only
+  // matching missed these; the agent must not double-pay.
+  for (const code of [
+    "payment_already_fulfilled",
+    "already_fulfilled",
+    "already_settled",
+    "already-settled",
+    "payment_already_paid",
+    "duplicate_payment",
+  ]) {
     const snake = diagnosePaymentConfirmation({ error: code });
-    eq(snake.payment_class, "already_fulfilled", `snake_case ${code} → already_fulfilled (no 409)`);
-    eq(snake.verdict, "stop", `snake_case ${code} → stop (no double-pay)`);
+    eq(snake.payment_class, "already_fulfilled", `snake_case "${code}" → already_fulfilled (no 409)`);
+    eq(snake.verdict, "stop", `snake_case "${code}" → stop (no double-pay)`);
   }
 
   const failed = diagnosePaymentConfirmation({ status: "failed", error: "insufficient funds" });

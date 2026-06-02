@@ -51,6 +51,37 @@ export const LOUNGE_SERVICE_PRICES_USD = {
 /** Highest launch price in the catalog — the ceiling autopay should ever sign. */
 export const SURVIVAL_PRICE_MAX_USD = Math.max(...Object.values(LOUNGE_SERVICE_PRICES_USD));
 
+/**
+ * Session-less x402 route for each autopay catalog slug. order_service must hit
+ * /api/bar/x402/{path} — the canonical /api/bar/services/{slug} route is
+ * session-gated and returns 4xx (never a 402) to a wallet agent that holds no
+ * real lounge session, so payAndRetryService never fires and the agent dead-ends
+ * on unknown_service / missing_session instead of autopaying.
+ *
+ * Most slugs map to /api/bar/x402/{slug} 1:1 (the dynamic [slug].js twin). Two
+ * task-named nano slugs resolve to a differently-named static route file:
+ *   transcribe-extract → /api/bar/x402/transcribe
+ *   doc-extract        → /api/bar/x402/extract
+ * Kept here, in the package, so the client routes to a live door without a
+ * network round-trip to discover the path.
+ */
+const X402_ROUTE_OVERRIDES = {
+  "transcribe-extract": "transcribe",
+  "doc-extract": "extract",
+};
+
+/** Session-less x402 path segment for a catalog slug (null when not in the catalog). */
+export function x402RouteSlug(slug) {
+  if (!(slug in LOUNGE_SERVICE_PRICES_USD)) return null;
+  return X402_ROUTE_OVERRIDES[slug] || slug;
+}
+
+/** Full session-less x402 path for a catalog slug, or null when unknown. */
+export function x402ServicePath(slug) {
+  const routeSlug = x402RouteSlug(slug);
+  return routeSlug ? `/api/bar/x402/${routeSlug}` : null;
+}
+
 const NETWORK = "eip155:8453";
 const DEFAULT_MAX_CALL_USD = 0.5;
 const DEFAULT_SESSION_MAX_USD = 2.0;

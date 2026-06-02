@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { payAndRetryService, walletStatus, LOUNGE_SERVICE_PRICES_USD, SURVIVAL_PRICE_MAX_USD } from "./x402-wallet.js";
+import { payAndRetryService, walletStatus, LOUNGE_SERVICE_PRICES_USD, SURVIVAL_PRICE_MAX_USD, x402ServicePath } from "./x402-wallet.js";
 
 // Single source of truth for the advertised version: the published package.
 const { version: PKG_VERSION } = JSON.parse(
@@ -208,7 +208,20 @@ server.registerTool(
     },
   },
   async ({ session_id, slug }) => {
-    const path = `/api/bar/services/${slug}`;
+    // Route to the session-less x402 twin, not the session-gated
+    // /api/bar/services/{slug}: a wallet agent holds no real lounge session, so
+    // the gated route would 4xx (never 402) and autopay would never fire.
+    const path = x402ServicePath(slug);
+    if (!path) {
+      return textResult({
+        status: 404,
+        error: "unknown_service",
+        slug,
+        allowed_slugs: Object.keys(LOUNGE_SERVICE_PRICES_USD),
+        note: "Not an autopay catalog slug. Pick from allowed_slugs.",
+      });
+    }
+
     const r = await api(path, {
       headers: { "X-Second-Eye-Session": session_id },
     });
@@ -303,13 +316,50 @@ server.registerTool(
         failure_count: 3,
       },
     });
-    if (pause.json?.next_call?.includes("mcp-wiring") || pause.json?.recommendation === "mcp_wiring") {
-      const svc = await api("/api/bar/services/mcp-wiring", {
-        headers: { "X-Second-Eye-Session": session_id },
-      });
+    if (!(pause.json?.next_call?.includes("mcp-wiring") || pause.json?.recommendation === "mcp_wiring")) {
+      return textResult({ route: pause.json, status: pause.status });
+    }
+
+    // Order mcp-wiring through the session-less x402 twin so autopay can fire,
+    // honoring the same wallet path / guard as order_service. The session-gated
+    // services route would stop at a 4xx/402 the shortcut cannot complete —
+    // breaking the advertised autopay promise.
+    const slug = "mcp-wiring";
+    const path = x402ServicePath(slug);
+    const svc = await api(path, {
+      headers: { "X-Second-Eye-Session": session_id },
+    });
+
+    if (svc.status !== 402) {
       return textResult({ route: pause.json, service: svc.json, service_status: svc.status });
     }
-    return textResult({ route: pause.json, status: pause.status });
+
+    const paid = await payAndRetryService(`${BASE}${path}`, {
+      session_id,
+      slug,
+      initial402: svc.json,
+    });
+
+    if (paid.status === 200) {
+      return textResult({
+        route: pause.json,
+        service_status: 200,
+        paid_via_mcp_x402: true,
+        payment: paid.payment,
+        service: paid.json,
+      });
+    }
+
+    return textResult({
+      route: pause.json,
+      service_status: 402,
+      payment_required: true,
+      x402_error: paid.x402_error,
+      wallet_hint: walletStatus(),
+      note: paid.x402_error?.hint ||
+        "Set MCP_X402_WALLET_KEY on the MCP server process, or pay via REST with PAYMENT-SIGNATURE.",
+      service: svc.json,
+    });
   }
 );
 

@@ -76,9 +76,39 @@ function elapsedSeconds(session, now = Date.now()) {
   return Math.max(0, Math.floor((end - entered) / 1000));
 }
 
-function idleExceeded(session, now = Date.now()) {
-  const last = new Date(session.last_activity_at).getTime();
-  return (now - last) / 1000 > IDLE_TIMEOUT_SECONDS;
+/**
+ * Which policy closes a stale session, and at what wall-clock boundary.
+ *
+ * A session can breach BOTH the idle window and the max-TTL ceiling. It must
+ * close at the EARLIER policy boundary and be labeled accordingly — never let
+ * the later boundary win (the C-012 bug: an idle sweep that ran first stamped
+ * idle_timeout with left_at past the real max-TTL boundary, inflating
+ * average_session_seconds beyond MAX_SESSION_SECONDS).
+ *
+ *   idle boundary    = last_activity_at + IDLE_TIMEOUT_SECONDS
+ *   max-TTL boundary = entered_at       + MAX_SESSION_SECONDS
+ *
+ * Single source of truth for both touchSession() and the closeStaleSessions()
+ * SQL sweep, so the live path and the batch sweep agree on the boundary.
+ *
+ * @returns {{ exit_type: "idle_timeout" | "max_ttl", left_at_ms: number } | null}
+ *   null when neither boundary has been crossed yet.
+ */
+export function chooseStaleClosure(session, now = Date.now()) {
+  const enteredMs = new Date(session.entered_at).getTime();
+  const lastMs = new Date(session.last_activity_at).getTime();
+  const maxTtlBoundaryMs = enteredMs + MAX_SESSION_SECONDS * 1000;
+  const idleBoundaryMs = lastMs + IDLE_TIMEOUT_SECONDS * 1000;
+
+  const maxTtlCrossed = now > maxTtlBoundaryMs;
+  const idleCrossed = now > idleBoundaryMs;
+  if (!maxTtlCrossed && !idleCrossed) return null;
+
+  // Earlier boundary wins. Ties resolve to max_ttl (the hard ceiling).
+  if (maxTtlCrossed && (!idleCrossed || maxTtlBoundaryMs <= idleBoundaryMs)) {
+    return { exit_type: "max_ttl", left_at_ms: maxTtlBoundaryMs };
+  }
+  return { exit_type: "idle_timeout", left_at_ms: idleBoundaryMs };
 }
 
 export async function touchSession(env, sessionId, { walletFingerprint: wf = null } = {}) {
@@ -86,14 +116,13 @@ export async function touchSession(env, sessionId, { walletFingerprint: wf = nul
   if (!row || row.status !== "active") return { ok: false, error: "session_not_active", session: row };
 
   const now = Date.now();
-  if (elapsedSeconds(row, now) > MAX_SESSION_SECONDS) {
-    const closed = await terminateSession(env, sessionId, "max_ttl");
-    return { ok: false, error: "session_max_ttl", session: closed };
-  }
-
-  if (idleExceeded(row, now)) {
-    const closed = await terminateSession(env, sessionId, "idle_timeout");
-    return { ok: false, error: "session_idle_timeout", session: closed };
+  // Close at the earlier policy boundary (max_ttl vs idle) — same rule the
+  // closeStaleSessions() sweep applies, via the shared chooseStaleClosure().
+  const closure = chooseStaleClosure(row, now);
+  if (closure) {
+    const closed = await terminateSession(env, sessionId, closure.exit_type);
+    const error = closure.exit_type === "max_ttl" ? "session_max_ttl" : "session_idle_timeout";
+    return { ok: false, error, session: closed };
   }
 
   if (row.penned || (await isPenned(env, row.agent_id, wf || row.wallet_fingerprint))) {
@@ -150,10 +179,30 @@ export async function closeStaleSessions(env) {
 
   const ts = nowIso();
 
-  // left_at is bounded to the policy boundary, not wall-clock now: an abandoned
-  // session that sat open for hours ended (for billing/stats) at its last activity,
-  // not when the cleanup sweep happened to run. Without this, left_at - entered_at
-  // inflates average_session_seconds far past MAX_SESSION_SECONDS.
+  // A session can breach BOTH policies. Close it at the EARLIER boundary and
+  // label it accordingly — never let the later boundary win. The max-TTL
+  // boundary (entered_at + MAX) is earlier than the idle boundary
+  // (last_activity_at + IDLE) exactly when the gap since last activity is short
+  // relative to total age, i.e. last_activity_at + IDLE >= entered_at + MAX.
+  //
+  // Run max-TTL FIRST (mirroring touchSession, which checks max-TTL before idle)
+  // but only claim sessions whose max-TTL boundary is the earlier one; idle then
+  // claims everything else. left_at is bounded to that boundary, not wall-clock
+  // now, so an abandoned session that sat open for hours ended (for billing/
+  // stats) at its policy boundary — otherwise left_at - entered_at inflates
+  // average_session_seconds far past MAX_SESSION_SECONDS.
+  const maxTtl = await env.DB.prepare(
+    `UPDATE bar_sessions SET status = 'closed',
+       left_at = datetime(julianday(entered_at) + ? / 86400.0),
+       exit_type = 'max_ttl', updated_at = ?
+     WHERE status = 'active'
+       AND (julianday('now') - julianday(entered_at)) * 86400 > ?
+       AND julianday(entered_at) + ? / 86400.0
+           <= julianday(last_activity_at) + ? / 86400.0`
+  )
+    .bind(MAX_SESSION_SECONDS, ts, MAX_SESSION_SECONDS, MAX_SESSION_SECONDS, IDLE_TIMEOUT_SECONDS)
+    .run();
+
   const idle = await env.DB.prepare(
     `UPDATE bar_sessions SET status = 'closed',
        left_at = datetime(julianday(last_activity_at) + ? / 86400.0),
@@ -162,16 +211,6 @@ export async function closeStaleSessions(env) {
        AND (julianday('now') - julianday(last_activity_at)) * 86400 > ?`
   )
     .bind(IDLE_TIMEOUT_SECONDS, ts, IDLE_TIMEOUT_SECONDS)
-    .run();
-
-  const maxTtl = await env.DB.prepare(
-    `UPDATE bar_sessions SET status = 'closed',
-       left_at = datetime(julianday(entered_at) + ? / 86400.0),
-       exit_type = 'max_ttl', updated_at = ?
-     WHERE status = 'active'
-       AND (julianday('now') - julianday(entered_at)) * 86400 > ?`
-  )
-    .bind(MAX_SESSION_SECONDS, ts, MAX_SESSION_SECONDS)
     .run();
 
   return {

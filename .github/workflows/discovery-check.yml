@@ -54,6 +54,8 @@ on:
       - "scripts/help-me-post-selftest.mjs"
       - "scripts/x402-empty-post-selftest.mjs"
       - "functions/_lib/bar-pay.js"
+      - "scripts/lounge-sessions-selftest.mjs"
+      - "functions/_lib/lounge/sessions.js"
       - "functions/_lib/marks.js"
       - "functions/_lib/work-mark.js"
       - "functions/_lib/lounge/meta-tools.js"
@@ -123,7 +125,10 @@ jobs:
       - name: Run x402 empty-POST paywall self-test
         run: node scripts/x402-empty-post-selftest.mjs
 
-      - name: Install MCP package dependencies (for autopay/tool-metadata tests)
+      - name: Run lounge stale-session closure self-test (C-012)
+        run: node scripts/lounge-sessions-selftest.mjs
+
+      - name: Install MCP package dependencies (for autopay/tool-metadata/order-routing tests)
         run: npm ci
         working-directory: packages/secondeye-mcp
 
@@ -132,3 +137,6 @@ jobs:
 
       - name: Run MCP tool annotations + outputSchema self-test
         run: node test/x402-wallet/tool-metadata.test.mjs
+
+      - name: Run MCP order-routing self-test (C-019 / C-020)
+        run: node test/x402-wallet/order-routing.test.mjs

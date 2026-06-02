@@ -160,7 +160,7 @@ function buildLoungeServiceProduct(slug, priceMeta) {
               pack_type: "cashier",
               access: "granted",
               scope: "lounge",
-              paid_usd: 0.1,
+              paid_usd: 0.01,
               decision_tree: [
                 "Did proof pass?",
                 "Is free sample sufficient for this task?",

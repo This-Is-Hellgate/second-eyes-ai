@@ -1,4 +1,6 @@
--- Preserve product_kind / product_slug on the settlement row itself.
+-- Preserve product_kind / product_slug on the settlement row itself, and
+-- backfill historical grants. IDEMPOTENT / backfill-safe: re-running this file
+-- is a no-op past the first run.
 --
 -- WHY: /api/bar/proof/payments derived product_slug only via a LEFT JOIN to
 -- idempotency_keys, which is written ONLY when the buyer sends an Idempotency-Key
@@ -6,24 +8,27 @@
 -- patron mark (which carries the slug) but left recent_settlements.product_slug
 -- null — degrading audit/Bazaar trust even though recent_purchases showed the slug.
 --
--- This makes the grant row self-describing so the ledger never depends on the
--- optional idempotency row.
+-- COLUMN CREATION: the product_kind / product_slug columns are added by the
+-- runtime guard ensureGrantProductColumns() in functions/_lib/a4a-store.js (it
+-- gates ALTER ADD COLUMN on pragma_table_info, so it is safe and runs on the first
+-- settlement after deploy), or by scripts/migrate-grant-product-metadata.mjs for an
+-- operator-driven run. They are intentionally NOT added here: SQLite ALTER TABLE
+-- ADD COLUMN is not idempotent, so a bare ALTER in this file aborts the WHOLE file
+-- (and the backfill below) the moment the columns already exist — which they do as
+-- soon as one settlement has landed. That abort is the prod "duplicate column"
+-- failure. Keeping only the idempotent backfill here makes the file re-runnable.
 --
--- DRY-RUN (run first, read-only) — confirms columns are absent before applying:
---   SELECT name FROM pragma_table_info('access_grants')
---   WHERE name IN ('product_kind','product_slug');
--- Expect zero rows. If it returns rows, the migration already ran — skip the ALTERs.
---
--- NOTE: SQLite ALTER TABLE ADD COLUMN is not idempotent; run this file exactly once
--- (the D1 migrate workflow is manual-dispatch, so it will not re-run on deploy).
-
-ALTER TABLE access_grants ADD COLUMN product_kind TEXT;
-ALTER TABLE access_grants ADD COLUMN product_slug TEXT;
+-- If you need to apply this file BEFORE any settlement has created the columns,
+-- run the migration script first (it adds the columns idempotently):
+--   node scripts/migrate-grant-product-metadata.mjs --remote
+-- then this backfill (or let the d1-migrate workflow run this file) — both orders
+-- are safe.
 
 CREATE INDEX IF NOT EXISTS idx_access_grants_product_slug ON access_grants(product_slug);
 
 -- Backfill historical grants from the patron-mark table (source that retained slug),
--- then from any idempotency_keys rows that did get written. Safe to re-run.
+-- then from any idempotency_keys rows that did get written. COALESCE + the IS NULL
+-- guard make every UPDATE a no-op once the row is populated, so re-runs are safe.
 UPDATE access_grants
 SET product_kind = COALESCE(product_kind, (
       SELECT m.product_kind FROM agent_marks m
