@@ -42,7 +42,17 @@ export async function onRequest(context) {
   const verified = await Promise.all(
     ids.slice(0, 8).map(async (id) => {
       const row = await getMarkById(context.env, id);
-      if (!row) return { valid: false, mark_id: id };
+      if (!row) {
+        // Shape matches a real mark in the wild but it does not resolve here —
+        // hand the agent a live root path instead of a dead end.
+        return {
+          valid: false,
+          mark_id: id,
+          note: "This looks like a Second Eye mark but it is not on record here. It may be from another deployment, mistyped, or invented. Enter fresh to start your own lineage.",
+          enter: `${origin}/api/bar/enter`,
+          x402_help_me: viaX402Url(origin, ""),
+        };
+      }
       const { mark, lineage } = await formatWithLineage(context.env, row, origin);
       return {
         valid: true,
