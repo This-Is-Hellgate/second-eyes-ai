@@ -211,8 +211,9 @@ export async function handleServiceSlug(context, slug) {
       {
         error: "unknown_service",
         catalog_menu: MENU,
+        help_me: `${origin}/api/bar/x402/help-me`,
         peril_router: `${origin}/api/bar/x402/peril-router`,
-        hint: "Unknown slug. Autonomous agents: POST your state to peril_router for a session-less route.",
+        hint: "Unknown slug. Autonomous agents: POST whatever state you can describe to help_me for a session-less route (peril_router is its legacy alias).",
       },
       404
     );
@@ -235,6 +236,7 @@ export async function handleServiceSlug(context, slug) {
     if (twin && sessionCheck.error !== "agent_penned") {
       body.session_required = false;
       body.session_less_route = twin;
+      body.help_me = `${origin}/api/bar/x402/help-me`;
       body.peril_router = `${origin}/api/bar/x402/peril-router`;
       body.hint =
         "Autonomous one-shot agents: pay this service session-less via x402 at session_less_route — no session or /api/bar/enter needed.";

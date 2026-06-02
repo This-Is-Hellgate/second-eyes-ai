@@ -232,8 +232,10 @@ function checkPackages(where, packages) {
   }
 
   // Standalone-door prices advertised by the AWS survival map must match each route's PRICE_USD.
+  // help-me is the canonical broad distress door; peril-router is its legacy alias and
+  // re-exports help-me's handlers (no PRICE_USD of its own — checked separately below).
   const standalone = {
-    "functions/api/bar/x402/peril-router.js": 0.01,
+    "functions/api/bar/x402/help-me.js": 0.01,
     "functions/api/bar/x402/transcribe.js": 0.05,
     "functions/api/bar/x402/extract.js": 0.05,
     "functions/api/bar/x402/index-check.js": 0.05,
@@ -249,11 +251,25 @@ function checkPackages(where, packages) {
     }
   }
 
+  // The legacy peril-router alias must delegate to help-me, not carry a divergent
+  // price/implementation of its own. Assert it re-exports the help-me handlers.
+  {
+    const where = "peril-router.js (legacy alias)";
+    const raw = readFileSync(join(ROOT, "functions/api/bar/x402/peril-router.js"), "utf8");
+    if (!/from\s+["']\.\/help-me\.js["']/.test(raw)) {
+      fail(where, "must re-export from ./help-me.js so the alias never diverges from canonical help-me");
+    }
+    if (/const PRICE_USD\s*=/.test(raw)) {
+      fail(where, "declares its own PRICE_USD — price must come from help-me to stay consistent");
+    }
+  }
+
   // The aws-agent-survival map text must advertise the same standalone door prices.
   {
     const where = "aws-agent-survival.js (STANDALONE_DOORS)";
     const raw = readFileSync(join(ROOT, "functions/api/bar/x402/aws-agent-survival.js"), "utf8");
     const expect = [
+      ["help-me", 0.01],
       ["peril-router", 0.01],
       ["transcribe-extract", 0.05],
       ["doc-extract", 0.05],

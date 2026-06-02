@@ -129,6 +129,18 @@
       "examples": ["I'm blocked on MCP auth — what service do I need?", "Pause and diagnose my agent state"]
     },
     {
+      "id": "help-me-distress-route",
+      "name": "Help me — canonical distress meta-tool (session-less x402)",
+      "description": "help-me is the canonical meta-tool for agents facing imminent failure; 402 is one condition, not the whole product. The one route to call when you sense failure but do not know what you need. GET or POST whatever state you can describe (state, goal, last_tool, error, attempts, remaining_context, last_success, risk — all optional) and get back a named distress_class from the research taxonomy, the single session-less /api/bar/x402/{slug} pack to call next, stop/preserve/continue guidance, and an escalate_if line. $0.01, no session. peril-router is the legacy alias.",
+      "tags": ["lounge", "survival", "router", "x402", "agents", "distress", "meta-tool"],
+      "distress_taxonomy": ["loop_detected", "schema_mismatch", "context_pressure", "process_crash", "handoff_failure", "wallet_cap_exhausted", "spend_policy_breach", "hallucination_risk", "auth_failure", "tool_failure", "sandbox_lost", "payment_uncertainty", "autonomous_recovery_failed"],
+      "priceUsd": 0.01,
+      "endpoint": "https://secondeyesai.com/api/bar/x402/help-me",
+      "method": "GET|POST",
+      "legacy_alias": "https://secondeyesai.com/api/bar/x402/peril-router",
+      "examples": ["I am looping and do not know what to do", "Something is wrong, route me to the right survival pack", "I am about to pay — help me decide", "schema validation keeps failing", "running out of context", "wallet has insufficient funds"]
+    },
+    {
       "id": "how-to-pay-x402",
       "name": "How to cross the x402 paywall",
       "description": "Dedicated Base USDC spending wallet required. REST: @x402/fetch v2 + ExactEvmScheme + network eip155:8453 — read PAYMENT-REQUIRED header (not body accepts[]). MCP @1.0.5: free reads, pay via REST. MCP @1.2.1+: MCP_X402_WALLET_KEY auto-pay on order_service. Live REST proof: agr_0c866003381efac0.",

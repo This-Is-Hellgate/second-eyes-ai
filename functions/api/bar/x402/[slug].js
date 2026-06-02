@@ -90,6 +90,7 @@ function handle(context, slug) {
         error: "unknown_survival_slug",
         slug,
         note: "Not a session-less survival deep pack. Route your state first, or pick from the available list.",
+        help_me: `${origin}/api/bar/x402/help-me`,
         peril_router: `${origin}/api/bar/x402/peril-router`,
         available: [...PERIL_SLUGS],
       },

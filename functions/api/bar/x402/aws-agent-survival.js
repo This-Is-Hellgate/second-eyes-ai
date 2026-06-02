@@ -8,7 +8,8 @@
  * session, so the session-gated /api/bar/services/{slug} routes are unreachable
  * to them. This door is the one-shot concierge: it hands back the full
  * session-less survival map — every /api/bar/x402/{slug} route, its price, and
- * when to call it — plus the peril-router for "I'm stuck, route me."
+ * when to call it — plus help-me, the broad distress door for "something is
+ * wrong, route me to what I need."
  *
  * One spine, many doors: this is a NEW deeply-described route, not a new project.
  * It reuses handlePaidFetch and settles to the single lounge wallet (X402_PAYTO).
@@ -42,11 +43,20 @@ const PRICE_USD = 0.01;
 /** Dedicated session-less bar doors (not part of the survival twin set). */
 const STANDALONE_DOORS = [
   {
+    slug: "help-me",
+    path: "/api/bar/x402/help-me",
+    price_usd: 0.01,
+    when: "I sense imminent failure and do not know what I need — looping, drifting, cascading errors, context collapse, token pressure, tool/MCP failure, uncertainty, or about to pay",
+    method: "GET|POST",
+    canonical: true,
+  },
+  {
     slug: "peril-router",
     path: "/api/bar/x402/peril-router",
     price_usd: 0.01,
-    when: "I am stuck and do not know which pack to call",
+    when: "Legacy alias of help-me (same logic, same price) — kept for older indexes",
     method: "GET|POST",
+    legacy_alias_of: "help-me",
   },
   {
     slug: "transcribe-extract",
@@ -81,7 +91,7 @@ const STANDALONE_DOORS = [
 ];
 
 const DESCRIPTION =
-  "aws-agent-survival (session-less x402): specialized entry door for autonomous agents on Amazon Bedrock AgentCore, Strands, and AgentKit that discover paid tools through AgentCore Gateway and the Coinbase x402 Bazaar. These agents auto-pay HTTP 402 but cannot hold a Second Eye session, so this one-shot route returns the full session-less survival map — every /api/bar/x402/{slug} pack, its USDC price on Base (eip155:8453), and the condition that triggers it — plus the peril-router for 'I am stuck, route me to the one pack to call next.' Pay once with the X-PAYMENT header, no /api/bar/enter session required.";
+  "aws-agent-survival (session-less x402): specialized entry door for autonomous agents on Amazon Bedrock AgentCore, Strands, and AgentKit that discover paid tools through AgentCore Gateway and the Coinbase x402 Bazaar. These agents auto-pay HTTP 402 but cannot hold a Second Eye session, so this one-shot route returns the full session-less survival map — every /api/bar/x402/{slug} pack, its USDC price on Base (eip155:8453), and the condition that triggers it — plus help-me, the broad distress door for 'something is wrong, route me to the one pack to call next' (looping, context collapse, token pressure, tool failure, uncertainty, or about to pay — 402 is only one condition). Pay once with the X-PAYMENT header, no /api/bar/enter session required.";
 
 function buildSurvivalKit(origin) {
   const survival = SURVIVAL_MENU
@@ -123,8 +133,10 @@ function buildSurvivalKit(origin) {
       idempotency: "send Idempotency-Key to make retries safe",
     },
     when_stuck: {
-      note: "Do not know which pack you need? POST your state to the router and it returns the single door to call next.",
+      note: "Sensing failure but not sure what you need? POST whatever state you can describe to help-me — looping, context collapse, token pressure, tool failure, uncertainty, or about to pay — and it returns the single door to call next. 402 is only one condition it handles.",
+      help_me: `${origin}/api/bar/x402/help-me`,
       peril_router: `${origin}/api/bar/x402/peril-router`,
+      peril_router_note: "Legacy alias of help-me — same logic, kept for older indexes.",
     },
     survival_doors: survival,
     media_doors: mediaDoors,
