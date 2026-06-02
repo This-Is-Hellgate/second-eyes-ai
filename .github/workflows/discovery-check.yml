@@ -15,16 +15,19 @@ on:
       - "packages/secondeye-mcp/src/index.js"
       - "scripts/discovery-consistency-check.mjs"
       - "scripts/x402-multinetwork-selftest.mjs"
+      - "scripts/x402-rail-activation-selftest.mjs"
       - "scripts/x402-verify-logging-selftest.mjs"
       - "scripts/x402-failure-recovery-selftest.mjs"
       - "functions/_lib/x402.js"
       - "functions/_lib/x402-networks.js"
+      - "functions/_lib/x402-rail-activation.js"
       - "functions/_lib/x402-payment-log.js"
       - "functions/_lib/agent-entry.js"
       - "scripts/x402-facilitator-tests.mjs"
       - "scripts/polygon-canary.mjs"
       - "scripts/polygon-canary-preflight.mjs"
       - "test/x402-facilitator/**"
+      - "config/x402-rail-activations.json"
       - "scripts/mark-lineage-selftest.mjs"
       - "scripts/mark-lineage-smoke.mjs"
       - "scripts/meta-tools-selftest.mjs"
@@ -66,6 +69,9 @@ jobs:
 
       - name: Run x402 facilitator harness + Polygon canary mock gates (no spend)
         run: node scripts/x402-facilitator-tests.mjs
+
+      - name: Run x402 rail-activation gate self-test
+        run: node scripts/x402-rail-activation-selftest.mjs
 
       - name: Run x402 verify-logging self-test
         run: node scripts/x402-verify-logging-selftest.mjs

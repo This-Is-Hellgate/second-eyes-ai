@@ -33,6 +33,16 @@ const BASE = "eip155:8453";
 const POLY = "eip155:137";
 const SOL = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 
+// Polygon no longer enters accepts[] on X402_POLYGON_ENABLED alone (the failed-canary
+// fix): it also needs a VALID activation record. Supply one (env form) wherever a
+// case asserts Polygon active. Activation-gate edge cases are covered in
+// scripts/x402-rail-activation-selftest.mjs.
+const POLY_RECORD = JSON.stringify({
+  activated: true,
+  amoy_layer3_passes: 3,
+  mainnet_smoke_tx: "0xsmoke",
+});
+
 // Distinct production-looking wallets used purely as fixtures.
 const PROD_EVM = "0x209693Bc6afc0C5328bA36FaF03C514EF312287C";
 const PROD_SOL = "DRpbCBMxVnDK7maPM5tGv6MvB3v1sRMC86PZ8okm21hy";
@@ -87,8 +97,10 @@ function networksOf(env) {
   ok("base-default", a.extra && a.extra.version === "2", "missing EIP-712 extra on EVM rail");
 }
 {
-  // Polygon opt-in — appends eip155:137 as accepts[1], Base stays accepts[0].
-  const env = { X402_PAYTO: PROD_EVM, X402_POLYGON_ENABLED: "1" };
+  // Polygon flag ALONE (no activation record) must NOT advertise — the canary fix.
+  eqJson("polygon-flag-alone networks", networksOf({ X402_PAYTO: PROD_EVM, X402_POLYGON_ENABLED: "1" }), [BASE]);
+  // Polygon opt-in + valid record — appends eip155:137 as accepts[1], Base stays accepts[0].
+  const env = { X402_PAYTO: PROD_EVM, X402_POLYGON_ENABLED: "1", X402_POLYGON_ACTIVATION_RECORD: POLY_RECORD };
   eqJson("polygon-optin networks", networksOf(env), [BASE, POLY]);
 }
 {
@@ -110,11 +122,12 @@ function networksOf(env) {
   // Base is invariably accepts[0] across every configuration.
   for (const env of [
     { X402_PAYTO: PROD_EVM },
-    { X402_PAYTO: PROD_EVM, X402_POLYGON_ENABLED: "1" },
+    { X402_PAYTO: PROD_EVM, X402_POLYGON_ENABLED: "1", X402_POLYGON_ACTIVATION_RECORD: POLY_RECORD },
     { X402_PAYTO: PROD_EVM, X402_SOLANA_ACTIVE: "1", X402_SOLANA_PAY_TO: PROD_SOL },
     {
       X402_PAYTO: PROD_EVM,
       X402_POLYGON_ENABLED: "1",
+      X402_POLYGON_ACTIVATION_RECORD: POLY_RECORD,
       X402_SOLANA_ACTIVE: "1",
       X402_SOLANA_PAY_TO: PROD_SOL,
     },
@@ -161,10 +174,11 @@ async function verifyThenSettle(env, network, opts) {
 }
 
 await (async () => {
-  // Multi-rail env: Base + Polygon + Solana all advertised.
+  // Multi-rail env: Base + Polygon (proven) + Solana all advertised.
   const env = {
     X402_PAYTO: PROD_EVM,
     X402_POLYGON_ENABLED: "1",
+    X402_POLYGON_ACTIVATION_RECORD: POLY_RECORD,
     X402_SOLANA_ACTIVE: "1",
     X402_SOLANA_PAY_TO: PROD_SOL,
   };

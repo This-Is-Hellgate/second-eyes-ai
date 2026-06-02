@@ -10,12 +10,21 @@
  *    rail an agent could choose but the server cannot settle (a broken accepts[]
  *    entry is worse than no entry — the agent loses the spend).
  *  - Polygon (eip155:137) is EVM, same EIP-712 USDC path, same CDP facilitator,
- *    and can reuse the same merchant wallet — low risk, opt-in activatable.
+ *    and can reuse the same merchant wallet — low risk, but NOT flag-only
+ *    activatable: after the failed canary, the env flag X402_POLYGON_ENABLED is
+ *    necessary but not sufficient. Polygon enters accepts[] only when the flag is
+ *    set AND a valid activation record proves settlement (see x402-rail-activation.js),
+ *    or an explicit emergency override is in force.
  *  - Solana (solana:…) uses base58 mints and non-EIP-712 signing. Our request
  *    shaping is EVM-shaped and has not been verified end-to-end against the CDP
  *    Solana facilitator, so it is "planned": surfaced in discovery, but NOT in
  *    accepts[] unless an operator double-gates it (payTo + explicit active flag).
  */
+
+import {
+  resolvePolygonActivation,
+  polygonRailState,
+} from "./x402-rail-activation.js";
 
 /** USDC on Base mainnet (6 decimals) — canonical asset. */
 export const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913";
@@ -108,8 +117,11 @@ export function resolveActiveNetworks(env) {
   const basePayTo = env.X402_PAYTO;
   if (basePayTo) active.push({ network: BASE_NETWORK, payTo: basePayTo });
 
-  // Polygon: opt-in flag + an EVM payTo (reuses X402_PAYTO unless overridden).
-  if (truthy(env[POLYGON_NETWORK.enable_env])) {
+  // Polygon: opt-in flag + an EVM payTo + a VALID activation record (or emergency
+  // override). The flag ALONE is intentionally not enough — that is the exact
+  // failure mode (advertising eip155:137 before settlement was proven) this gate
+  // exists to prevent.
+  if (truthy(env[POLYGON_NETWORK.enable_env]) && resolvePolygonActivation(env).proven) {
     const payTo = evmPayTo(POLYGON_NETWORK, env);
     if (payTo) active.push({ network: POLYGON_NETWORK, payTo });
   }
@@ -134,21 +146,104 @@ export function plannedNetworks(env) {
 
   for (const network of [POLYGON_NETWORK, SOLANA_NETWORK]) {
     if (activeIds.has(network.id)) continue;
-    planned.push(plannedDescriptor(network));
+    planned.push(plannedDescriptor(network, env));
   }
   return planned;
 }
 
-function plannedDescriptor(network) {
+/**
+ * Lifecycle state per rail — independent of accepts[] order — for /api/bar and
+ * /api/bar/proof. Base is always active/proven; Polygon reflects the activation
+ * gate (disabled / unproven / active / override); Solana stays planned until its
+ * double-gate + settlement confirmation. This is the operator/agent-readable map
+ * that makes "flag is set but the rail is NOT advertised" visible instead of silent.
+ */
+export function railStates(env) {
+  const e = env || {};
+  const activeIds = new Set(resolveActiveNetworks(e).map((a) => a.network.id));
+  const polyActivation = resolvePolygonActivation(e);
+  const polyEnabled = truthy(e[POLYGON_NETWORK.enable_env]);
+  const polyState = polygonRailState({
+    enabled: polyEnabled,
+    hasPayTo: Boolean(evmPayTo(POLYGON_NETWORK, e)),
+    activation: polyActivation,
+  });
+
+  return [
+    {
+      key: "base",
+      network: BASE_NETWORK.id,
+      state: activeIds.has(BASE_NETWORK.id) ? "active" : "unconfigured",
+      proven: true,
+      in_accepts: activeIds.has(BASE_NETWORK.id),
+      note: "Canonical rail. Always accepts[0] when X402_PAYTO is set.",
+    },
+    {
+      key: "polygon",
+      network: POLYGON_NETWORK.id,
+      // Map internal gate states to a stable, agent-facing vocabulary.
+      state:
+        polyState === "active"
+          ? "active"
+          : polyState === "override" || polyState === "override_pending"
+            ? "emergency_override"
+            : polyState === "unproven"
+              ? "unproven"
+              : "disabled",
+      enabled: polyEnabled,
+      proven: polyActivation.proven,
+      emergency_override: polyActivation.emergencyOverride,
+      in_accepts: activeIds.has(POLYGON_NETWORK.id),
+      activation_source: polyActivation.recordSource,
+      blockers: polyActivation.reasons,
+      note:
+        polyState === "active"
+          ? "Activation record valid — Polygon is in accepts[]."
+          : polyState === "unproven"
+            ? "X402_POLYGON_ENABLED is set but no valid activation record — NOT advertised. Flag alone is ignored."
+            : polyActivation.emergencyOverride
+              ? "Emergency override in force — Polygon advertised WITHOUT a proven record. Disable as soon as possible."
+              : "Disabled (default posture after failed canary). Needs flag + valid activation record.",
+    },
+    {
+      key: "solana",
+      network: SOLANA_NETWORK.id,
+      state: activeIds.has(SOLANA_NETWORK.id) ? "active" : "planned",
+      proven: false,
+      in_accepts: activeIds.has(SOLANA_NETWORK.id),
+      note: "Double-gated SVM scaffold. Planned until payTo + active flag + confirmed CDP Solana settlement.",
+    },
+  ];
+}
+
+function plannedDescriptor(network, env) {
   if (network.key === "polygon") {
+    const activation = resolvePolygonActivation(env || {});
+    const enabled = truthy((env || {})[network.enable_env]);
+    const state = polygonRailState({
+      enabled,
+      hasPayTo: Boolean(evmPayTo(network, env || {})),
+      activation,
+    });
     return {
       network: network.id,
       asset: "USDC",
       asset_address: network.asset,
       scheme: "ExactEvmScheme",
-      status: "activatable",
-      requires: `${network.enable_env}=1 (reuses X402_PAYTO, or set ${network.payto_env})`,
-      note: "Same EVM merchant wallet + CDP EIP-712 verify/settle path as Base. Low-risk operator opt-in.",
+      // After the failed canary, the default posture is "disabled"; a flag set
+      // without a proven record is "unproven" — never "activatable" by flag alone.
+      status: state === "unproven" ? "unproven" : "disabled",
+      activation_proven: activation.proven,
+      activation_blockers: activation.reasons,
+      requires:
+        `${network.enable_env}=1 AND a valid activation record ` +
+        `(config/x402-rail-activations.json or ${"X402_POLYGON_ACTIVATION_RECORD"}: ` +
+        `activated=true, amoy_layer3_passes>=3, mainnet_smoke_tx set), ` +
+        `or emergency override X402_POLYGON_EMERGENCY_OVERRIDE`,
+      note:
+        "Same EVM merchant wallet + CDP EIP-712 verify/settle path as Base, but NOT " +
+        "flag-only activatable: the failed canary means settlement must be proven by " +
+        "an activation record before eip155:137 enters accepts[]. See docs/x402-facilitator-testing.md.",
     };
   }
   return {
@@ -196,16 +291,50 @@ export function x402ConfigWarnings(env) {
   const warnings = [];
   const activeIds = new Set(resolveActiveNetworks(env).map((a) => a.network.id));
 
-  // Polygon flag is on but the rail did not become accept-ready: the only way that
-  // happens is no EVM payTo resolved (no X402_PAYTO and no X402_POLYGON_PAY_TO).
+  // Polygon flag is on but the rail did not become accept-ready. After the failed
+  // canary there are now two distinct reasons, and the operator needs to know WHICH:
+  //   - no valid activation record (the flag-alone case the gate is built to catch), or
+  //   - the record/override is fine but no EVM payTo resolved.
   if (truthy(env[POLYGON_NETWORK.enable_env]) && !activeIds.has(POLYGON_NETWORK.id)) {
+    const activation = resolvePolygonActivation(env);
+    if (!activation.proven) {
+      warnings.push({
+        code: "polygon_enabled_without_activation_record",
+        network: POLYGON_NETWORK.id,
+        blockers: activation.reasons,
+        message:
+          `${POLYGON_NETWORK.enable_env} is truthy but Polygon is NOT in accepts[] — ` +
+          `no valid activation record (${activation.reasons.join(", ") || "none"}). The env ` +
+          `flag ALONE does not advertise Polygon. Supply a record in ` +
+          `config/x402-rail-activations.json or X402_POLYGON_ACTIVATION_RECORD ` +
+          `(activated=true, amoy_layer3_passes>=3, mainnet_smoke_tx set) per ` +
+          `docs/x402-facilitator-testing.md, or set the emergency override.`,
+      });
+    } else {
+      warnings.push({
+        code: "polygon_enabled_but_inactive",
+        network: POLYGON_NETWORK.id,
+        message:
+          `${POLYGON_NETWORK.enable_env} is truthy and the activation record is valid, but ` +
+          `Polygon is NOT in accepts[] — no payTo resolved. Set ${POLYGON_NETWORK.payto_env} ` +
+          `or X402_PAYTO. A flag + record without a payTo silently advertises nothing.`,
+      });
+    }
+  }
+
+  // Emergency override is in force AND actually put Polygon in accepts[]: surface it
+  // loudly so an unproven rail advertised by override is never silent.
+  if (
+    activeIds.has(POLYGON_NETWORK.id) &&
+    resolvePolygonActivation(env).emergencyOverride
+  ) {
     warnings.push({
-      code: "polygon_enabled_but_inactive",
+      code: "polygon_emergency_override_active",
       network: POLYGON_NETWORK.id,
       message:
-        `${POLYGON_NETWORK.enable_env} is truthy but Polygon is NOT in accepts[] — ` +
-        `no payTo resolved. Set ${POLYGON_NETWORK.payto_env} or X402_PAYTO, or unset ` +
-        `${POLYGON_NETWORK.enable_env}. A flag without a payTo silently advertises nothing.`,
+        `Polygon is in accepts[] via X402_POLYGON_EMERGENCY_OVERRIDE — settlement is ` +
+        `NOT proven by an activation record. Treat as temporary; supply a real ` +
+        `activation record and remove the override as soon as possible.`,
     });
   }
 

@@ -1,0 +1,15 @@
+{
+  "$comment": "Rail activation records — the proof gate that sits in front of X402_POLYGON_ENABLED. A non-Base rail enters accepts[] ONLY when (a) its env flag is set AND (b) a VALID activation record here (or in X402_POLYGON_ACTIVATION_RECORD) attests the release-gate ritual passed, OR an explicit emergency override env is set. The flag alone is intentionally NOT enough: the failed Polygon canary (eip155:137 advertised before Layer 3 proved settlement, live verification failed) is exactly what this gate prevents. To activate Polygon, set polygon.activated=true and fill amoy_layer3_passes (>=3) + mainnet_smoke_tx after running test/x402-facilitator/ Layer 3 per docs/x402-facilitator-testing.md. See functions/_lib/x402-rail-activation.js for the validation contract.",
+  "version": 1,
+  "rails": {
+    "polygon": {
+      "network": "eip155:137",
+      "activated": false,
+      "amoy_layer3_passes": 0,
+      "mainnet_smoke_tx": null,
+      "approved_by": null,
+      "approved_at": null,
+      "note": "Disabled after the failed canary. Activation requires Amoy Layer 3 passing >=3x and a documented mainnet smoke tx hash (see docs/x402-facilitator-testing.md)."
+    }
+  }
+}

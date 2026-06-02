@@ -15,6 +15,16 @@ fragmenting the product** — same endpoints, same work marks, same ledger.
 Base (`eip155:8453`) is canonical and is **always `accepts[0]`**. Everything else
 is opt-in and appends after Base.
 
+> **Polygon needs a proof gate, not just a flag.** Polygon was once advertised off
+> `X402_POLYGON_ENABLED=1` alone, before settlement was proven; the live canary then
+> failed verification. The flag is now necessary but not sufficient — Polygon also
+> needs a valid **activation record** (`config/x402-rail-activations.json` or
+> `X402_POLYGON_ACTIVATION_RECORD`) attesting Amoy Layer 3 passed ≥3× and a mainnet
+> smoke tx is documented, or an explicit emergency override. See
+> [`docs/x402-facilitator-testing.md`](x402-facilitator-testing.md#activation-record-gate-the-canary-fix)
+> and the gate in
+> [`functions/_lib/x402-rail-activation.js`](../functions/_lib/x402-rail-activation.js).
+
 The rail registry lives in [`functions/_lib/x402-networks.js`](../functions/_lib/x402-networks.js).
 `resolveActiveNetworks(env)` decides what is accept-ready; `plannedNetworks(env)`
 returns the roadmap rails surfaced in discovery but kept out of `accepts[]`.
@@ -24,7 +34,7 @@ returns the roadmap rails surfaced in discovery but kept out of `accepts[]`.
 | Rail | CAIP-2 | Status | How it settles | Activate with |
 |------|--------|--------|----------------|---------------|
 | **Base** | `eip155:8453` | **active** (default) | CDP facilitator, EVM EIP-712 USDC | `X402_PAYTO` (already set) |
-| **Polygon** | `eip155:137` | **activatable** | Same EVM EIP-712 path + same CDP facilitator; same merchant wallet works | `X402_POLYGON_ENABLED=1` |
+| **Polygon** | `eip155:137` | **disabled** (after failed canary) | Same EVM EIP-712 path + same CDP facilitator; same merchant wallet works | `X402_POLYGON_ENABLED=1` **AND** a valid activation record (see below) |
 | **Solana** | `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` | **planned (config-ready)** | CDP facilitator settles Solana SPL USDC, but our request-body shaping is EVM-shaped and is **not yet verified end-to-end** for SVM | `X402_SOLANA_PAY_TO` **and** `X402_SOLANA_ACTIVE=1` (after confirming settlement) |
 
 ## Environment variables
@@ -78,8 +88,15 @@ the **default posture**:
 
 The **live** API root reflects the real env-resolved state:
 
-- `GET /api/bar` → `payment_activation.accepted_networks` / `.planned_networks`
+- `GET /api/bar` → `payment_activation.accepted_networks` / `.planned_networks` / `.rail_states`
 - `GET /api/bar/enter` → same under `payment_activation`
+- `GET /api/bar/proof` → `x402_rail_states` + `x402_config_warnings`
+
+`rail_states` is the lifecycle map: `base` active/proven, `polygon`
+disabled/unproven/active/emergency_override per the activation gate, `solana`
+planned. It makes "the flag is set but the rail is NOT advertised" visible instead
+of silent — an agent (or operator) sees `polygon: unproven` with the blocker
+reasons rather than guessing from an absent `accepts[]` entry.
 
 So an operator who sets `X402_POLYGON_ENABLED=1` will see `eip155:137` move from
 `planned_networks` into `accepted_networks` on the live API (and in the actual
@@ -99,9 +116,10 @@ against Base `accepts[0]`. Legacy single-rail signers with no network fall back 
 ## Verification (no crypto spend)
 
 ```bash
-node scripts/x402-multinetwork-selftest.mjs    # rail gating + facilitator rail selection
-node scripts/discovery-consistency-check.mjs   # static surfaces: Base canonical, Solana never in accepted_networks
-node scripts/x402-server-selftest.mjs          # Base 402 still payable by official @x402/fetch v2 (needs @x402 deps)
+node scripts/x402-multinetwork-selftest.mjs       # rail gating + facilitator rail selection
+node scripts/x402-rail-activation-selftest.mjs     # flag alone never advertises Polygon; record/override required
+node scripts/discovery-consistency-check.mjs       # static surfaces: Base canonical, Solana never in accepted_networks
+node scripts/x402-server-selftest.mjs              # Base 402 still payable by official @x402/fetch v2 (needs @x402 deps)
 ```
 
 Live smoke (after deploy, no spend): `GET /api/bar` and confirm
@@ -111,12 +129,22 @@ Live smoke (after deploy, no spend): `GET /api/bar` and confirm
 ## Deploy
 
 ```bash
-# enable Polygon (example)
+# enable Polygon (example) — requires a VALID activation record, not just the flag.
+# 1. prove settlement and fill the record (see docs/x402-facilitator-testing.md):
+#    edit config/x402-rail-activations.json → activated:true, amoy_layer3_passes>=3,
+#    mainnet_smoke_tx:"0x…"  (or supply X402_POLYGON_ACTIVATION_RECORD as a secret)
+# 2. set the flag and deploy:
 wrangler pages secret put X402_POLYGON_ENABLED   # value: 1
 npx wrangler pages deploy public --project-name second-eyes-ai
 # then index the new rail on CDP Bazaar with a real settlement:
 node scripts/canary-pay.mjs
 ```
 
-Disabling is a no-op revert: unset the flag and redeploy — `accepts[]` returns to
-Base only with no other change.
+The `Deploy Cloudflare Pages` workflow exposes `enable_polygon` and `disable_polygon`
+`workflow_dispatch` inputs; `disable_polygon` deletes/zeroes `X402_POLYGON_ENABLED`
+and wins when both are checked (fail-safe toward Base-only).
+
+Disabling is a no-op revert: unset (or `0`) the flag and redeploy — `accepts[]`
+returns to Base only with no other change. Note that even with the flag set,
+Polygon stays out of `accepts[]` until a valid activation record exists, so an
+accidental flag can never re-advertise an unproven rail.
