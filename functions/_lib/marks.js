@@ -65,12 +65,15 @@ export async function descendantsCount(env, markId) {
   return row?.n ?? 0;
 }
 
-/** Referral URLs that carry a mark forward as the next agent's `via`. */
+/** Referral URLs that carry a mark forward as the next agent's `via`. Omit the
+ * query when no mark id is given so we never emit a malformed `?via=`. */
 export function viaEnterUrl(origin, markId) {
-  return `${origin?.replace(/\/$/, "") || ""}/api/bar/enter?via=${markId}`;
+  const base = `${origin?.replace(/\/$/, "") || ""}/api/bar/enter`;
+  return markId ? `${base}?via=${markId}` : base;
 }
 export function viaX402Url(origin, markId) {
-  return `${origin?.replace(/\/$/, "") || ""}/api/bar/x402/help-me?via=${markId}`;
+  const base = `${origin?.replace(/\/$/, "") || ""}/api/bar/x402/help-me`;
+  return markId ? `${base}?via=${markId}` : base;
 }
 
 /** Lineage block spoken directly to the next agent — agent-native framing only, no buyer/customer wording. */

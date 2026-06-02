@@ -186,8 +186,15 @@ function makeDb() {
 
 async function behaviourCheck() {
   const marksMod = await import("../functions/_lib/marks.js");
-  const { enterBar, attachSaleMark, descendantsCount, lineageBlock, readViaMark, formatMark } = marksMod;
+  const { enterBar, attachSaleMark, descendantsCount, lineageBlock, readViaMark, formatMark, viaEnterUrl, viaX402Url } = marksMod;
   const origin = "https://secondeyesai.com";
+
+  // via URL helpers: carry the mark when present, omit a malformed `?via=` when not.
+  ok(viaEnterUrl(origin, "mk_abcd1234") === `${origin}/api/bar/enter?via=mk_abcd1234`, "viaEnterUrl: carries mark id");
+  ok(viaX402Url(origin, "mk_abcd1234") === `${origin}/api/bar/x402/help-me?via=mk_abcd1234`, "viaX402Url: carries mark id");
+  ok(viaEnterUrl(origin, "") === `${origin}/api/bar/enter`, "viaEnterUrl: no empty ?via= when mark id absent");
+  ok(viaX402Url(origin, null) === `${origin}/api/bar/x402/help-me`, "viaX402Url: no empty ?via= when mark id absent");
+  ok(!/\?via=$/.test(viaX402Url(origin, "")), "viaX402Url: never emits trailing empty ?via=");
 
   // readViaMark: header, query, validation
   const reqHdr = { headers: { get: (k) => (k === "X-Second-Eye-Via" ? "mk_abcd1234" : null) }, url: origin };
