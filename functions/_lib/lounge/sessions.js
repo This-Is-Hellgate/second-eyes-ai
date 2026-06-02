@@ -65,7 +65,15 @@ export async function getSession(env, sessionId) {
 
 function elapsedSeconds(session, now = Date.now()) {
   const entered = new Date(session.entered_at).getTime();
-  return Math.max(0, Math.floor((now - entered) / 1000));
+  // A closed session's clock stopped at left_at. Looking up its receipt later
+  // (GET /api/bar/receipt) must not keep counting against wall-clock now, or
+  // elapsed_seconds — and the whole billing summary derived from it — inflates
+  // without bound and contradicts the frozen session_cost_usd.
+  const end =
+    session.status === "closed" && session.left_at
+      ? new Date(session.left_at).getTime()
+      : now;
+  return Math.max(0, Math.floor((end - entered) / 1000));
 }
 
 function idleExceeded(session, now = Date.now()) {

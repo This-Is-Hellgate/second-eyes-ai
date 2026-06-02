@@ -334,7 +334,17 @@ export async function handleReceipt(context) {
   const row = await getSession(context.env, sessionId);
   if (!row) return loungeJson({ error: "session_not_found" }, 404);
 
-  return loungeJson({ receipt: buildSessionReceipt(row, origin) });
+  // Resolve the mark so the looked-up receipt carries the same work_stamp +
+  // lineage as the leave receipt. Without this the canonical proof URL
+  // (receipt.proof → /api/bar/receipt?session_id=…) returns work_stamp: null,
+  // dropping the help_me/via lineage the agent is told to embed in its work.
+  let mark = null;
+  if (row.mark_id && context.env.DB) {
+    const markRow = await getMarkById(context.env, row.mark_id);
+    if (markRow) mark = formatMark(markRow, origin);
+  }
+
+  return loungeJson({ receipt: buildSessionReceipt(row, origin, mark) });
 }
 
 export function lawsPayload(origin) {
