@@ -21,7 +21,7 @@
 //   export MAX_TEST_SPEND_USD=0.05
 //   export TEST_EVM_PRIVATE_KEY=0x...        # NEVER a mainnet-funded key
 //   export TEST_EVM_PAY_TO=0x...             # MUST differ from X402_PAYTO
-//   export TEST_FACILITATOR_URL_BASE_SEPOLIA=https://api.cdp.coinbase.com/platform/v2/x402
+//   export TEST_FACILITATOR_URL_BASE_SEPOLIA=https://api.cdp.coinbase.com/platform
 //   node test/x402-facilitator/settlement.test.mjs
 
 import {

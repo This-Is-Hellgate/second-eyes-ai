@@ -9,6 +9,8 @@
 // X402_POLYGON_PAY_TO, X402_SOLANA_PAY_TO) — NOT the spec's idealized aliases —
 // because the test harness must match what an operator actually sets.
 
+import { facilitatorPaths } from "../../functions/_lib/cdp-auth.js";
+
 // ---------------------------------------------------------------------------
 // Gates — the only thing standing between this harness and real spend.
 // ---------------------------------------------------------------------------
@@ -97,6 +99,31 @@ export function facilitatorUrlFor(env, net) {
     "solana-devnet": "TEST_FACILITATOR_URL_SOLANA_DEVNET",
   }[net];
   return env[overrideKey] || TESTNETS[net].defaultFacilitatorUrl;
+}
+
+/**
+ * Build the GET /supported reachability URL for a configured facilitator base,
+ * tolerant of however much of the CDP path the operator baked in.
+ *
+ * The CDP /supported endpoint lives at `<origin>/platform/v2/x402/supported`, so
+ * a base of `<origin>/platform` (the canonical docs/.env form) MUST still resolve
+ * to the full `/platform/v2/x402/supported` route — naively appending `/supported`
+ * would 404 on `<origin>/platform/supported`. We reuse the production
+ * facilitatorPaths() normalization for any CDP `/platform...` base (it strips a
+ * trailing /platform, /platform/v2, or /platform/v2/x402 and re-derives the
+ * canonical route), then swap the verify leaf for /supported.
+ *
+ * Non-CDP facilitators (e.g. Polygon Amoy at x402-amoy.polygon.technology) expose
+ * /supported directly off their origin and carry no /platform prefix, so we append
+ * /supported to the trimmed base unchanged.
+ */
+export function supportedUrlFor(baseUrl) {
+  const trimmed = String(baseUrl || "").replace(/\/+$/, "");
+  if (/\/platform(\/|$)/.test(trimmed)) {
+    const { base } = facilitatorPaths(trimmed);
+    return `${base}/platform/v2/x402/supported`;
+  }
+  return `${trimmed}/supported`;
 }
 
 /** A facilitator URL is mainnet-ish if it lacks any testnet marker. */

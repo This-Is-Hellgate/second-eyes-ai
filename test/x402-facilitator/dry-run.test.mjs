@@ -16,7 +16,7 @@
 //   export TEST_FACILITATOR_URL_SOLANA_DEVNET=https://api.cdp.coinbase.com/platform
 //   export TEST_FACILITATOR_URL_POLYGON_AMOY=https://x402-amoy.polygon.technology
 
-import { TESTNETS, facilitatorUrlFor } from "./env.mjs";
+import { TESTNETS, facilitatorUrlFor, supportedUrlFor } from "./env.mjs";
 
 const env = process.env;
 const failures = [];
@@ -25,7 +25,10 @@ const fail = (where, msg) => failures.push(`${where}: ${msg}`);
 const PROBE_TIMEOUT_MS = 20_000;
 
 async function fetchSupported(url) {
-  const supportedUrl = `${url.replace(/\/+$/, "")}/supported`;
+  // Normalize the configured base before appending /supported so BOTH the canonical
+  // CDP `/platform` base and a fully-qualified `/platform/v2/x402` base resolve to
+  // `/platform/v2/x402/supported` (non-CDP origins get a plain `/supported`).
+  const supportedUrl = supportedUrlFor(url);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
   try {
