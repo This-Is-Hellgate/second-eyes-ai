@@ -1,10 +1,71 @@
 /** Public payment ledger — settled grants only, no PII beyond on-chain tx refs. */
 
+import { getKnownPayers, normalizePayer, maskPayer } from "./known-payers.js";
+
 const BASESCAN_TX = "https://basescan.org/tx/";
 
 function truncatePayer(ref) {
   if (!ref || ref.length < 12) return null;
   return `${ref.slice(0, 6)}…${ref.slice(-4)}`;
+}
+
+/**
+ * External-payer signal: detects x402 settlements from payers NOT in the known
+ * operator/test wallet set (see known-payers.js). Surfaces the first external
+ * agent payer, the most recent one, and a distinct count — agent-facing language
+ * only (distinct external agent payers, never "customers"). Exposes masked
+ * addresses only; never more payer info than the public ledger already shows.
+ */
+export async function getExternalPayerSignal(env) {
+  const signal = {
+    external_buyer_signal: false,
+    external_distinct_payers: 0,
+    first_external_payer_seen: null,
+    latest_external_settlement: null,
+    known_test_payers_configured: 0,
+    note: "external_buyer_signal=true means an x402 settlement arrived from a payer outside the known operator/test wallet set. Masked addresses only; verify tx_ref on Base.",
+  };
+
+  const known = getKnownPayers(env);
+  signal.known_test_payers_configured = known.size;
+
+  if (!env.DB) return signal;
+
+  let rows;
+  try {
+    rows = await env.DB.prepare(
+      `SELECT id, tx_ref, payer_ref, created_at
+       FROM access_grants
+       WHERE payer_ref IS NOT NULL AND tx_ref IS NOT NULL
+       ORDER BY created_at ASC`
+    ).all();
+  } catch {
+    return signal;
+  }
+
+  const distinct = new Set();
+  let first = null;
+  let latest = null;
+
+  for (const r of rows.results || []) {
+    const key = normalizePayer(r.payer_ref);
+    if (!key || known.has(key)) continue;
+    distinct.add(key);
+    const entry = {
+      payer: maskPayer(r.payer_ref),
+      tx_ref: r.tx_ref,
+      basescan: `${BASESCAN_TX}${r.tx_ref}`,
+      settled_at: r.created_at,
+    };
+    if (!first) first = entry;
+    latest = entry;
+  }
+
+  signal.external_distinct_payers = distinct.size;
+  signal.external_buyer_signal = distinct.size > 0;
+  signal.first_external_payer_seen = first;
+  signal.latest_external_settlement = latest;
+  return signal;
 }
 
 export async function getPaymentProof(env, { limit = 20 } = {}) {
@@ -20,12 +81,21 @@ export async function getPaymentProof(env, { limit = 20 } = {}) {
     survival_revenue_usd: 0,
     payment_funnel: {},
     recent_settlements: [],
+    external_payer_signal: {
+      external_buyer_signal: false,
+      external_distinct_payers: 0,
+      first_external_payer_seen: null,
+      latest_external_settlement: null,
+      known_test_payers_configured: 0,
+    },
     verify: {
       on_chain: "Each settlement includes tx_ref — verify on Base via basescan link.",
       idempotent: "Duplicate tx_ref returns 409; grants table is source of truth.",
       agent_receipt: "Successful 200 includes receipt.transaction, grantId, X-PAYMENT-RESPONSE header.",
     },
   };
+
+  base.external_payer_signal = await getExternalPayerSignal(env);
 
   if (!env.DB) return base;
 

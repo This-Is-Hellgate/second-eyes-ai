@@ -5,6 +5,7 @@ import { buildAgentFlow } from "../../_lib/agent-entry.js";
 import { corsOptions } from "../../_lib/bar-pay.js";
 import { getLoungeStats } from "../../_lib/lounge/stats.js";
 import { getPatronActivity } from "../../_lib/lounge/patron-activity.js";
+import { getExternalPayerSignal } from "../../_lib/lounge/payment-proof.js";
 export async function onRequestOptions() {
   return corsOptions();
 }
@@ -17,6 +18,7 @@ export async function onRequestGet(context) {
   const lounge = await getLoungeStats(context.env);
   const patron_activity = await getPatronActivity(context.env, origin);
   const bar_traffic = await getBarTrafficStats(context.env);
+  const external_payer_signal = await getExternalPayerSignal(context.env);
 
   return accessJson(
     {
@@ -31,6 +33,7 @@ export async function onRequestGet(context) {
       survival_revenue_usd: lounge.survival_revenue_usd,
       session_health: lounge.session_health,
       payment_funnel: lounge.payment_funnel,
+      external_payer_signal,
       payment_note:
         "tasks_sold = legacy taps/tools; survival_services_sold = paid menu via x402; payment_402_* = saw paywall",
       latest_patron_number: counters.patron_number,

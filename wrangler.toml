@@ -18,6 +18,12 @@ compatibility_date = "2026-05-26"
 
 [vars]
 X402_NETWORK = "base"
+# KNOWN_TEST_PAYERS — operator/test wallets excluded from external_buyer_signal
+# (comma/space-separated 0x addresses). Built-in defaults already cover the
+# canary payer + lounge payTo; set this to add CI/test wallets without a code
+# change. Plain var (public) — these are public Base addresses, not secrets.
+# See docs/external-payer-monitoring.md. Example:
+# KNOWN_TEST_PAYERS = "0xCiWallet1,0xCiWallet2"
 
 [[d1_databases]]
 binding = "DB"
