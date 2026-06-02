@@ -237,6 +237,51 @@ const accepts = (env) =>
   }
 }
 
+// --- 6d. Base payTo missing + an optional rail enabled → INVARIANT guard ---
+// Regression for the Codex finding: with X402_POLYGON_ENABLED + X402_POLYGON_PAY_TO
+// but NO canonical X402_PAYTO, resolveActiveNetworks could once emit a Base-less
+// accepts[] led by eip155:137. Base must always be accepts[0]; an optional rail can
+// never anchor or replace it. So: no Base payTo → NO optional rail is advertised,
+// AND /api/bar/proof gets an x402_base_payto_missing warning (proof.pass → false).
+{
+  // Polygon enabled + proven + its OWN dedicated payTo, but X402_PAYTO absent.
+  const env = {
+    X402_POLYGON_ENABLED: "1",
+    X402_POLYGON_PAY_TO: "0xPolyWallet",
+    X402_POLYGON_ACTIVATION_RECORD: PROVEN_POLYGON_RECORD,
+  };
+  // No Base payTo → accepts[] is EMPTY (Polygon must not lead it).
+  eq("base-missing accepts empty", accepts(env), []);
+  eq("base-missing active networks", resolveActiveNetworks(env).map((a) => a.network.id), []);
+  // Paid routes get null requirements (x402_not_configured) — never a Polygon-led accepts[].
+  if (buildProductPaymentRequirements(product, URL_UNDER_TEST, env) !== null) {
+    fail("base-missing", "expected null requirements (no Base payTo) — must not advertise Polygon alone");
+  }
+  // The proof surface must WARN (and therefore fail) on this misconfiguration.
+  const warns = x402ConfigWarnings(env);
+  if (!warns.some((w) => w.code === "x402_base_payto_missing")) {
+    fail("base-missing", `expected x402_base_payto_missing warning, got ${warns.map((w) => w.code).join(",") || "none"}`);
+  }
+  const baseWarn = warns.find((w) => w.code === "x402_base_payto_missing");
+  if (baseWarn && !baseWarn.enabled_rails?.includes(POLY)) {
+    fail("base-missing", "warning should name the enabled optional rail (eip155:137)");
+  }
+
+  // Solana active + payTo but NO Base payTo → same guard.
+  const solEnv = { X402_SOLANA_ACTIVE: "1", X402_SOLANA_PAY_TO: "SoLwallet" };
+  eq("base-missing sol accepts empty", accepts(solEnv), []);
+  if (!x402ConfigWarnings(solEnv).some((w) => w.code === "x402_base_payto_missing")) {
+    fail("base-missing", "expected x402_base_payto_missing when Solana enabled without Base payTo");
+  }
+
+  // Adding the canonical Base payTo clears the invariant warning and restores Base[0].
+  const fixed = { ...env, X402_PAYTO: "0xBaseWallet" };
+  eq("base-restored accepts", accepts(fixed), [BASE, POLY]);
+  if (x402ConfigWarnings(fixed).some((w) => w.code === "x402_base_payto_missing")) {
+    fail("base-missing", "x402_base_payto_missing should clear once X402_PAYTO is set");
+  }
+}
+
 // --- 7. accepts[0] is invariably Base across every configuration ---
 for (const env of [
   { X402_PAYTO: "0xW" },
@@ -262,5 +307,5 @@ if (failures.length) {
 }
 
 console.log(
-  "x402 multi-network self-test OK — Base canonical accepts[0]; Polygon opt-in; Solana double-gated; facilitator selects the buyer's rail."
+  "x402 multi-network self-test OK — Base canonical accepts[0]; Polygon opt-in; Solana double-gated; facilitator selects the buyer's rail; no optional rail may anchor a Base-less accepts[]."
 );

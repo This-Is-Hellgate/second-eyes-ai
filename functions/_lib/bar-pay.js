@@ -428,7 +428,18 @@ export async function issueBarTabToken(plan, env, grantId, receipt) {
   });
 }
 
-/** 402 / degraded response when x402 verify fails (shared by handlePaidFetch and validate-before-settle doors). */
+/**
+ * 402 / degraded response when x402 verify fails (shared by handlePaidFetch and
+ * validate-before-settle doors).
+ *
+ * The client-visible paywall.requestId MUST be the same id the verify-failure row
+ * was persisted under (recordX402VerifyFailure keys on cf-ray via readRequestId),
+ * or the documented "look it up by the returned requestId" path
+ * (/api/bar/proof/verify-failure?requestId=…) finds no row. So this derives the id
+ * from the request (cf-ray, same as persistence) rather than minting a fresh
+ * makeId("req") that nothing else knows about. readRequestId only falls back to a
+ * generated id when there is no cf-ray (internal callers / tests).
+ */
 export function paymentVerifyFailureResponse(context, product, requirements, settled, origin) {
   if (settled.degraded) {
     return accessJson(
@@ -440,7 +451,7 @@ export function paymentVerifyFailureResponse(context, product, requirements, set
       }
     );
   }
-  const requestId = makeId("req");
+  const requestId = readRequestId(context.request);
   console.log(
     JSON.stringify({
       requestId,

@@ -24,6 +24,7 @@ import {
   recordX402VerifyFailure,
   lookupX402VerifyFailure,
 } from "../functions/_lib/x402-payment-log.js";
+import { paymentVerifyFailureResponse } from "../functions/_lib/bar-pay.js";
 
 const failures = [];
 const fail = (where, msg) => failures.push(`${where}: ${msg}`);
@@ -226,6 +227,70 @@ function makeD1Stub() {
   eq("lookup no db reason", noDb.reason, "no_db_binding");
 }
 
+// --- 6. The client-visible paywall.requestId MATCHES the persisted (cf-ray) id ---
+// Regression for the Codex finding: paymentVerifyFailureResponse used to mint a
+// fresh makeId("req") for the client while the D1 row was persisted under cf-ray, so
+// the documented lookup-by-returned-requestId found nothing. The returned id MUST be
+// the same id recordX402VerifyFailure keys on (readRequestId → cf-ray).
+{
+  const ray = "8f1aRAY-RECOVER";
+  const context = {
+    request: { headers: { get: (k) => (k === "cf-ray" ? ray : null) } },
+  };
+  const product = { kind: "nano", id: "help-me", slug: "help-me", priceUsd: 0.01 };
+  const requirements = {
+    resource: "https://secondeyesai.com/api/bar/x402/help-me",
+    description: "help-me",
+    mimeType: "application/json",
+    maxAmountRequired: "10000",
+    accepts: [{ scheme: "exact", network: "eip155:8453", asset: "0xUSDC", amount: "10000", payTo: "0xW", maxTimeoutSeconds: 600 }],
+  };
+  const settled = {
+    ok: false,
+    stage: "verify",
+    invalidReason: "insufficient_funds",
+    facilitatorStatus: 402,
+  };
+
+  const res = paymentVerifyFailureResponse(
+    context,
+    product,
+    requirements,
+    settled,
+    "https://secondeyesai.com"
+  );
+  if (res.status !== 402) fail("paywall", `expected 402, got ${res.status}`);
+  const body = await res.json();
+
+  // The client is told to look up by THIS id…
+  eq("paywall requestId == cf-ray", body.requestId, ray);
+
+  // …and a failure persisted under the SAME id (as the verify path does) is found by it.
+  const env = makeD1Stub();
+  await recordX402VerifyFailure(env, settled, {
+    requestId: readRequestId(context.request),
+    route: "/api/bar/x402/help-me",
+    x402_version: 2,
+  });
+  const found = await lookupX402VerifyFailure(env, body.requestId);
+  if (!found.ok) fail("paywall lookup", `not ok: ${found.reason}`);
+  eq("paywall lookup count", found.count, 1);
+  eq("paywall lookup stage", found.failures[0]?.stage, "verify");
+
+  // No cf-ray (internal caller / test): still a usable req_ id, not undefined.
+  const noRay = paymentVerifyFailureResponse(
+    { request: { headers: { get: () => null } } },
+    product,
+    requirements,
+    settled,
+    "https://secondeyesai.com"
+  );
+  const noRayBody = await noRay.json();
+  if (!noRayBody.requestId || !String(noRayBody.requestId).startsWith("req_")) {
+    fail("paywall", `no-cf-ray requestId should be a generated req_ id, got ${noRayBody.requestId}`);
+  }
+}
+
 if (failures.length) {
   console.error("x402 failure-recovery self-test FAILED:\n");
   for (const f of failures) console.error(`  ✗ ${f}`);
@@ -234,5 +299,5 @@ if (failures.length) {
 }
 
 console.log(
-  "x402 failure-recovery self-test OK — verify failures persist redacted detail keyed by cf-ray and are recoverable from D1 alone (no signatures leak)."
+  "x402 failure-recovery self-test OK — verify failures persist redacted detail keyed by cf-ray and are recoverable from D1 alone (no signatures leak); the client-visible paywall.requestId matches the persisted id so lookup-by-returned-id works."
 );

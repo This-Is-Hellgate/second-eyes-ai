@@ -14,10 +14,12 @@
  *   1. env[X402_POLYGON_ACTIVATION_RECORD] — a JSON string (lets an operator
  *      supply/rotate the record as a Pages secret without a redeploy of the file).
  *   2. config/x402-rail-activations.json — the checked-in default (Polygon OFF).
- * The env record, when present and parseable, fully replaces the file record for
- * that rail. A present-but-unparseable env record is treated as INVALID (it does
- * not silently fall through to the file) so a typo can never accidentally relax
- * the gate.
+ * The env record, when present, fully replaces the file record for that rail —
+ * env wins, unconditionally. A present-but-unparseable env record is treated as
+ * INVALID (it does not silently fall through to the file) so a typo can never
+ * accidentally relax the gate. This also covers a file-shaped secret that omits
+ * the rail ({"rails":{}} or a typo key): the operator supplied a record, so its
+ * silence on this rail is authoritative (NOT proven) — it never reopens the file.
  *
  * Emergency override: X402_POLYGON_EMERGENCY_OVERRIDE must equal the exact sentinel
  * "I_ACCEPT_UNPROVEN_RISK". It bypasses the record check entirely (still requires
@@ -48,21 +50,36 @@ function asObject(v) {
   return v && typeof v === "object" && !Array.isArray(v) ? v : null;
 }
 
-/** Parse the env-provided record JSON. Returns { record } or { parseError }. */
-function recordFromEnv(env, recordEnvName) {
+/**
+ * Parse the env-provided record JSON for a rail.
+ *   { present: false }                — no env secret at all → caller may use the file.
+ *   { present: true, parseError }     — env secret present but malformed/incomplete →
+ *                                       caller MUST hard-reject (never fall back to the file).
+ *   { present: true, record }         — env secret present and the per-rail record resolved.
+ *
+ * A file-shaped secret ({"rails":{…}}) that OMITS this rail (e.g. {"rails":{}} or a
+ * typo key) is NOT "no record" — it is a present-but-invalid env record. Returning
+ * a null record here would let the caller silently fall back to the checked-in file,
+ * re-enabling a stale activation behind a broken secret. So that case is a parseError.
+ */
+function recordFromEnv(env, railKey, recordEnvName) {
   const raw = env?.[recordEnvName];
   if (raw === undefined || raw === null || String(raw).trim() === "") {
-    return { record: null };
+    return { present: false };
   }
   try {
     const parsed = JSON.parse(raw);
     const obj = asObject(parsed);
-    if (!obj) return { parseError: "env_record_not_object" };
+    if (!obj) return { present: true, parseError: "env_record_not_object" };
     // Accept either the per-rail object directly, or a full file-shaped record.
-    if (obj.rails && asObject(obj.rails)) return { record: obj.rails.polygon ?? null };
-    return { record: obj };
+    if (obj.rails && asObject(obj.rails)) {
+      const railRecord = asObject(obj.rails[railKey]);
+      if (!railRecord) return { present: true, parseError: "env_record_missing_rail" };
+      return { present: true, record: railRecord };
+    }
+    return { present: true, record: obj };
   } catch {
-    return { parseError: "env_record_invalid_json" };
+    return { present: true, parseError: "env_record_invalid_json" };
   }
 }
 
@@ -132,26 +149,27 @@ export function resolvePolygonActivation(env) {
     };
   }
 
-  const fromEnv = recordFromEnv(env, gate.record_env);
+  const fromEnv = recordFromEnv(env, "polygon", gate.record_env);
   let record = null;
   let recordSource = "none";
-  const reasons = [];
 
-  if (fromEnv.parseError) {
-    // A malformed env record is a hard invalid — never fall back to the file,
-    // so a broken secret cannot mask itself behind the checked-in default.
-    reasons.push(fromEnv.parseError);
+  if (fromEnv.present && fromEnv.parseError) {
+    // A present-but-invalid env record is a hard invalid — never fall back to the
+    // file, so a broken secret cannot mask itself behind the checked-in default.
+    // This includes a file-shaped secret that OMITS this rail (env_record_missing_rail):
+    // the operator supplied a record, so the env source WINS and its omission of the
+    // rail is the authoritative answer (not proven), not a reason to consult the file.
     return {
       proven: false,
       source: "none",
       emergencyOverride: false,
-      reasons,
+      reasons: [fromEnv.parseError],
       record: null,
       recordSource: "env",
     };
   }
 
-  if (fromEnv.record) {
+  if (fromEnv.present) {
     record = fromEnv.record;
     recordSource = "env";
   } else {
