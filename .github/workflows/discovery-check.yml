@@ -23,6 +23,10 @@ on:
       - "functions/_lib/x402.js"
       - "functions/_lib/x402-networks.js"
       - "functions/_lib/discovery.js"
+      # Canonical price source (SERVICE_PRICES / SURVIVAL_MENU / price range) the
+      # consistency check reads — a PR editing only a price here must trigger the
+      # guard so static discovery prices can't go stale until push-to-main fails.
+      - "functions/_lib/lounge/**"
       - "functions/openapi.json.js"
       - "functions/v0/openapi.json.js"
       - "functions/v1/x402/discovery/resources.js"
