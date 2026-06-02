@@ -3,7 +3,7 @@
  *
  * Is an x402 endpoint actually indexed on the CDP Bazaar? If not, is it a format
  * problem (fixable with x402-doctor) or CDP's indexing backlog? No session;
- * nano-priced ($0.25) because "am I indexed yet?" is a polling question.
+ * launch recovery price ($0.05) because "am I indexed yet?" is a polling question.
  *
  *   GET  /api/bar/x402/index-check?payTo=0x…&url=https://…
  *   POST /api/bar/x402/index-check  { "payTo": "0x…", "url": "https://…" }
@@ -21,7 +21,7 @@ import { accessJson } from "../../../_lib/access.js";
 
 const TOOL_SLUG = "x402-survival";
 const TAP_SLUG = "bazaar-index-check";
-const PRICE_USD = 0.25;
+const PRICE_USD = 0.05;
 
 const PRODUCT = {
   kind: "nano",

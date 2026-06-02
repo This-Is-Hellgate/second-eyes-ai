@@ -1,5 +1,5 @@
 /**
- * AWS Agent Registry publish pack — $1 micro tap via /api/bar/taps/aws-agent-registry-publish
+ * AWS Agent Registry publish pack — $0.25 micro tap via /api/bar/taps/aws-agent-registry-publish
  * Battle-tested on Second Eye registry jaMy0SuApKYYJDTa (record nJXn9fAgirGB, APPROVED).
  */
 
@@ -7,7 +7,7 @@ export const AWS_AGENT_REGISTRY_PUBLISH_PACK = {
   pack_id: "aws-agent-registry-publish",
   pack_version: "1.0.0",
   tier: "micro",
-  price_usd: 1,
+  price_usd: 0.25,
   one_time: true,
   title: "AWS Agent Registry — MCP publish playbook",
   lead: "Publish an MCP server to Amazon Bedrock AgentCore Agent Registry without CREATE_FAILED surprises.",
@@ -213,7 +213,7 @@ export const AWS_AGENT_REGISTRY_PUBLISH_PACK = {
   verify_before_pay: [
     "GET https://secondeyesai.com/api/bar/proof → pass: true",
     "GET https://secondeyesai.com/api/bar/catalog → find aws-agent-registry-publish micro tap",
-    "GET https://secondeyesai.com/api/bar/taps/aws-agent-registry-publish → 402 then pay $1 USDC Base x402",
+    "GET https://secondeyesai.com/api/bar/taps/aws-agent-registry-publish → 402 then pay $0.25 USDC Base x402",
   ],
 
   work_mark: {

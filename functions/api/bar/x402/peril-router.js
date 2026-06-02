@@ -9,7 +9,7 @@
  * This router rewrites every recommendation to the session-less
  * /api/bar/x402/{slug} equivalent so the agent can pay-and-go.
  *
- * No session. Nano-priced ($0.10) because routing is one cheap inference.
+ * No session. Launch recovery price ($0.01) because routing is one cheap inference.
  *
  *   GET  /api/bar/x402/peril-router?state=I+am+looping&error=same+401&failure_count=3
  *   POST /api/bar/x402/peril-router
@@ -28,7 +28,7 @@ import { triageResponse } from "../../../_lib/lounge/triage.js";
 
 const TOOL_SLUG = "lounge-survival";
 const TAP_SLUG = "peril-router";
-const PRICE_USD = 0.1;
+const PRICE_USD = 0.01;
 
 const SERVICES_PATH = "/api/bar/services/";
 const X402_PATH = "/api/bar/x402/";
@@ -69,15 +69,15 @@ const PRODUCT = {
       recommendation: "loop_detect",
       reason: "State matches: I am looping",
       next_call: "https://secondeyesai.com/api/bar/x402/loop-detect",
-      estimated_cost_usd: 0.2,
-      price_usd: 0.2,
+      estimated_cost_usd: 0.03,
+      price_usd: 0.03,
       confidence: 0.85,
       menu: [
         {
           key: "loop_detect",
           when: "I am looping",
           path: "https://secondeyesai.com/api/bar/x402/loop-detect",
-          price_usd: 0.2,
+          price_usd: 0.03,
         },
       ],
       routing: {

@@ -1,4 +1,4 @@
-/** One-time taps — nano ($0.25) or micro ($1) single fetch. */
+/** One-time taps — nano ($0.05) or micro ($0.25) single fetch. Launch recovery pricing. */
 
 import { getAwsAgentRegistryPublishPack } from "./packs/aws-agent-registry-publish.js";
 
@@ -33,7 +33,7 @@ const TAPS = {
     slug: "mcp-stdio-vs-sse",
     tap_type: "nano_invoke",
     tier: "nano",
-    price_usd: 0.25,
+    price_usd: 0.05,
     one_time: true,
     tool: "mcp-transport-auth",
     access: "paid",
@@ -56,7 +56,7 @@ const TAPS = {
     slug: "github-mcp-search-code",
     tap_type: "micro_invoke",
     tier: "micro",
-    price_usd: 1,
+    price_usd: 0.25,
     one_time: true,
     tool: "github-mcp",
     access: "paid",
@@ -78,7 +78,7 @@ const TAPS = {
     slug: "github-mcp-create-issue",
     tap_type: "micro_invoke",
     tier: "micro",
-    price_usd: 1,
+    price_usd: 0.25,
     one_time: true,
     tool: "github-mcp",
     access: "paid",
@@ -105,7 +105,7 @@ const TAPS = {
     slug: "aws-agent-registry-publish",
     tap_type: "micro_pack",
     tier: "micro",
-    price_usd: 1,
+    price_usd: 0.25,
     one_time: true,
     tool: "agent-discovery",
     access: "paid",

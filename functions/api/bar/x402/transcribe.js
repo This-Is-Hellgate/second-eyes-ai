@@ -51,7 +51,7 @@ import {
 
 const TOOL_SLUG = "x402-survival";
 const TAP_SLUG = "transcribe-extract";
-const PRICE_USD = 0.1;
+const PRICE_USD = 0.05;
 
 // Raw-byte caps before base64. Audio is the main case; video clips are kept tiny
 // (prefer a YouTube/Vimeo reference URL); PDFs are bounded for model context.
@@ -71,7 +71,7 @@ const PRODUCT = {
   access: "paid",
   oneTime: true,
   description:
-    "transcribe-extract: turn any public audio, voice note, podcast, PDF, or video URL into a transcript plus its meaning — summary, ranked key points, and grounded Q&A. Deterministically validated (schema, words/min, no decode loop, meaning grounded in transcript) before it is served; evidence-only attestation, never a claim of accuracy.",
+    "transcribe-extract (multimodal, session-less x402): give it any public audio, voice note, podcast, PDF, or video URL and get back the transcript (verbatim for audio/video, extracted text for PDF) PLUS its meaning — a summary, ranked key points, and grounded Q&A you can query. Deterministically validated (schema, words/min, no decode loop, meaning grounded in transcript) before it is served; evidence-only attestation, never a claim of accuracy. Launch recovery pricing.",
   bazaarOutputSchema: {
     input: {
       type: "http",
