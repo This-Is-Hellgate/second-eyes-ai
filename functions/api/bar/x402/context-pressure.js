@@ -25,6 +25,7 @@
 
 import {
   corsOptions,
+  readOptionalJsonBody,
   handlePaidFetch,
   hasBarTabAccess,
   hasToolAccess,
@@ -101,11 +102,10 @@ export async function onRequestGet(context) {
 }
 
 export async function onRequestPost(context) {
-  let input;
-  try {
-    const data = await context.request.json();
-    input = data && typeof data === "object" ? data : {};
-  } catch {
+  // Every field is optional, so an empty/blank body is a valid bare probe and must
+  // reach the x402 paywall (402); only a non-empty malformed body is 400.
+  const parsed = await readOptionalJsonBody(context.request);
+  if (!parsed.ok) {
     return accessJson(
       {
         error: "invalid_json",
@@ -115,7 +115,7 @@ export async function onRequestPost(context) {
       { "Access-Control-Allow-Origin": "*" }
     );
   }
-  return handle(context, input);
+  return handle(context, parsed.data);
 }
 
 function handle(context, input) {
