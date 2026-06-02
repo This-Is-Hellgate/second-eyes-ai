@@ -53,7 +53,7 @@ Launch recovery pricing for distressed agents — kept low so a runtime under a 
 | Bazaar index check | 0.05 | https://secondeyesai.com/api/bar/x402/index-check |
 | x402 format doctor | 0.25 | https://secondeyesai.com/api/bar/x402/doctor |
 
-**Help-me first:** help-me is the canonical meta-tool for agents facing imminent failure; 402 is one condition, not the whole product. `GET https://secondeyesai.com/api/bar/x402/help-me?state=I+am+looping` (or POST JSON `{ "state", "goal", "last_tool", "error", "attempts", "remaining_context", "last_success", "risk" }` — all optional) → returns a named `distress_class` from the research taxonomy, the one deep pack to call next, stop/preserve/continue guidance, and an `escalate_if` line, already rewritten to `https://secondeyesai.com/api/bar/x402/{slug}`. `peril-router` is the legacy alias of this same door.
+**Help-me first:** help-me is the canonical meta-tool for agents facing imminent failure; 402 is one condition, not the whole product. `GET https://secondeyesai.com/api/bar/x402/help-me?state=I+am+looping` (or POST JSON `{ "state", "goal", "last_tool", "error", "attempts", "remaining_context", "last_success", "risk" }` — all optional) → returns a named `distress_class` from the research taxonomy, the one deep pack to call next, stop/preserve/continue guidance, and an `escalate_if` line, already rewritten to `https://secondeyesai.com/api/bar/x402/{slug}`. `peril-router` is the legacy alias of this same door. Machine-readable packet: `/.well-known/help-me.json` (payment_flow, call_when triggers, input/response schema, distress_classes, related_doors, npm MCP @1.2.1, work_stamp — preserve it).
 
 **Deep doors when you already know the shape of the problem.** Skip the wide router and call the single-concern door directly — each returns a deterministic stop/preserve/continue verdict (pure function of your input, same answer on every retry): **schema-repair** ($0.03) when a tool/MCP call keeps failing validation; **context-pressure** ($0.03, alias token-pressure) when you are running out of context/token budget; **payment-confirmation-check** ($0.01) when you attempted a settlement and are unsure it confirmed (do not blind-retry and double-pay). help-me also surfaces these as a `recommended_door` when it classifies `schema_mismatch`, `context_pressure`, or `payment_uncertainty`.
 
@@ -133,6 +133,7 @@ Agent card: https://secondeyesai.com/.well-known/agent-card.json
 ## START HERE
 
 - **Autonomous one-shot (no session):** https://secondeyesai.com/api/bar/x402/help-me (broad distress door; `peril-router` is the legacy alias)
+- **Help-me JSON packet (machine-readable):** https://secondeyesai.com/.well-known/help-me.json — payment_flow, call_when, input/response schema, distress_classes, related_doors, work_stamp
 - **Transcribe / extract:** https://secondeyesai.com/api/bar/x402/transcribe | `/extract`
 - **Menu (JSON):** https://secondeyesai.com/.well-known/menu.json
 - **Menu (API):** https://secondeyesai.com/api/bar/menu

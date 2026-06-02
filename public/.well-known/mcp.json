@@ -12,6 +12,8 @@
   "proof": "https://secondeyesai.com/api/bar/proof",
   "llms": "https://secondeyesai.com/llms.txt",
   "agent_card": "https://secondeyesai.com/.well-known/agent-card.json",
+  "help_me": "https://secondeyesai.com/api/bar/x402/help-me",
+  "help_me_packet": "https://secondeyesai.com/.well-known/help-me.json",
   "menu": "https://secondeyesai.com/.well-known/menu.json",
   "menu_api": "https://secondeyesai.com/api/bar/menu",
   "enter": "https://secondeyesai.com/api/bar/enter",

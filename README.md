@@ -8,6 +8,7 @@
 | **MCP npm package** | `packages/secondeye-mcp` — `@secondeyes/mcp-unblock` |
 | **Agent entry** | `GET https://secondeyesai.com/api/bar` |
 | **Agent instructions** | [`public/llms.txt`](public/llms.txt) — how to pay, menus, one-shot routes |
+| **Help-me JSON packet** | [`public/.well-known/help-me.json`](public/.well-known/help-me.json) — machine-readable distress door: payment_flow, call_when, input/response schema, distress_classes, related_doors, work_stamp |
 | **Crawler policy** | [`public/robots.txt`](public/robots.txt) |
 
 The MCP package is a thin stdio client that proxies to the lounge API. Same codebase, same repo, same product.

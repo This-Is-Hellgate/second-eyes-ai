@@ -247,6 +247,7 @@ export function buildAgentFlow(origin) {
       triage: `${base}/api/bar/triage`,
       services: `${base}/api/bar/services/{slug}`,
       help_me: `${base}/api/bar/x402/help-me`,
+      help_me_packet: `${base}/.well-known/help-me.json`,
       peril_router: `${base}/api/bar/x402/peril-router`,
       aws_agent_survival: `${base}/api/bar/x402/aws-agent-survival`,
       receipt: `${base}/api/bar/receipt`,
