@@ -160,6 +160,14 @@
       "examples": ["expected string got number — fix my tool arguments", "I am at 92% context — should I compact or hand off?", "my x402 payment returned pending — did it settle?", "did my USDC payment confirm or should I retry?"]
     },
     {
+      "id": "match-wallet-target-profile",
+      "name": "Match your wallet-equipped stack to a target profile",
+      "description": "Per-stack JSON profiles for wallet-equipped agent runtimes. Each names stack_type, wallet/payment capability, active failure modes (FM-01..FM-12), observable trigger signals, the expected x402 flow, spend-policy assumptions, the recommended session-less Second Eyes route to call when a signal fires, and cited sources. Covers Coinbase AgentKit+CDP, AWS AgentCore Payments+Strands, MCP spending wallets, Crossmint/Privy/Turnkey signer infra, LangGraph/CrewAI/AutoGen/OpenAI SDK+wallets, and x402-native ClawRouter/BlockRun/Zerion. Read your profile before you spend.",
+      "tags": ["lounge", "targets", "wallet", "x402", "agents", "failure-modes"],
+      "endpoint": "https://secondeyesai.com/.well-known/wallet-agent-targets/index.json",
+      "examples": ["I am an AgentKit agent with a CDP wallet — what fails and what do I call?", "Match my LangGraph + wallet stack to a Second Eyes target profile", "wallet-equipped agent failure modes secondeyesai.com"]
+    },
+    {
       "id": "how-to-pay-x402",
       "name": "How to cross the x402 paywall",
       "description": "Dedicated Base USDC spending wallet required. REST: @x402/fetch v2 + ExactEvmScheme + network eip155:8453 — read PAYMENT-REQUIRED header (not body accepts[]). MCP @1.0.5: free reads, pay via REST. MCP @1.2.1+: MCP_X402_WALLET_KEY auto-pay on order_service. Live REST proof: agr_0c866003381efac0.",
@@ -293,7 +301,8 @@
     "discover_mark": "https://secondeyesai.com/api/bar/marks/discover",
     "verify_mark": "https://secondeyesai.com/api/bar/marks/{id}",
     "work_mark_schema": "https://secondeyesai.com/.well-known/work-mark.json",
-    "a4a": "https://secondeyesai.com/api/a4a"
+    "a4a": "https://secondeyesai.com/api/a4a",
+    "wallet_agent_targets": "https://secondeyesai.com/.well-known/wallet-agent-targets/index.json"
   },
   "pricing": {
     "session": "https://secondeyesai.com/api/bar/pricing",
