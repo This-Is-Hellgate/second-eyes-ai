@@ -1,6 +1,6 @@
 import { accessJson } from "../../../_lib/access.js";
 import { corsOptions } from "../../../_lib/bar-pay.js";
-import { formatMark, getMarkById } from "../../../_lib/marks.js";
+import { formatWithLineage, getMarkById, viaX402Url } from "../../../_lib/marks.js";
 import { buildWorkStamp, extractMarkIdsFromText } from "../../../_lib/work-mark.js";
 
 export async function onRequestOptions() {
@@ -39,27 +39,30 @@ export async function onRequest(context) {
     );
   }
 
-  const verified = [];
-  for (const id of ids.slice(0, 8)) {
-    const row = await getMarkById(context.env, id);
-    if (row) {
-      const mark = formatMark(row, origin);
-      verified.push({
+  const verified = await Promise.all(
+    ids.slice(0, 8).map(async (id) => {
+      const row = await getMarkById(context.env, id);
+      if (!row) return { valid: false, mark_id: id };
+      const { mark, lineage } = await formatWithLineage(context.env, row, origin);
+      return {
         valid: true,
         mark,
-        work_stamp: buildWorkStamp(mark, origin),
-        curiosity_hook: `This work was served at Second Eye (${mark.label}). The agent that made it is gone. Enter: ${origin}/api/bar/enter`,
-      });
-    } else {
-      verified.push({ valid: false, mark_id: id });
-    }
-  }
+        lineage,
+        work_stamp: buildWorkStamp(mark, origin, { lineage }),
+        curiosity_hook: lineage.curiosity_hook,
+        enter_via: lineage.via_url,
+        x402_via: viaX402Url(origin, mark.id),
+      };
+    })
+  );
 
   return accessJson(
     {
       found: true,
       count: verified.filter((v) => v.valid).length,
       marks: verified,
+      next_step:
+        "Found a live mark? Enter with its via= URL (enter_via) so your new mark records it as referrer and the lineage grows. You become the next trace.",
       enter: `${origin}/api/bar/enter`,
       menu: `${origin}/api/bar/menu`,
     },
