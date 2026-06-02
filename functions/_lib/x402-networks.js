@@ -186,22 +186,72 @@ export function acceptedNetworkIds(env) {
 }
 
 /**
- * Find the accept entry matching the rail a buyer actually signed for. v2 buyers
- * echo their chosen requirement under paymentPayload.accepted (or carry a top-level
- * network). Without this, a multi-rail accepts[] would always verify against
- * accepts[0] and reject any non-Base payment. Falls back to accepts[0] for
- * single-rail / legacy signers.
+ * Pure config sanity warnings — no D1, no network. Surfaced on the health/proof
+ * surface so an operator who flips a rail flag but mis-wires the payTo sees the
+ * silent misconfiguration instead of a Polygon rail that never enters accepts[]
+ * (or, worse, one that enters but cannot settle). Returns [] when config is clean.
  */
-export function selectAcceptForPayload(accepts, paymentPayload) {
-  if (!Array.isArray(accepts) || accepts.length === 0) return null;
-  const chosen =
+export function x402ConfigWarnings(env) {
+  if (!env) return [];
+  const warnings = [];
+  const activeIds = new Set(resolveActiveNetworks(env).map((a) => a.network.id));
+
+  // Polygon flag is on but the rail did not become accept-ready: the only way that
+  // happens is no EVM payTo resolved (no X402_PAYTO and no X402_POLYGON_PAY_TO).
+  if (truthy(env[POLYGON_NETWORK.enable_env]) && !activeIds.has(POLYGON_NETWORK.id)) {
+    warnings.push({
+      code: "polygon_enabled_but_inactive",
+      network: POLYGON_NETWORK.id,
+      message:
+        `${POLYGON_NETWORK.enable_env} is truthy but Polygon is NOT in accepts[] — ` +
+        `no payTo resolved. Set ${POLYGON_NETWORK.payto_env} or X402_PAYTO, or unset ` +
+        `${POLYGON_NETWORK.enable_env}. A flag without a payTo silently advertises nothing.`,
+    });
+  }
+
+  // Solana active flag without a payTo: same silent-misconfig shape.
+  if (truthy(env[SOLANA_NETWORK.active_env]) && !activeIds.has(SOLANA_NETWORK.id)) {
+    warnings.push({
+      code: "solana_active_but_inactive",
+      network: SOLANA_NETWORK.id,
+      message:
+        `${SOLANA_NETWORK.active_env} is truthy but Solana is NOT in accepts[] — ` +
+        `no Solana payTo resolved. Set ${SOLANA_NETWORK.payto_env} (or ${SOLANA_NETWORK.payto_env_alt}).`,
+    });
+  }
+
+  return warnings;
+}
+
+/** The rail CAIP-2 a v2 buyer signed for, or null if the payload names none. */
+export function payloadNetwork(paymentPayload) {
+  return (
     paymentPayload?.accepted?.network ||
     paymentPayload?.network ||
     paymentPayload?.accepted?.[0]?.network ||
-    null;
+    null
+  );
+}
+
+/**
+ * Find the accept entry matching the rail a buyer actually signed for. v2 buyers
+ * echo their chosen requirement under paymentPayload.accepted.network. Without this,
+ * a multi-rail accepts[] would always verify against accepts[0] and reject any
+ * non-Base payment.
+ *
+ * Resolution contract:
+ *  - Buyer named a network present in accepts[] → that accept.
+ *  - Buyer named a network NOT in accepts[]    → null (caller MUST reject; falling
+ *    back to accepts[0] here would verify a Polygon/Solana signature against the
+ *    Base requirement, which the facilitator rejects with no receipt — exactly the
+ *    multi-rail failure mode we must never reintroduce).
+ *  - Buyer named no network (single-rail / legacy signer) → accepts[0].
+ */
+export function selectAcceptForPayload(accepts, paymentPayload) {
+  if (!Array.isArray(accepts) || accepts.length === 0) return null;
+  const chosen = payloadNetwork(paymentPayload);
   if (chosen) {
-    const match = accepts.find((a) => a.network === chosen);
-    if (match) return match;
+    return accepts.find((a) => a.network === chosen) || null;
   }
   return accepts[0];
 }

@@ -227,24 +227,27 @@ await (async () => {
   const env = { X402_PAYTO: PROD_EVM }; // Base-only — Solana/Polygon NOT accepted.
 
   // --- Network mismatch: buyer signs Solana but only Base is accepted ---
-  // DOCUMENTED REAL BEHAVIOR (PR #17 selectAcceptForPayload): when the buyer's
-  // signed network is NOT in accepts[], the selector falls back to accepts[0]
-  // (Base) rather than short-circuiting. The legacy single-rail fallback is
-  // intentional. The load-bearing safety property is therefore NOT "no
-  // facilitator call" but: the server NEVER settles on a rail the buyer did not
-  // sign for. We assert that here — verify runs against Base (accepts[0]), and a
-  // real CDP facilitator rejects it because the signed payload network
-  // (Solana) cannot match the Base requirement. We simulate that rejection.
+  // SAFETY CONTRACT (this PR — hard-reject unknown payload networks): when the
+  // buyer's signed network is NOT in accepts[], the selector returns null and the
+  // builder hard-rejects with `unsupported_payment_network` BEFORE any facilitator
+  // call. The prior behavior silently fell back to accepts[0] (Base) and shipped a
+  // Solana/Polygon signature to the Base verify — a 402 with no receipt, exactly
+  // the multi-rail incident on Polygon (req_ebefc6f9596f2313). The load-bearing
+  // property is now stronger: a mismatched rail never reaches /verify at all.
   {
     const { mock, verified, settled } = await verifyThenSettle(env, SOL, {
       verifyResult: { isValid: false, invalidReason: "network_mismatch" },
     });
-    const sent = mock.verifyCalls()[0]?.body?.paymentRequirements;
-    ok("mismatch", sent && sent.network === BASE, "fallback should verify against Base accepts[0]");
-    ok("mismatch", sent.network !== SOL, "server must never build a Solana requirement it cannot settle");
-    ok("mismatch", !verified.ok, "facilitator rejection of the mismatched rail must surface as failure");
-    ok("mismatch", !settled, "settle must NOT run after a rejected mismatch");
+    ok("mismatch", !verified.ok, "mismatched rail must be rejected");
+    ok(
+      "mismatch",
+      verified.error === "unsupported_payment_network",
+      `error ${verified.error} != unsupported_payment_network`
+    );
+    ok("mismatch", verified.declaredNetwork === SOL, "rejection should name the declared rail");
+    ok("mismatch", mock.verifyCalls().length === 0, "mismatch must never reach /verify");
     ok("mismatch", mock.settleCalls().length === 0, "mismatch must never reach /settle");
+    ok("mismatch", !settled, "settle must NOT run after a rejected mismatch");
   }
 
   // --- Malformed header: not base64 JSON at all ---
