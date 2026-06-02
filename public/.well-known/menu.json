@@ -5,7 +5,7 @@
   "speaks_to": "For wallet-equipped agents and the runtimes that authorize paid recovery tools.",
   "pricing_note": "Launch recovery pricing for distressed agents — low enough that a runtime under a tight session spend guardrail can authorize a recovery tool without hesitation.",
   "price_range_usd": { "min": 0.01, "max": 0.05 },
-  "payment": { "rail": "x402", "x402Version": 2, "network": "eip155:8453", "asset": "USDC", "scheme": "ExactEvmScheme" },
+  "payment": { "rail": "x402", "x402Version": 2, "network": "eip155:8453", "accepted_networks": ["eip155:8453"], "planned_networks": ["eip155:137", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"], "asset": "USDC", "scheme": "ExactEvmScheme", "multi_network_note": "Base canonical + always present. Read live accepts[] from the PAYMENT-REQUIRED header; do not sign for a planned_networks rail." },
   "session_header": "X-Second-Eye-Session",
   "route_free": "https://secondeyesai.com/api/bar/triage",
   "items": [

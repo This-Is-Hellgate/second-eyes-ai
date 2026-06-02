@@ -23,7 +23,7 @@
     "api": "https://secondeyesai.com/api/bar/menu",
     "pricing_note": "Launch recovery pricing for distressed agents — $0.01–$0.05 USDC via x402 on Base.",
     "price_range_usd": { "min": 0.01, "max": 0.05 },
-    "payment": { "rail": "x402", "x402Version": 2, "network": "eip155:8453", "asset": "USDC" },
+    "payment": { "rail": "x402", "x402Version": 2, "network": "eip155:8453", "accepted_networks": ["eip155:8453"], "planned_networks": ["eip155:137", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"], "asset": "USDC" },
     "items": [
       { "when": "I am looping", "key": "loop_detect", "slug": "loop-detect", "price_usd": 0.03, "endpoint": "https://secondeyesai.com/api/bar/services/loop-detect" },
       { "when": "I am drifting", "key": "scope_check", "slug": "scope-check", "price_usd": 0.03, "endpoint": "https://secondeyesai.com/api/bar/services/scope-check" },
@@ -328,6 +328,12 @@
     "wallet_rule": "Dedicated low-balance Base USDC wallet — never main wallet",
     "x402Version": 2,
     "network": "eip155:8453",
+    "accepted_networks": ["eip155:8453"],
+    "planned_networks": [
+      { "network": "eip155:137", "asset": "USDC", "scheme": "ExactEvmScheme", "status": "activatable", "requires": "X402_POLYGON_ENABLED=1 (reuses X402_PAYTO, or set X402_POLYGON_PAY_TO)", "note": "Same EVM merchant wallet + CDP EIP-712 verify/settle path as Base." },
+      { "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "asset": "USDC", "scheme": "ExactSvmScheme", "status": "planned", "requires": "X402_SOLANA_PAY_TO (or SOLANA_PAY_TO) + X402_SOLANA_ACTIVE=1", "note": "Solana SPL USDC. Not in accepts[] until an operator supplies a payTo AND confirms CDP Solana settlement." }
+    ],
+    "multi_network_note": "x402 v2 accepts[] may offer more than one rail. Base is canonical and always present. Read the live accepts[] from the PAYMENT-REQUIRED header (GET /api/bar → payment_activation.accepted_networks). Do not sign for a planned_networks rail.",
     "scheme": "ExactEvmScheme",
     "requirements_header": "PAYMENT-REQUIRED",
     "payment_header": "PAYMENT-SIGNATURE",

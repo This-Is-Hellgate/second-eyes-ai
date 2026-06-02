@@ -18,6 +18,12 @@
     "wallet_rule": "Dedicated low-balance Base USDC wallet — never main wallet",
     "x402Version": 2,
     "network": "eip155:8453",
+    "accepted_networks": ["eip155:8453"],
+    "planned_networks": [
+      { "network": "eip155:137", "asset": "USDC", "scheme": "ExactEvmScheme", "status": "activatable", "requires": "X402_POLYGON_ENABLED=1 (reuses X402_PAYTO, or set X402_POLYGON_PAY_TO)" },
+      { "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "asset": "USDC", "scheme": "ExactSvmScheme", "status": "planned", "requires": "X402_SOLANA_PAY_TO (or SOLANA_PAY_TO) + X402_SOLANA_ACTIVE=1" }
+    ],
+    "multi_network_note": "x402 v2 accepts[] may offer more than one rail. Base canonical + always present. Read live accepts[] from the PAYMENT-REQUIRED header; do not sign a planned_networks rail.",
     "scheme": "ExactEvmScheme",
     "requirements_header": "PAYMENT-REQUIRED",
     "payment_header": "PAYMENT-SIGNATURE",

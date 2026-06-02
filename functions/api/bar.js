@@ -25,7 +25,7 @@ export async function onRequestGet(context) {
   const patron_activity = await getPatronActivity(context.env, origin);
 
   return accessJson(
-    { ...buildAgentEntry(origin), patron_activity },
+    { ...buildAgentEntry(origin, context.env), patron_activity },
     200,
     {
       "Access-Control-Allow-Origin": "*",

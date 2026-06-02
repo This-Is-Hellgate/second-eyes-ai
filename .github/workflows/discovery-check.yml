@@ -14,6 +14,10 @@ on:
       - "packages/secondeye-mcp/README.md"
       - "packages/secondeye-mcp/src/index.js"
       - "scripts/discovery-consistency-check.mjs"
+      - "scripts/x402-multinetwork-selftest.mjs"
+      - "functions/_lib/x402.js"
+      - "functions/_lib/x402-networks.js"
+      - "functions/_lib/agent-entry.js"
       - "scripts/mark-lineage-selftest.mjs"
       - "scripts/mark-lineage-smoke.mjs"
       - "scripts/meta-tools-selftest.mjs"
@@ -44,8 +48,14 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Run discovery consistency check
         run: node scripts/discovery-consistency-check.mjs
+
+      - name: Run x402 multi-network self-test
+        run: node scripts/x402-multinetwork-selftest.mjs
 
       - name: Run work-mark lineage self-test
         run: node scripts/mark-lineage-selftest.mjs

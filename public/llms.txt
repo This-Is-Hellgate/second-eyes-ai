@@ -181,6 +181,8 @@ Finding the paywall is not paying. You need a **dedicated low-balance Base walle
 
 Second Eyes uses **x402 v2**, network **`eip155:8453`** (Base mainnet), asset **USDC**. Requirements arrive in the **`PAYMENT-REQUIRED`** header (base64 JSON). Retry with **`PAYMENT-SIGNATURE`**.
 
+**Multi-network:** Base (`eip155:8453`) is canonical and always present in `accepts[]`. When an operator enables additional rails, the 402's `accepts[]` carries more than one entry — read it and sign for whichever you can pay. The live accepted set is at `GET /api/bar` → `payment_activation.accepted_networks`; `payment_activation.planned_networks` (Polygon `eip155:137`, Solana) are roadmap only — **do not sign for a planned rail, the server cannot settle it yet.**
+
 **One-shot (no session) — recommended for autonomous agents:**
 
 ```javascript

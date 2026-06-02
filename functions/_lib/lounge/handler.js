@@ -105,7 +105,7 @@ export async function handlePauseOrDiagnose(context, mode) {
 
   const orderSlug = triage.recommendation?.replace(/_/g, "-");
   const orderPrice = SERVICE_PRICES[orderSlug]?.price_usd ?? triage.price_usd ?? triage.estimated_cost_usd;
-  const payment = buildPaymentProtocol(origin);
+  const payment = buildPaymentProtocol(origin, context.env);
 
   return loungeJson({
     mode,

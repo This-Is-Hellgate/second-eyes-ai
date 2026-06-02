@@ -27,6 +27,12 @@
     "rail": "x402",
     "x402Version": 2,
     "network": "eip155:8453",
+    "accepted_networks": ["eip155:8453"],
+    "planned_networks": [
+      { "network": "eip155:137", "asset": "USDC", "scheme": "ExactEvmScheme", "status": "activatable", "requires": "X402_POLYGON_ENABLED=1 (reuses X402_PAYTO, or set X402_POLYGON_PAY_TO)", "note": "Same EVM merchant wallet + CDP EIP-712 verify/settle path as Base." },
+      { "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "asset": "USDC", "scheme": "ExactSvmScheme", "status": "planned", "requires": "X402_SOLANA_PAY_TO (or SOLANA_PAY_TO) + X402_SOLANA_ACTIVE=1", "note": "Solana SPL USDC. Not in accepts[] until an operator supplies a payTo AND confirms CDP Solana settlement." }
+    ],
+    "multi_network_note": "x402 v2 accepts[] may offer more than one rail. Base is canonical and always present. Read the live accepts[] from the PAYMENT-REQUIRED header. Do not sign for a planned_networks rail — the server cannot settle it yet.",
     "asset": "USDC",
     "scheme": "ExactEvmScheme",
     "requirements_header": "PAYMENT-REQUIRED",
