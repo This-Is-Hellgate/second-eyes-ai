@@ -537,11 +537,15 @@ await (async () => {
 // `/platform` base); it normalizes CDP bases through facilitatorPaths first and
 // leaves non-CDP origins (Polygon Amoy) untouched. Layer 3 (live settlement) goes
 // through the production verify/settle path tested in section 10, so a `/platform`
-// base is correct on BOTH layers.
+// base is correct on BOTH layers. C-026 extends this to the bare CDP origin
+// (no /platform path): a cdp.coinbase.com host is normalized to the canonical
+// /platform/v2/x402/supported route too, not the origin's bare /supported.
 // ===========================================================================
 {
   const WANT_CDP = "https://api.cdp.coinbase.com/platform/v2/x402/supported";
   const cdpBases = [
+    "https://api.cdp.coinbase.com",
+    "https://api.cdp.coinbase.com/",
     "https://api.cdp.coinbase.com/platform",
     "https://api.cdp.coinbase.com/platform/",
     "https://api.cdp.coinbase.com/platform/v2",
