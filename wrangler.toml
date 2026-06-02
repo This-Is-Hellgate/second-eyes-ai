@@ -22,7 +22,10 @@ X402_NETWORK = "base"
 # (comma/space-separated 0x addresses). Built-in defaults already cover the
 # canary payer + lounge payTo; set this to add CI/test wallets without a code
 # change. Plain var (public) — these are public Base addresses, not secrets.
-# See docs/external-payer-monitoring.md. Example:
+# Must be FULL 0x addresses — a masked form (0x028b…4Cbb) will never match.
+# To classify a masked external payer, resolve its first_tx_ref on Base to
+# recover the full address (see docs/external-payer-monitoring.md#classifying-a-masked-payer).
+# Example:
 # KNOWN_TEST_PAYERS = "0xCiWallet1,0xCiWallet2"
 
 [[d1_databases]]

@@ -22,6 +22,8 @@ export async function getExternalPayerSignal(env) {
     external_distinct_payers: 0,
     first_external_payer_seen: null,
     latest_external_settlement: null,
+    unclassified_payer_clusters: [],
+    masked_payer_warning: null,
     known_test_payers_configured: 0,
     note: "external_buyer_signal=true means an x402 settlement arrived from a payer outside the known operator/test wallet set. Masked addresses only; verify tx_ref on Base.",
   };
@@ -44,6 +46,10 @@ export async function getExternalPayerSignal(env) {
   }
 
   const distinct = new Set();
+  // Per-payer cluster: groups settlements by the (full, server-side) payer key so
+  // an operator can classify a masked external payer. The full address never
+  // leaves the worker — only the mask + a public tx_ref to resolve it on Base.
+  const clusters = new Map();
   let first = null;
   let latest = null;
 
@@ -59,12 +65,41 @@ export async function getExternalPayerSignal(env) {
     };
     if (!first) first = entry;
     latest = entry;
+
+    let cluster = clusters.get(key);
+    if (!cluster) {
+      cluster = {
+        payer: maskPayer(r.payer_ref),
+        settlements: 0,
+        first_tx_ref: r.tx_ref,
+        first_basescan: `${BASESCAN_TX}${r.tx_ref}`,
+        first_settled_at: r.created_at,
+        latest_settled_at: r.created_at,
+      };
+      clusters.set(key, cluster);
+    }
+    cluster.settlements += 1;
+    cluster.latest_settled_at = r.created_at;
   }
 
   signal.external_distinct_payers = distinct.size;
   signal.external_buyer_signal = distinct.size > 0;
   signal.first_external_payer_seen = first;
   signal.latest_external_settlement = latest;
+  // Masked clusters awaiting classification — each is a distinct external payer
+  // NOT in KNOWN_TEST_PAYERS. Operators resolve first_tx_ref on Base to recover
+  // the full address, then (if it is an operator/test wallet) add the FULL
+  // address to KNOWN_TEST_PAYERS. A mask can never be added to the env set: the
+  // match is on the full 0x address, so a masked form would never exclude.
+  signal.unclassified_payer_clusters = [...clusters.values()];
+  if (distinct.size > 0) {
+    signal.masked_payer_warning =
+      `${distinct.size} external payer(s) are reported masked and cannot be ` +
+      `silenced by mask alone: KNOWN_TEST_PAYERS matches FULL 0x addresses. ` +
+      `Resolve each cluster's first_tx_ref on Base to recover the full payer ` +
+      `address, then add it to KNOWN_TEST_PAYERS if it is an operator/test wallet. ` +
+      `See docs/external-payer-monitoring.md#classifying-a-masked-payer.`;
+  }
   return signal;
 }
 
@@ -86,6 +121,8 @@ export async function getPaymentProof(env, { limit = 20 } = {}) {
       external_distinct_payers: 0,
       first_external_payer_seen: null,
       latest_external_settlement: null,
+      unclassified_payer_clusters: [],
+      masked_payer_warning: null,
       known_test_payers_configured: 0,
     },
     verify: {
