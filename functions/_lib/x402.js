@@ -194,28 +194,60 @@ export function encodePaymentRequiredHeader(obj) {
 }
 
 /**
- * Canonical x402 v2 payment-required object — the shape the official @x402 client
- * decodes from the PAYMENT-REQUIRED header (see coinbase/agentkit x402ActionProvider:
- * "v2 sends requirements in PAYMENT-REQUIRED header; v1 sends in body").
- *
- * resource is an OBJECT { url, description, mimeType } (oatp-shaped, indexer-canonical);
- * accepts[] stays clean; discovery metadata rides top-level resource + extensions.bazaar.
+ * Cap for resource.description inside the PAYMENT-REQUIRED header. The header is a
+ * single HTTP header line; common intermediaries reject one above ~8KB (nginx
+ * large_client_header_buffers default, Node's 16KB total-header parser budget,
+ * undici/agent-runtime defaults). The full description still ships in the 402 JSON
+ * body and the settle-time extension echo, so cataloging/discovery is unaffected —
+ * see payment402BodyForProduct() + buildFacilitatorRequestBody()'s extensions echo.
  */
-export function paymentRequiredObject(requirements, error) {
+const HEADER_DESCRIPTION_MAX = 220;
+
+function shortHeaderDescription(description) {
+  const d = String(description || "");
+  if (d.length <= HEADER_DESCRIPTION_MAX) return d;
+  return d.slice(0, HEADER_DESCRIPTION_MAX - 1).trimEnd() + "…";
+}
+
+/**
+ * The v2 resource object { url, description, mimeType }. `truncate` controls
+ * whether the description is capped for header use (true) or kept full for the
+ * 402 body / settle echo where there is no header-size constraint (false).
+ */
+function resourceObject(requirements, { truncate } = { truncate: false }) {
   const resourceUrl =
     typeof requirements.resource === "string"
       ? requirements.resource
       : requirements.resource?.url;
+  const description = requirements.description || "";
+  return {
+    url: resourceUrl,
+    description: truncate ? shortHeaderDescription(description) : description,
+    mimeType: requirements.mimeType || "application/json",
+  };
+}
+
+/**
+ * Canonical x402 v2 payment-required object — the shape the official @x402 client
+ * decodes from the PAYMENT-REQUIRED header (see coinbase/agentkit x402ActionProvider:
+ * "v2 sends requirements in PAYMENT-REQUIRED header; v1 sends in body").
+ *
+ * The v2 HTTP transport spec (coinbase/x402 specs/transports-v2/http.md) defines the
+ * PaymentRequired object as EXACTLY { x402Version, error, resource{url,description,
+ * mimeType}, accepts[] } — there is no top-level `extensions` key and no separate
+ * extensions header. So the header stays lean: a short resource.description and clean
+ * accepts[], no embedded Bazaar schema. The rich Bazaar metadata (full description +
+ * extensions.bazaar) is preserved in the 402 JSON body (payment402BodyForProduct) and
+ * echoed into the CDP settle payload server-side from requirement.extensions — neither
+ * depends on the header carrying it. Keeping it out of the header is what stops large
+ * routes (e.g. help-me) from emitting a multi-KB header that proxies/agents drop.
+ */
+export function paymentRequiredObject(requirements, error) {
   return {
     x402Version: 2,
     error: error || "PAYMENT-SIGNATURE header is required",
-    resource: {
-      url: resourceUrl,
-      description: requirements.description || "",
-      mimeType: requirements.mimeType || "application/json",
-    },
+    resource: resourceObject(requirements, { truncate: true }),
     accepts: requirements.accepts,
-    ...(requirements.extensions ? { extensions: requirements.extensions } : {}),
   };
 }
 
@@ -328,14 +360,16 @@ export function buildFacilitatorRequestBody(paymentHeader, requirement) {
   // v2 resource is the OBJECT form { url, description, mimeType }. The official client
   // copies it from PAYMENT-REQUIRED; normalize/backfill defensively so it is always
   // present as the object the indexer expects.
+  // Settle payload has no header-size constraint — backfill with the FULL
+  // description so CDP cataloging keeps the rich text the lean header drops.
   const enrichedPayload = { ...paymentPayload };
   if (!enrichedPayload.resource) {
-    enrichedPayload.resource = paymentRequiredObject(requirement).resource;
+    enrichedPayload.resource = resourceObject(requirement);
   } else if (typeof enrichedPayload.resource === "string") {
-    enrichedPayload.resource = paymentRequiredObject({
+    enrichedPayload.resource = resourceObject({
       ...requirement,
       resource: enrichedPayload.resource,
-    }).resource;
+    });
   }
   if (requirement.extensions && !enrichedPayload.extensions) {
     enrichedPayload.extensions = requirement.extensions;

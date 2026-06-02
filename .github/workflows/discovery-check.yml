@@ -18,6 +18,8 @@ on:
       - "scripts/x402-rail-activation-selftest.mjs"
       - "scripts/x402-verify-logging-selftest.mjs"
       - "scripts/x402-failure-recovery-selftest.mjs"
+      - "scripts/x402-header-size-selftest.mjs"
+      - "functions/api/bar/x402/**"
       - "functions/_lib/x402.js"
       - "functions/_lib/x402-networks.js"
       - "functions/_lib/x402-rail-activation.js"
@@ -78,6 +80,9 @@ jobs:
 
       - name: Run x402 failure-recovery self-test
         run: node scripts/x402-failure-recovery-selftest.mjs
+
+      - name: Run x402 PAYMENT-REQUIRED header-size self-test
+        run: node scripts/x402-header-size-selftest.mjs
 
       - name: Run work-mark lineage self-test
         run: node scripts/mark-lineage-selftest.mjs
