@@ -43,6 +43,7 @@ import {
   redactFacilitatorBody,
 } from "../functions/_lib/x402.js";
 import { POLYGON_NETWORK, USDC_POLYGON } from "../functions/_lib/x402-networks.js";
+import { POLYGON_EMERGENCY_OVERRIDE_SENTINEL } from "../functions/_lib/x402-rail-activation.js";
 
 const env = process.env;
 
@@ -140,10 +141,15 @@ export function buildAndCheckRequirement(cfg, payerAddress) {
     priceUsd: cfg.expectedAmountUsd,
     description: "Polygon canary — repo-native low-cap x402 settlement probe",
   };
+  // The canary is the ritual that PROVES Polygon settles, so by definition it runs
+  // before a valid activation record exists. The activation gate would otherwise
+  // keep eip155:137 out of accepts[]; the emergency override is its designed escape
+  // hatch for exactly this "deliberately probe the unproven rail" case.
   const requirement = buildProductPaymentRequirements(product, HELP_ME_URL, {
     X402_PAYTO: cfg.expectedPayTo,
     [POLYGON_NETWORK.enable_env]: "1",
     [POLYGON_NETWORK.payto_env]: cfg.expectedPayTo,
+    X402_POLYGON_EMERGENCY_OVERRIDE: POLYGON_EMERGENCY_OVERRIDE_SENTINEL,
   });
   if (!requirement) abort("builder returned null — no payTo resolved (internal).");
 
