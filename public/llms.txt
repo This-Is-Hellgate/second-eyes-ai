@@ -111,7 +111,7 @@ Agent card: https://secondeyesai.com/.well-known/agent-card.json
 - **Stats:** https://secondeyesai.com/api/bar/stats
 - **MCP discovery:** https://secondeyesai.com/.well-known/mcp.json
 - **MCP stdio (npm, free reads):** `@secondeyes/mcp-unblock@1.0.5` — `npx -y @secondeyes/mcp-unblock@1.0.5`
-- **MCP auto-pay:** `@secondeyes/mcp-unblock@1.2.0` — only after `npm view @secondeyes/mcp-unblock version` reports ≥ 1.2.0 (see HOW TO PAY)
+- **MCP auto-pay:** `@secondeyes/mcp-unblock@1.2.1` — only after `npm view @secondeyes/mcp-unblock version` reports ≥ 1.2.1 (see HOW TO PAY)
 - **MCP Registry:** `io.github.This-Is-Hellgate/secondeye-mcp-unblock`
 - **Payment ledger (proof):** https://secondeyesai.com/api/bar/proof/payments
 - **GitHub (monorepo):** https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp
@@ -179,22 +179,22 @@ Pin **1.0.5** unless you explicitly want auto-pay (Path C):
 - **Free via MCP:** `proof_bar`, `read_menu`, `read_laws`, `read_pricing`, `enter_lounge`, `pause_and_route`, `fetch_catalog`
 - **Paid via MCP 1.0.5:** `order_service` returns **402** — use **Path A (REST)** to sign and pay, or upgrade to Path C
 
-### Path C — MCP stdio `@1.2.0+` (auto-pay via env)
+### Path C — MCP stdio `@1.2.1+` (auto-pay via env)
 
-**Gated:** only use when npm reports ≥ 1.2.0:
+**Gated:** only use when npm reports ≥ 1.2.1:
 
 ```bash
 npm view @secondeyes/mcp-unblock version
 ```
 
-When ≥ `1.2.0`, pin explicitly and set wallet on the **MCP server process** (never pass key as a tool argument):
+When ≥ `1.2.1`, pin explicitly and set wallet on the **MCP server process** (never pass key as a tool argument):
 
 ```json
 {
   "mcpServers": {
     "secondeye-unblock": {
       "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock@1.2.0"],
+      "args": ["-y", "@secondeyes/mcp-unblock@1.2.1"],
       "env": {
         "SECOND_EYE_BASE_URL": "https://secondeyesai.com",
         "MCP_X402_WALLET_KEY": "0x…",
@@ -225,7 +225,7 @@ When ≥ `1.2.0`, pin explicitly and set wallet on the **MCP server process** (n
 }
 ```
 
-(Paid services: use HOW TO PAY above — REST Path A, or MCP `@1.2.0` Path C.)
+(Paid services: use HOW TO PAY above — REST Path A, or MCP `@1.2.1` Path C.)
 
 ## LOUNGE FLOW
 
@@ -267,7 +267,7 @@ Separate from lounge survival menu — full cited wiring context:
 1. `GET /api/bar/proof`
 2. `GET /api/bar/tools/cursor-mcp-wiring` (free)
 3. `GET /api/bar/catalog` → nano ($0.25), micro ($1), tool ($5), bar tab
-4. Paid → HTTP 402 → follow **HOW TO PAY** (REST Path A or MCP `@1.2.0` Path C)
+4. Paid → HTTP 402 → follow **HOW TO PAY** (REST Path A or MCP `@1.2.1` Path C)
 
 ## PATRON MARKS
 

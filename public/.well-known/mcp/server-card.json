@@ -2,7 +2,7 @@
   "serverInfo": {
     "name": "secondeye-mcp-unblock",
     "title": "MCP 401 Auth Fix | github PAT wiring | x402",
-    "version": "1.2.0"
+    "version": "1.2.1"
   },
   "authentication": {
     "required": false,
@@ -19,7 +19,7 @@
     "scheme": "ExactEvmScheme",
     "requirements_header": "PAYMENT-REQUIRED",
     "payment_header": "PAYMENT-SIGNATURE",
-    "mcp_autopay_version": "1.2.0"
+    "mcp_autopay_version": "1.2.1"
   },
   "tools": [
     {
@@ -66,7 +66,7 @@
     },
     {
       "name": "order_service",
-      "description": "@1.0.5: returns 402 — pay via REST (llms.txt HOW TO PAY). @1.2.0+ with MCP_X402_WALLET_KEY: auto-settles USDC (x402 v2, ExactEvmScheme, eip155:8453).",
+      "description": "@1.0.5: returns 402 — pay via REST (llms.txt HOW TO PAY). @1.2.1+ with MCP_X402_WALLET_KEY: auto-settles USDC (x402 v2, ExactEvmScheme, eip155:8453).",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -109,9 +109,9 @@
     {
       "registryType": "npm",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "transport": { "type": "stdio" },
-      "install": "npx -y @secondeyes/mcp-unblock@1.2.0",
+      "install": "npx -y @secondeyes/mcp-unblock@1.2.1",
       "recommended": true,
       "note": "Recommended autopay path — auto-pays 402 (x402 v2, ExactEvmScheme, eip155:8453) when MCP_X402_WALLET_KEY set. 1.1.x is broken (registered x402 v1 clients)."
     },
