@@ -53,6 +53,10 @@ async function main() {
   const sig = body.external_payer_signal || {};
   const external = Boolean(sig.external_buyer_signal);
 
+  const clusters = Array.isArray(sig.unclassified_payer_clusters)
+    ? sig.unclassified_payer_clusters
+    : [];
+
   out({
     ok: true,
     url: URL,
@@ -60,10 +64,27 @@ async function main() {
     external_distinct_payers: sig.external_distinct_payers || 0,
     first_external_payer_seen: sig.first_external_payer_seen || null,
     latest_external_settlement: sig.latest_external_settlement || null,
+    // Masked payer clusters awaiting classification. Resolve each first_tx_ref on
+    // Base to recover the full address, then add operator/test wallets to
+    // KNOWN_TEST_PAYERS. Masked forms cannot be added — the match is full-address.
+    unclassified_payer_clusters: clusters,
+    masked_payer_warning: sig.masked_payer_warning || null,
     known_test_payers_configured: sig.known_test_payers_configured || 0,
     payments_settled: body.payments_settled ?? null,
     x402_settled: body.x402_settled ?? null,
   });
+
+  if (!JSON_ONLY && clusters.length) {
+    console.error(
+      `\n${clusters.length} unclassified masked payer cluster(s) need classification:`
+    );
+    for (const c of clusters) {
+      console.error(
+        `  ${c.payer}  settlements=${c.settlements}  first_tx=${c.first_tx_ref}  ${c.first_basescan}`
+      );
+    }
+    if (sig.masked_payer_warning) console.error(`\n${sig.masked_payer_warning}`);
+  }
 
   process.exit(external ? 0 : 1);
 }

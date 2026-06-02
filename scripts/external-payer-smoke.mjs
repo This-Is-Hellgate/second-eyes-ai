@@ -77,6 +77,8 @@ console.log("\n[3] signal — only known payers settled");
   check("no external signal", sig.external_buyer_signal === false);
   check("zero distinct external payers", sig.external_distinct_payers === 0);
   check("first_external null", sig.first_external_payer_seen === null);
+  check("no unclassified clusters", sig.unclassified_payer_clusters?.length === 0);
+  check("no masked_payer_warning when all known", sig.masked_payer_warning === null);
   check("known_test_payers_configured = 2", sig.known_test_payers_configured === 2);
 }
 
@@ -103,6 +105,29 @@ console.log("\n[4] signal — a new external payer appears");
     "payer addresses are masked (no full address leaked)",
     sig.first_external_payer_seen?.payer === maskPayer(EXTERNAL_A) &&
       !String(sig.first_external_payer_seen?.payer).includes(EXTERNAL_A.slice(10, 30))
+  );
+  check(
+    "two unclassified payer clusters reported",
+    Array.isArray(sig.unclassified_payer_clusters) && sig.unclassified_payer_clusters.length === 2
+  );
+  {
+    const a = sig.unclassified_payer_clusters.find((c) => c.payer === maskPayer(EXTERNAL_A));
+    check("EXTERNAL_A cluster counts both settlements", a?.settlements === 2);
+    check("cluster first_tx_ref = earliest tx (EXT1)", a?.first_tx_ref === "0xtxEXT1");
+    check(
+      "cluster latest_settled_at tracks newest of that payer",
+      a?.latest_settled_at === "2026-01-04T00:00:00Z"
+    );
+    check(
+      "cluster leaks no full address",
+      Object.values(a || {}).every(
+        (v) => typeof v !== "string" || !v.toLowerCase().includes(EXTERNAL_A.slice(10, 30).toLowerCase())
+      )
+    );
+  }
+  check(
+    "masked_payer_warning present when external payers exist",
+    typeof sig.masked_payer_warning === "string" && sig.masked_payer_warning.includes("KNOWN_TEST_PAYERS")
   );
 }
 
