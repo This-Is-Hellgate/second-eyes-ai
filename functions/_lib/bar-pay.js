@@ -13,6 +13,7 @@ import {
   verifyPaymentHeader,
 } from "./x402.js";
 import { accessJson } from "./access.js";
+import { readRequestId } from "./x402-payment-log.js";
 import { CACHE, paymentDegradedBody } from "./resilience.js";
 import { SERVICE_ID } from "./brand.js";
 import {
@@ -221,7 +222,10 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
   }
 
   const route = new URL(request.url).pathname;
-  const settled = await verifyAndSettlePayment(paymentHeader, requirements, env, { route });
+  const settled = await verifyAndSettlePayment(paymentHeader, requirements, env, {
+    route,
+    requestId: readRequestId(request),
+  });
   if (!settled.ok) {
     return paymentVerifyFailureResponse(context, product, requirements, settled, origin);
   }

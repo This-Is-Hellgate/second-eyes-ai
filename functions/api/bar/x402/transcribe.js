@@ -41,7 +41,7 @@ import {
   TRANSCRIPT_OUTPUT_SCHEMA,
 } from "../../../_lib/transcribe-validate.js";
 import { CANONICAL_HOST } from "../../../_lib/brand.js";
-import { recordX402PaymentAttempt } from "../../../_lib/x402-payment-log.js";
+import { recordX402PaymentAttempt, readRequestId } from "../../../_lib/x402-payment-log.js";
 import {
   buildProductPaymentRequirements,
   readPaymentHeader,
@@ -200,7 +200,7 @@ async function handle(context, input) {
       await recordX402PaymentAttempt(
         env,
         paymentHeader,
-        { route: new URL(request.url).pathname },
+        { route: new URL(request.url).pathname, requestId: readRequestId(request) },
         verifiedPayment,
         null
       );
@@ -253,7 +253,7 @@ async function handle(context, input) {
       await recordX402PaymentAttempt(
         env,
         paymentHeader,
-        { route: new URL(request.url).pathname, failure_reason: "validator_failed" },
+        { route: new URL(request.url).pathname, failure_reason: "validator_failed", requestId: readRequestId(request) },
         verifiedPayment,
         null
       );
@@ -299,7 +299,7 @@ async function handle(context, input) {
     await recordX402PaymentAttempt(
       env,
       paymentHeader,
-      { route: new URL(request.url).pathname },
+      { route: new URL(request.url).pathname, requestId: readRequestId(request) },
       verifiedPayment,
       settled
     );
