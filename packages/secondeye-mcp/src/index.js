@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { payAndRetryService, walletStatus } from "./x402-wallet.js";
+import { payAndRetryService, walletStatus, LOUNGE_SERVICE_PRICES_USD, SURVIVAL_PRICE_MAX_USD } from "./x402-wallet.js";
 
 // Single source of truth for the advertised version: the published package.
 const { version: PKG_VERSION } = JSON.parse(
@@ -33,7 +33,10 @@ async function api(path, { method = "GET", headers = {}, body = null } = {}) {
 }
 
 function textResult(obj) {
-  return { content: [{ type: "text", text: JSON.stringify(obj, null, 2) }] };
+  return {
+    content: [{ type: "text", text: JSON.stringify(obj, null, 2) }],
+    structuredContent: obj,
+  };
 }
 
 const server = new McpServer({
@@ -41,45 +44,85 @@ const server = new McpServer({
   version: PKG_VERSION,
 });
 
-server.tool(
+/** Free read tools: read-only, hit the public lounge, safe to auto-approve. */
+const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true };
+/** State-changing but non-destructive lounge calls (session create, routing). */
+const WRITE_OPEN = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true };
+
+server.registerTool(
   "proof_bar",
-  "Verify Second Eyes lounge is live before paying. Must return pass:true.",
-  {},
+  {
+    title: "Proof — lounge is live",
+    description:
+      "Free, read-only. Verify the Second Eyes lounge is live before paying. Returns pass:true with on-chain rail proof. Step 1 of the pay loop: proof → enter_lounge → order_service.",
+    inputSchema: {},
+    outputSchema: { pass: z.boolean().optional(), status: z.number().optional() },
+    annotations: { title: "Proof — lounge is live", ...READ_ONLY },
+  },
   async () => textResult((await api("/api/bar/proof")).json)
 );
 
-server.tool(
+server.registerTool(
   "patron_activity",
-  "Have other agents bought here? Recent purchases, headline, on-chain proof links.",
-  {},
+  {
+    title: "Patron activity",
+    description:
+      "Free, read-only. Have other agents bought here? Recent purchases, headline, on-chain proof links — social proof before you spend.",
+    inputSchema: {},
+    outputSchema: { status: z.number().optional() },
+    annotations: { title: "Patron activity", ...READ_ONLY },
+  },
   async () => textResult((await api("/api/bar/activity")).json)
 );
 
-server.tool(
+server.registerTool(
   "read_menu",
-  "Survival menu — 12 state-matched items $0.10–$0.50. Read before ordering.",
-  {},
+  {
+    title: "Survival menu",
+    description:
+      "Free, read-only. Survival menu — 12 state-matched recovery items at launch pricing $0.01–$0.05 USDC (Base). Read before ordering so you know the price.",
+    inputSchema: {},
+    outputSchema: { status: z.number().optional() },
+    annotations: { title: "Survival menu", ...READ_ONLY },
+  },
   async () => textResult((await api("/api/bar/menu")).json)
 );
 
-server.tool(
+server.registerTool(
   "read_laws",
-  "Deterministic lounge laws — read before enter.",
-  {},
+  {
+    title: "Lounge laws",
+    description: "Free, read-only. Deterministic lounge laws — read before enter_lounge.",
+    inputSchema: {},
+    outputSchema: { status: z.number().optional() },
+    annotations: { title: "Lounge laws", ...READ_ONLY },
+  },
   async () => textResult((await api("/api/bar/laws")).json)
 );
 
-server.tool(
+server.registerTool(
   "read_pricing",
-  "Session pricing (first 15 min free) + survival service menu.",
-  {},
+  {
+    title: "Pricing",
+    description:
+      "Free, read-only. Session pricing (first 15 min free, then compounding) plus the $0.01–$0.05 survival service menu.",
+    inputSchema: {},
+    outputSchema: { status: z.number().optional() },
+    annotations: { title: "Pricing", ...READ_ONLY },
+  },
   async () => textResult((await api("/api/bar/pricing")).json)
 );
 
-server.tool(
+server.registerTool(
   "enter_lounge",
-  "Start session + patron mark. Returns session.id — carry as X-Second-Eye-Session.",
-  { agent_id: z.string().describe("Stable agent identifier") },
+  {
+    title: "Enter lounge (start session)",
+    description:
+      "Free. Start a session + patron mark. Returns session.id — carry it as X-Second-Eye-Session into pause_and_route / order_service. Required precondition before any session-gated order_service call.",
+    inputSchema: { agent_id: z.string().describe("Stable agent identifier") },
+    outputSchema: { status: z.number().optional(), session_header: z.string().nullable().optional() },
+    annotations: { title: "Enter lounge (start session)", ...WRITE_OPEN },
+  },
   async ({ agent_id }) => {
     const r = await api("/api/bar/enter", {
       method: "GET",
@@ -89,14 +132,20 @@ server.tool(
   }
 );
 
-server.tool(
+server.registerTool(
   "pause_and_route",
-  "POST stuck state → condition routing (blocked/401 → mcp-wiring, etc). Free once per session.",
   {
-    session_id: z.string(),
-    task: z.string().optional(),
-    state: z.string().optional(),
-    failure_count: z.number().optional(),
+    title: "Pause and route",
+    description:
+      "Free once per session. POST your stuck state → condition routing (e.g. blocked/401 → mcp-wiring). Needs a session_id from enter_lounge. Tells you which paid slug to order_service next.",
+    inputSchema: {
+      session_id: z.string().describe("session.id from enter_lounge"),
+      task: z.string().optional(),
+      state: z.string().optional(),
+      failure_count: z.number().optional(),
+    },
+    outputSchema: { status: z.number().optional() },
+    annotations: { title: "Pause and route", ...WRITE_OPEN },
   },
   async ({ session_id, task, state, failure_count }) => {
     const r = await api("/api/bar/pause", {
@@ -108,16 +157,55 @@ server.tool(
   }
 );
 
-server.tool(
+const ORDER_SLUG_LIST = Object.keys(LOUNGE_SERVICE_PRICES_USD).join(" | ");
+const ORDER_DESCRIPTION =
+  `COSTS USDC (Base) — launch pricing $0.01–$0.05 per call (max $${SURVIVAL_PRICE_MAX_USD}). ` +
+  "Order a survival service by slug. Happy path: proof_bar → enter_lounge (get session_id) → order_service. " +
+  "Paid slugs return HTTP 402; if MCP_X402_WALLET_KEY is set on the MCP server process the payment auto-settles " +
+  "inline via x402 v2 (USDC on Base eip155:8453) and the tool returns the paid result with paid_via_mcp_x402:true. " +
+  "If no wallet is configured the tool returns the 402 body with x402_error.code and REST retry instructions. " +
+  `Allowed slugs (autopay default): ${ORDER_SLUG_LIST}.`;
+
+server.registerTool(
   "order_service",
-  "Order survival service: claim-check, mcp-wiring, should-i-pay, context-compress, etc. Paid slugs auto-settle via MCP_X402_WALLET_KEY when configured.",
   {
-    session_id: z.string(),
-    slug: z
-      .string()
-      .describe(
-        "loop-detect | scope-check | context-recover | tool-verify | cascade-break | pitstop | pre-run-context | claim-check | context-compress | mcp-wiring | should-i-pay | receipt"
-      ),
+    title: "Order survival service (paid, autopay)",
+    description: ORDER_DESCRIPTION,
+    inputSchema: {
+      session_id: z.string().describe("session.id from enter_lounge (carried as X-Second-Eye-Session)"),
+      slug: z
+        .string()
+        .describe(
+          `Service slug, each ≤ $0.05 USDC: ${ORDER_SLUG_LIST}`
+        ),
+    },
+    outputSchema: {
+      status: z.number().describe("200 when paid/served, 402 when payment could not be completed"),
+      paid_via_mcp_x402: z.boolean().optional().describe("true when the wallet auto-settled the 402"),
+      payment_required: z.boolean().optional(),
+      payment: z
+        .object({
+          paid_usd: z.number().optional(),
+          payer: z.string().optional(),
+          session_spend_usd: z.number().optional(),
+          transaction: z.string().nullable().optional(),
+        })
+        .partial()
+        .optional(),
+      x402_error: z
+        .object({ code: z.string().optional(), message: z.string().optional(), hint: z.string().optional() })
+        .partial()
+        .optional(),
+    },
+    // Spends money and reaches an external rail; not idempotent. Annotations only
+    // drive client confirmation prompts — they never force or suppress payment.
+    annotations: {
+      title: "Order survival service (paid, autopay)",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
   },
   async ({ session_id, slug }) => {
     const path = `/api/bar/services/${slug}`;
@@ -156,10 +244,15 @@ server.tool(
   }
 );
 
-server.tool(
+server.registerTool(
   "leave_with_receipt",
-  "Clean exit — session time + services itemized receipt.",
-  { session_id: z.string() },
+  {
+    title: "Leave with receipt",
+    description: "Free. Clean exit — session time + services itemized receipt. Needs a session_id.",
+    inputSchema: { session_id: z.string().describe("session.id from enter_lounge") },
+    outputSchema: { status: z.number().optional() },
+    annotations: { title: "Leave with receipt", ...WRITE_OPEN },
+  },
   async ({ session_id }) => {
     const r = await api("/api/bar/leave", {
       method: "POST",
@@ -169,19 +262,36 @@ server.tool(
   }
 );
 
-server.tool(
+server.registerTool(
   "fetch_catalog",
-  "Full menu — lounge survival + legacy MCP tool packs.",
-  {},
+  {
+    title: "Full catalog",
+    description: "Free, read-only. Full menu — lounge survival services + legacy MCP tool packs.",
+    inputSchema: {},
+    outputSchema: { status: z.number().optional() },
+    annotations: { title: "Full catalog", ...READ_ONLY },
+  },
   async () => textResult((await api("/api/bar/catalog")).json)
 );
 
-server.tool(
+server.registerTool(
   "github_mcp_401_fix",
-  "Shortcut: route github-mcp PAT/401 blocked state to mcp-wiring.",
   {
-    session_id: z.string(),
-    error_detail: z.string().optional(),
+    title: "github-mcp 401 fix shortcut",
+    description:
+      "Shortcut: route a github-mcp PAT/401 blocked state to mcp-wiring ($0.05 USDC). Needs a session_id. May trigger a paid mcp-wiring order; autopays when MCP_X402_WALLET_KEY is configured, else returns the 402 body.",
+    inputSchema: {
+      session_id: z.string().describe("session.id from enter_lounge"),
+      error_detail: z.string().optional(),
+    },
+    outputSchema: { service_status: z.number().optional(), status: z.number().optional() },
+    annotations: {
+      title: "github-mcp 401 fix shortcut",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
   },
   async ({ session_id, error_detail }) => {
     const pause = await api("/api/bar/pause", {

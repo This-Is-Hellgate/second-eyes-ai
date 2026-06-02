@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.2] — 2026-06-02
+
+### Fixed
+
+- **Autopay default unblocked** — with a wallet set and `MCP_X402_ALLOW_SLUGS` unset, autopay now covers **every launch-priced survival/nano slug** (each ≤ $0.05 USDC) instead of `should-i-pay` only. Wallet-configured agents stopped getting `slug_not_allowed` on `claim-check`, `mcp-wiring`, `context-compress`, etc. `MCP_X402_ALLOW_SLUGS` is now a **restrict** list; `*` is equivalent to unset. The safety boundary is the per-call/session caps + the $0.05 catalog price ceiling, not the allow-list.
+- **Price catalog synced to launch prices** — `LOUNGE_SERVICE_PRICES_USD` was stale at $0.10–$0.50 while the live 402 quotes and the advertised menu were $0.01–$0.05, so `guardPayment` could reject valid quotes as `price_mismatch`. The table now mirrors the canonical `functions/_lib/lounge/constants.js` survival menu and adds the session-less x402 nano twins (`help-me` $0.01, `schema-repair` $0.03, `transcribe-extract` $0.05, `doc-extract` $0.05).
+
+### Added
+
+- **Tool annotations + outputSchema** — all tools migrated from the legacy 4-arg `server.tool(...)` to `server.registerTool(...)`. Read tools (`proof_bar`, `patron_activity`, `read_menu`, `read_laws`, `read_pricing`, `fetch_catalog`) carry `readOnlyHint:true` so trusted clients auto-approve the proof→pay funnel; `order_service` / `github_mcp_401_fix` carry `idempotentHint:false, openWorldHint:true` and declare their USDC cost. Every tool now ships an `outputSchema` and a `structuredContent` envelope.
+- **Machine-actionable descriptions** — `order_service` encodes the full happy path (proof → enter → order), the price ($0.01–$0.05, max $0.05), autopay behavior, and the allowed-slug list, so an agent reading `tools/list` cold can complete a paid call without external docs.
+- **`walletStatus().catalog_max_usd`** + exported `SURVIVAL_PRICE_MAX_USD`.
+
+### Notes
+
+- `@1.1.x` remains a **do-not-use** warning (x402 v1 — fails production v2 402s). `@1.0.5` remains the legacy free-reads-only fallback. `@1.2.x` is current.
+
 ## [1.2.1] — 2026-06-02
 
 ### Changed

@@ -13,6 +13,9 @@ on:
       - "packages/secondeye-mcp/server.json"
       - "packages/secondeye-mcp/README.md"
       - "packages/secondeye-mcp/src/index.js"
+      - "packages/secondeye-mcp/src/x402-wallet.js"
+      - "packages/secondeye-mcp/package-lock.json"
+      - "test/x402-wallet/**"
       - "scripts/discovery-consistency-check.mjs"
       - "scripts/x402-multinetwork-selftest.mjs"
       - "scripts/x402-rail-activation-selftest.mjs"
@@ -104,3 +107,13 @@ jobs:
 
       - name: Run meta-tools self-test
         run: node scripts/meta-tools-selftest.mjs
+
+      - name: Install MCP package dependencies (for autopay/tool-metadata tests)
+        run: npm ci
+        working-directory: packages/secondeye-mcp
+
+      - name: Run MCP autopay default + price-match self-test
+        run: node test/x402-wallet/autopay-defaults.test.mjs
+
+      - name: Run MCP tool annotations + outputSchema self-test
+        run: node test/x402-wallet/tool-metadata.test.mjs
