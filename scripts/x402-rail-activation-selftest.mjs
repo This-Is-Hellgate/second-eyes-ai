@@ -264,6 +264,77 @@ const polyState = (env) => railStates(env).find((r) => r.key === "polygon");
   eq("planned unproven status", unproven.status, "unproven");
 }
 
+// --- 11. Codex C-021: a VALID Polygon record + dedicated payTo but NO canonical Base
+// payTo must NEVER report state=active while in_accepts=false. resolveActiveNetworks
+// refuses to advertise any optional rail without X402_PAYTO (Base anchors accepts[0]),
+// so railStates must classify Polygon as BLOCKED — not active — with the
+// x402_base_payto_missing blocker, and proof/discovery must carry the warning.
+// Before the fix, polygonRailState saw X402_POLYGON_PAY_TO as the payTo and returned
+// "active", so proof reported state=active / note "Polygon is in accepts[]" while the
+// rail was not actually advertised — a rail lying about being active.
+{
+  const env = {
+    X402_POLYGON_ENABLED: "1",
+    X402_POLYGON_PAY_TO: "0xPolyWallet",
+    X402_POLYGON_ACTIVATION_RECORD: recordEnv(VALID_RECORD),
+  };
+
+  // accepts[] is empty — Polygon must NOT lead a Base-less accepts[].
+  eq("c021 accepted networks empty", acceptedNetworkIds(env), []);
+
+  // The activation record IS valid on its own merits...
+  ok("c021 record proven", resolvePolygonActivation(env).proven === true, "record alone is valid");
+
+  // ...but the rail is BLOCKED because the canonical Base payTo is missing.
+  const poly = polyState(env);
+  eq("c021 polygon state blocked", poly.state, "blocked");
+  ok(
+    "c021 polygon not in accepts",
+    poly.in_accepts === false,
+    "Polygon must not claim in_accepts without Base"
+  );
+  // The invariant must hold for EVERY rail: state=active ⇒ in_accepts=true.
+  for (const rail of railStates(env)) {
+    if (rail.state === "active") {
+      ok(
+        `c021 ${rail.key} active implies in_accepts`,
+        rail.in_accepts === true,
+        `${rail.key} reports state=active but in_accepts=${rail.in_accepts}`
+      );
+    }
+  }
+  ok(
+    "c021 polygon blocker present",
+    Array.isArray(poly.blockers) && poly.blockers.includes("x402_base_payto_missing"),
+    `expected x402_base_payto_missing blocker, got ${(poly.blockers || []).join(",") || "none"}`
+  );
+  ok(
+    "c021 polygon note not in-accepts",
+    !/is in accepts\[\]/i.test(poly.note),
+    `blocked note must not claim the rail "is in accepts[]", got: ${poly.note}`
+  );
+
+  // Proof/discovery surfaces the warning so the misconfiguration is never silent.
+  const warns = x402ConfigWarnings(env).map((w) => w.code);
+  ok(
+    "c021 warning present",
+    warns.includes("x402_base_payto_missing"),
+    `expected x402_base_payto_missing warning, got ${warns.join(",") || "none"}`
+  );
+
+  // Adding the canonical Base payTo restores Polygon to active + in accepts[].
+  const fixed = { ...env, X402_PAYTO: "0xBaseWallet" };
+  eq("c021 fixed accepts", acceptedNetworkIds(fixed), [BASE, POLY]);
+  const polyFixed = polyState(fixed);
+  eq("c021 fixed polygon state", polyFixed.state, "active");
+  ok("c021 fixed polygon in accepts", polyFixed.in_accepts === true, "Polygon should be advertised once Base is set");
+  ok(
+    "c021 fixed no base warning",
+    !x402ConfigWarnings(fixed).some((w) => w.code === "x402_base_payto_missing"),
+    "x402_base_payto_missing must clear once X402_PAYTO is set"
+  );
+}
+
 if (failures.length) {
   console.error("x402 rail-activation self-test FAILED:\n");
   for (const f of failures) console.error(`  ✗ ${f}`);

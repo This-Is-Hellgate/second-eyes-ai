@@ -186,6 +186,14 @@ export function railStates(env) {
   const activeIds = new Set(resolveActiveNetworks(e).map((a) => a.network.id));
   const polyActivation = resolvePolygonActivation(e);
   const polyEnabled = truthy(e[POLYGON_NETWORK.enable_env]);
+  // INVARIANT: an optional rail can never be "active" without the canonical Base
+  // payTo, because resolveActiveNetworks refuses to advertise any optional rail when
+  // X402_PAYTO is unset (Base must anchor accepts[0]). polygonRailState only sees the
+  // flag/payTo/activation and would otherwise return "active" off X402_POLYGON_PAY_TO
+  // alone — making proof/discovery report state=active/in_accepts=false (a rail that
+  // says it is advertised while it is not). Gate the lifecycle on Base presence so the
+  // state can NEVER claim active while not in accepts[].
+  const baseMissing = !e.X402_PAYTO;
   const polyState = polygonRailState({
     enabled: polyEnabled,
     hasPayTo: Boolean(evmPayTo(POLYGON_NETWORK, e)),
@@ -204,9 +212,12 @@ export function railStates(env) {
     {
       key: "polygon",
       network: POLYGON_NETWORK.id,
-      // Map internal gate states to a stable, agent-facing vocabulary.
-      state:
-        polyState === "active"
+      // Map internal gate states to a stable, agent-facing vocabulary. When the
+      // canonical Base payTo is missing, the rail is BLOCKED regardless of its own
+      // flag/record/payTo — it cannot enter accepts[] until Base anchors accepts[0].
+      state: baseMissing
+        ? "blocked"
+        : polyState === "active"
           ? "active"
           : polyState === "override" || polyState === "override_pending"
             ? "emergency_override"
@@ -218,9 +229,14 @@ export function railStates(env) {
       emergency_override: polyActivation.emergencyOverride,
       in_accepts: activeIds.has(POLYGON_NETWORK.id),
       activation_source: polyActivation.recordSource,
-      blockers: polyActivation.reasons,
-      note:
-        polyState === "active"
+      // Surface the missing-Base blocker FIRST so an operator sees the real reason the
+      // rail is not advertised even when its own activation record is otherwise valid.
+      blockers: baseMissing
+        ? ["x402_base_payto_missing", ...polyActivation.reasons]
+        : polyActivation.reasons,
+      note: baseMissing
+        ? "Blocked: canonical Base payTo X402_PAYTO is missing. Base must anchor accepts[0]; no optional rail is advertised until it is set — NOT in accepts[] regardless of the Polygon record."
+        : polyState === "active"
           ? "Activation record valid — Polygon is in accepts[]."
           : polyState === "unproven"
             ? "X402_POLYGON_ENABLED is set but no valid activation record — NOT advertised. Flag alone is ignored."
