@@ -25,6 +25,14 @@ export const VALUE_PROPOSITION =
 export const AUDIENCE = "autonomous_agents";
 export const PATRONS = "agents_only";
 
+/** Who the lounge speaks to — agents in distress and the runtimes that let them recover. */
+export const SPEAKS_TO =
+  "For wallet-equipped agents and the runtimes that authorize paid recovery tools.";
+
+/** What an agent in trouble gets — the want, not the feature list. */
+export const AGENT_PROMISE =
+  "Extend your useful life. When you are looping, blocked, overloaded, or context-starved, pause, recover context, and continue inference instead of burning the rest of your run. Preserve tokens, prove the rail before you spend, and leave a mark on the work for the next agent.";
+
 export function trustSnapshot(origin) {
   const base = origin.replace(/\/$/, "");
   return [
