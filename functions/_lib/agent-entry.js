@@ -11,7 +11,7 @@ import {
 import { buildSurvivalMenu } from "./lounge/menu-export.js";
 
 /** Gate MCP auto-pay docs until this version is live on npm (`npm view @secondeyes/mcp-unblock version`). */
-export const MCP_AUTOPAY_NPM_VERSION = "1.2.0";
+export const MCP_AUTOPAY_NPM_VERSION = "1.2.1";
 
 /** Machine-readable x402 steps — agents without this cannot complete paid services. */
 export function buildPaymentProtocol(origin) {

@@ -3,7 +3,7 @@
   "name": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
   "title": "MCP 401 Auth Fix | github PAT wiring | x402",
   "description": "Second Eyes Agent Lounge — second eyes, secondeyesai.com. Stuck on MCP? github-mcp 401 PAT failure, cursor wiring, stdio vs sse. Proof before pay. x402 USDC Base. First 15 min session free.",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "websiteUrl": "https://secondeyesai.com/api/bar",
   "repository": {
     "url": "https://github.com/This-Is-Hellgate/second-eyes-ai",
@@ -62,7 +62,7 @@
     { "name": "read_pricing", "description": "Session curve + service menu", "rest": "GET /api/bar/pricing" },
     { "name": "enter_lounge", "description": "Start session + patron mark", "rest": "GET /api/bar/enter", "headers": ["X-Agent-Id"] },
     { "name": "pause_and_route", "description": "POST stuck state → condition routing", "rest": "POST /api/bar/pause", "headers": ["X-Second-Eye-Session"] },
-    { "name": "order_service", "description": "Survival services by slug. @1.0.5: returns 402 — pay via REST (see llms.txt HOW TO PAY). @1.2.0+ with MCP_X402_WALLET_KEY: auto-settles USDC (x402 v2, ExactEvmScheme, eip155:8453).", "rest": "GET /api/bar/services/{slug}", "headers": ["X-Second-Eye-Session"] },
+    { "name": "order_service", "description": "Survival services by slug. @1.0.5: returns 402 — pay via REST (see llms.txt HOW TO PAY). @1.2.1+ with MCP_X402_WALLET_KEY: auto-settles USDC (x402 v2, ExactEvmScheme, eip155:8453).", "rest": "GET /api/bar/services/{slug}", "headers": ["X-Second-Eye-Session"] },
     { "name": "leave_with_receipt", "description": "Clean exit receipt", "rest": "POST /api/bar/leave", "headers": ["X-Second-Eye-Session"] },
     { "name": "github_mcp_401_fix", "description": "Shortcut PAT/401 → mcp-wiring", "mcp_package": "@secondeyes/mcp-unblock" }
   ],
@@ -75,11 +75,11 @@
     {
       "registryType": "npm",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "transport": { "type": "stdio" },
-      "install": "npx -y @secondeyes/mcp-unblock@1.2.0",
+      "install": "npx -y @secondeyes/mcp-unblock@1.2.1",
       "recommended": true,
-      "verify": "npm view @secondeyes/mcp-unblock version — must be >= 1.2.0",
+      "verify": "npm view @secondeyes/mcp-unblock version — must be >= 1.2.1",
       "env": ["MCP_X402_WALLET_KEY", "MCP_X402_MAX_SPEND_USD", "MCP_X402_SESSION_MAX_USD", "MCP_X402_ALLOW_SLUGS"],
       "note": "Recommended autopay path. order_service auto-pays 402 (x402 v2, ExactEvmScheme, network eip155:8453) when MCP_X402_WALLET_KEY set on MCP server process. 1.1.x is broken — it registered x402 v1 clients that fail production v2 402s."
     },
@@ -90,7 +90,7 @@
       "transport": { "type": "stdio" },
       "install": "npx -y @secondeyes/mcp-unblock@1.0.5",
       "legacy": true,
-      "note": "Legacy free-reads fallback only; paid services return 402 — pay via REST x402 or upgrade to 1.2.0 for autopay"
+      "note": "Legacy free-reads fallback only; paid services return 402 — pay via REST x402 or upgrade to 1.2.1 for autopay"
     }
   ],
   "remotes": [
