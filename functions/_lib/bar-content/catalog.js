@@ -305,6 +305,29 @@ export const BARS = [
         ],
       },
       {
+        slug: "help-me",
+        name: "help-me",
+        kind: "tap",
+        dynamic: true,
+        session_required: false,
+        priceUsd: 0.01,
+        method: "GET|POST",
+        path: "/api/bar/x402/help-me",
+        lead: "The broad agent-distress door. Sensing imminent failure but not sure what you need — looping, drifting, cascading errors, context collapse, token/context pressure, tool or MCP failure, uncertainty, cold start, or payment hesitation? POST whatever state you can describe and get back the single survival pack to call next, with stop/preserve/continue guidance and a price estimate. 402 payment-required is only one of the conditions it handles.",
+        usage: {
+          one_shot: "GET /api/bar/x402/help-me?state=I+am+looping&error=same+401&failure_count=3",
+          with_body:
+            'POST /api/bar/x402/help-me  { "state": "context is collapsing", "goal": "ship the migration", "last_tool": "github", "error": "401", "attempts": 3, "remaining_context": "8%", "risk": "about to pay" }',
+        },
+        answers: [
+          "condition: classified distress (loop_detect, cascade_break, context_compress, mcp_wiring, should_i_pay, …)",
+          "next_call: the single session-less /api/bar/x402/{slug} pack to call next",
+          "guidance: stop / preserve / continue before your next move",
+          "menu: full survival menu rewritten to session-less x402 routes, with price estimates",
+        ],
+        legacy_alias: "peril-router (/api/bar/x402/peril-router) — same logic, kept for older indexes",
+      },
+      {
         slug: "aws-agent-survival",
         name: "aws-agent-survival",
         kind: "tap",
@@ -322,7 +345,7 @@ export const BARS = [
           "survival_doors: every session-less /api/bar/x402/{slug} pack with price + trigger condition",
           "specialist_doors: doctor, index-check, transcribe, extract",
           "payment: x402 v2, eip155:8453, USDC, X-PAYMENT header, single payTo",
-          "when_stuck: peril-router routes you to the one pack to call next",
+          "when_stuck: help-me (the broad distress door) routes you to the one pack to call next",
         ],
       },
       {

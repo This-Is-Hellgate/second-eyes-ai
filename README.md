@@ -19,7 +19,8 @@ No login, no session header. Pay USDC on Base via x402 v2 (`PAYMENT-REQUIRED` �
 | Door | Path | Price |
 |------|------|-------|
 | AWS AgentCore one-shot map | `/api/bar/x402/aws-agent-survival` | $0.01 |
-| Peril router | `/api/bar/x402/peril-router` | $0.01 |
+| **Help me** (broad distress door — looping, context collapse, token pressure, tool failure, uncertainty, 402) | `/api/bar/x402/help-me` | $0.01 |
+| Peril router (legacy alias of help-me) | `/api/bar/x402/peril-router` | $0.01 |
 | Survival deep packs | `/api/bar/x402/{slug}` | $0.01–$0.05 |
 | Transcribe (audio/video/PDF) + meaning | `/api/bar/x402/transcribe` | $0.05 |
 | Doc extract (invoice/contract/PDF) | `/api/bar/x402/extract` | $0.05 |

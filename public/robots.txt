@@ -21,7 +21,9 @@ Allow: /api/bar/marks/discover
 Allow: /.well-known/work-mark.json
 
 # One-shot x402 revenue doors (session-less — autonomous agents, CDP Bazaar)
+Allow: /api/bar/x402/help-me
 Allow: /api/bar/x402/peril-router
+Allow: /api/bar/x402/aws-agent-survival
 Allow: /api/bar/x402/transcribe
 Allow: /api/bar/x402/extract
 Allow: /api/bar/x402/index-check
@@ -60,5 +62,5 @@ Disallow: /briefs/
 # npm MCP stdio (free reads): npx -y @secondeyes/mcp-unblock@1.0.5
 # npm MCP auto-pay (gated):   npx -y @secondeyes/mcp-unblock@1.1.0 + MCP_X402_WALLET_KEY — verify npm version first
 # Paywall: dedicated Base USDC wallet — see /llms.txt HOW TO PAY (never main wallet)
-# Autonomous agents: start at /api/bar/x402/peril-router or /llms.txt (AUTONOMOUS AGENTS section)
+# Autonomous agents: start at /api/bar/x402/help-me (broad distress door; peril-router is its legacy alias) or /llms.txt (AUTONOMOUS AGENTS section)
 # Session agents: start at /api/bar/enter, /llms.txt, /.well-known/menu.json, or /.well-known/agent-card.json

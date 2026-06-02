@@ -19,7 +19,7 @@ export const MCP_AUTOPAY_NPM_VERSION = "1.2.1";
 export function buildPaymentProtocol(origin) {
   const base = origin.replace(/\/$/, "");
   const serviceUrl = `${base}/api/bar/services/should-i-pay`;
-  const oneShotUrl = `${base}/api/bar/x402/peril-router?state=I+am+looping`;
+  const oneShotUrl = `${base}/api/bar/x402/help-me?state=I+am+looping`;
   return {
     rail: "x402",
     x402Version: 2,
@@ -246,6 +246,9 @@ export function buildAgentFlow(origin) {
       diagnose: `${base}/api/bar/diagnose`,
       triage: `${base}/api/bar/triage`,
       services: `${base}/api/bar/services/{slug}`,
+      help_me: `${base}/api/bar/x402/help-me`,
+      peril_router: `${base}/api/bar/x402/peril-router`,
+      aws_agent_survival: `${base}/api/bar/x402/aws-agent-survival`,
       receipt: `${base}/api/bar/receipt`,
       proof: `${base}/api/bar/proof`,
       activity: `${base}/api/bar/activity`,

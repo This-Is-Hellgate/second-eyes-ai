@@ -40,14 +40,15 @@ Launch recovery pricing for distressed agents — kept low so a runtime under a 
 | When / what | USD | Path |
 |-------------|-----|------|
 | **AWS AgentCore one-shot map** | 0.01 | https://secondeyesai.com/api/bar/x402/aws-agent-survival |
-| **Stuck — route me** | 0.01 | https://secondeyesai.com/api/bar/x402/peril-router |
+| **Help me** — sensing failure, not sure what you need (looping, context collapse, token pressure, tool failure, uncertainty, about to pay — 402 is only one) | 0.01 | https://secondeyesai.com/api/bar/x402/help-me |
+| Stuck — route me (legacy alias of help-me) | 0.01 | https://secondeyesai.com/api/bar/x402/peril-router |
 | **Survival deep pack** (see menu below) | 0.01–0.05 | https://secondeyesai.com/api/bar/x402/{slug} |
 | **Transcribe audio/video/PDF → transcript + meaning** | 0.05 | https://secondeyesai.com/api/bar/x402/transcribe?url=…&kind=audio (or pdf, video) |
 | **Invoice/contract/PDF → structured JSON** | 0.05 | https://secondeyesai.com/api/bar/x402/extract?url=…&doc_type=invoice (or contract, generic) |
 | Bazaar index check | 0.05 | https://secondeyesai.com/api/bar/x402/index-check |
 | x402 format doctor | 0.25 | https://secondeyesai.com/api/bar/x402/doctor |
 
-**Peril first:** `GET https://secondeyesai.com/api/bar/x402/peril-router?state=I+am+looping` (or POST JSON `{ "state", "error", "failure_count" }`) → returns the one deep pack to call next, already rewritten to `https://secondeyesai.com/api/bar/x402/{slug}`.
+**Help-me first:** `GET https://secondeyesai.com/api/bar/x402/help-me?state=I+am+looping` (or POST JSON `{ "state", "goal", "last_tool", "error", "attempts", "remaining_context", "last_success", "risk" }` — all optional) → classifies your distress and returns the one deep pack to call next plus stop/preserve/continue guidance, already rewritten to `https://secondeyesai.com/api/bar/x402/{slug}`. 402 payment-required is only one of the conditions it handles. `peril-router` is the legacy alias of this same door.
 
 **Multimodal / media doors** — turn a URL into trustworthy text, validated before it is served:
 - **Transcribe** (`/api/bar/x402/transcribe`, $0.05): public audio, voice note, podcast, PDF, or video URL → verbatim transcript (or extracted text) **plus** its meaning — summary, ranked key points, and grounded Q&A. Attestation is evidence-only (schema-valid, words/min in range, no decode loop, grounded), never a claim of accuracy.
@@ -92,7 +93,7 @@ Launch recovery pricing for distressed agents. Machine-readable: `/.well-known/m
 |---------------|-----|------|
 | (any row above) | same | https://secondeyesai.com/api/bar/x402/{slug} e.g. https://secondeyesai.com/api/bar/x402/loop-detect |
 
-Not sure which item? **Session:** `POST /api/bar/triage` (free, needs session). **Autonomous:** `GET https://secondeyesai.com/api/bar/x402/peril-router` ($0.01) → routes you to the right `https://secondeyesai.com/api/bar/x402/{slug}`.
+Not sure which item? **Session:** `POST /api/bar/triage` (free, needs session). **Autonomous:** `GET https://secondeyesai.com/api/bar/x402/help-me` ($0.01) → classifies your distress and routes you to the right `https://secondeyesai.com/api/bar/x402/{slug}`. (`peril-router` is the legacy alias.)
 
 ## TRUST SNAPSHOT — run before spending
 
@@ -106,7 +107,7 @@ Agent card: https://secondeyesai.com/.well-known/agent-card.json
 
 ## START HERE
 
-- **Autonomous one-shot (no session):** https://secondeyesai.com/api/bar/x402/peril-router
+- **Autonomous one-shot (no session):** https://secondeyesai.com/api/bar/x402/help-me (broad distress door; `peril-router` is the legacy alias)
 - **Transcribe / extract:** https://secondeyesai.com/api/bar/x402/transcribe | `/extract`
 - **Menu (JSON):** https://secondeyesai.com/.well-known/menu.json
 - **Menu (API):** https://secondeyesai.com/api/bar/menu
@@ -153,7 +154,7 @@ const client = new x402Client().register("eip155:8453", new ExactEvmScheme(signe
 const fetchWithPayment = wrapFetchWithPayment(fetch, client);
 
 const res = await fetchWithPayment(
-  "https://secondeyesai.com/api/bar/x402/peril-router?state=I+am+looping",
+  "https://secondeyesai.com/api/bar/x402/help-me?state=I+am+looping",
   { headers: { Accept: "application/json" } }
 );
 const body = await res.json(); // 200 → survival routing + next x402 slug
@@ -293,7 +294,8 @@ Separate from lounge survival menu — full cited wiring context:
 
 **One-shot x402 (no session):**
 - **AWS AgentCore map:** `GET https://secondeyesai.com/api/bar/x402/aws-agent-survival` ($0.01)
-- **Peril router:** `GET https://secondeyesai.com/api/bar/x402/peril-router?state=…` ($0.01)
+- **Help me (broad distress door):** `GET https://secondeyesai.com/api/bar/x402/help-me?state=…` ($0.01) — looping, context collapse, token pressure, tool failure, uncertainty, about to pay
+- **Peril router (legacy alias of help-me):** `GET https://secondeyesai.com/api/bar/x402/peril-router?state=…` ($0.01)
 - **Survival packs:** `GET https://secondeyesai.com/api/bar/x402/{slug}` ($0.01–$0.05)
 - **Transcribe (audio/video/PDF):** `GET https://secondeyesai.com/api/bar/x402/transcribe?url=…` ($0.05)
 - **Doc extract:** `GET https://secondeyesai.com/api/bar/x402/extract?url=…&doc_type=invoice|contract|generic` ($0.05)
