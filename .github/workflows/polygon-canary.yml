@@ -1,0 +1,126 @@
+# Polygon canary — repo-native, manually triggered. No Cursor/browser composer.
+#
+# DEFAULT POSTURE: NO SPEND. A plain dispatch runs only the mock preflight + the
+# mock-mode canary gates (no network, no keys, no spend). The live no-spend preflight
+# (which probes the production help-me door) runs only when live_preflight=true. The
+# spending canary runs ONLY when run_settlement=true AND confirm == "I_UNDERSTAND_SPEND"
+# AND the POLYGON_CANARY_PRIVATE_KEY secret is present — three independent guards, so a
+# stray click can never spend.
+#
+# See docs/polygon-canary.md for the full operator runbook, pass/fail criteria, how to
+# capture the tx hash / facilitator invalidReason, and how to roll back.
+
+name: Polygon canary
+
+on:
+  workflow_dispatch:
+    inputs:
+      live_preflight:
+        description: "Run the LIVE (no-spend) preflight against the production help-me door"
+        type: boolean
+        default: false
+      run_settlement:
+        description: "Run the SPENDING canary (real Polygon USDC). Requires confirm + secret."
+        type: boolean
+        default: false
+      confirm:
+        description: 'Type I_UNDERSTAND_SPEND to authorize a real spend (ignored unless run_settlement=true)'
+        type: string
+        default: ""
+      expected_payto:
+        description: "Expected Polygon merchant payTo (0x...) — must match the built accept"
+        type: string
+        default: ""
+      expected_amount_usd:
+        description: "Exact USD to spend (e.g. 0.01). Hard cap $1."
+        type: string
+        default: "0.01"
+      max_usd:
+        description: "Per-run ceiling in USD (default 0.05, hard cap 1)"
+        type: string
+        default: "0.05"
+      max_wallet_usdc:
+        description: "Abort if canary wallet USDC balance exceeds this (default 5)"
+        type: string
+        default: "5"
+
+permissions:
+  contents: read
+
+jobs:
+  # Always-safe layer: mock preflight + mock canary gates. No network, no secrets.
+  mock:
+    name: Mock preflight + canary gates (no spend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm ci
+      - name: Mock preflight (rail resolution, no network)
+        run: node scripts/polygon-canary-preflight.mjs
+        env:
+          POLYGON_CANARY_MOCK: "1"
+      - name: Polygon canary mock-mode gates
+        run: node test/x402-facilitator/polygon-canary.test.mjs
+      - name: Polygon canary script (mock mode)
+        run: node scripts/polygon-canary.mjs
+        env:
+          POLYGON_CANARY_MOCK: "1"
+
+  # Live NO-SPEND preflight: probes the production help-me door. Opt-in via input.
+  live_preflight:
+    name: Live preflight (no spend)
+    needs: mock
+    if: ${{ inputs.live_preflight == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm ci
+      - name: Live preflight (GET production help-me, assert payable 402)
+        run: node scripts/polygon-canary-preflight.mjs
+
+  # SPENDING canary. Triple-guarded: input toggle + typed confirmation + secret present.
+  # Skips cleanly (no spend) if any guard is missing.
+  settlement:
+    name: Polygon settlement canary (SPENDS)
+    needs: mock
+    if: ${{ inputs.run_settlement == true && inputs.confirm == 'I_UNDERSTAND_SPEND' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm ci
+      - name: Guard — refuse to spend without the canary secret
+        env:
+          POLYGON_CANARY_PRIVATE_KEY: ${{ secrets.POLYGON_CANARY_PRIVATE_KEY }}
+        run: |
+          if [ -z "${POLYGON_CANARY_PRIVATE_KEY}" ]; then
+            echo "POLYGON_CANARY_PRIVATE_KEY secret is not set — refusing to spend. No-op."
+            exit 1
+          fi
+          echo "Canary secret present — proceeding to gated spend."
+      - name: Run Polygon canary (gated live spend)
+        env:
+          RUN_POLYGON_CANARY: "1"
+          POLYGON_CANARY_PRIVATE_KEY: ${{ secrets.POLYGON_CANARY_PRIVATE_KEY }}
+          POLYGON_CANARY_EXPECTED_PAYTO: ${{ inputs.expected_payto }}
+          POLYGON_CANARY_EXPECTED_AMOUNT_USD: ${{ inputs.expected_amount_usd }}
+          POLYGON_CANARY_MAX_USD: ${{ inputs.max_usd }}
+          POLYGON_CANARY_MAX_WALLET_USDC: ${{ inputs.max_wallet_usdc }}
+          POLYGON_CANARY_EXPECTED_NETWORK: "eip155:137"
+          X402_FACILITATOR_URL: ${{ secrets.X402_FACILITATOR_URL || 'https://api.cdp.coinbase.com/platform' }}
+          CDP_API_KEY_ID: ${{ secrets.CDP_API_KEY_ID }}
+          CDP_API_KEY_NAME: ${{ secrets.CDP_API_KEY_NAME }}
+          CDP_API_KEY_SECRET: ${{ secrets.CDP_API_KEY_SECRET }}
+          POLYGON_CANARY_RPC_URL: ${{ secrets.POLYGON_CANARY_RPC_URL }}
+        run: node scripts/polygon-canary.mjs
