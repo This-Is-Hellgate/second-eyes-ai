@@ -38,6 +38,7 @@ import {
   x402ConfigWarnings,
   POLYGON_NETWORK,
 } from "../functions/_lib/x402-networks.js";
+import { POLYGON_EMERGENCY_OVERRIDE_SENTINEL } from "../functions/_lib/x402-rail-activation.js";
 
 const env = process.env;
 
@@ -63,6 +64,11 @@ function simulatedEnv(withPolygon) {
   if (withPolygon) {
     sim[POLYGON_NETWORK.enable_env] = "1";
     if (env.X402_POLYGON_PAY_TO) sim[POLYGON_NETWORK.payto_env] = env.X402_POLYGON_PAY_TO;
+    // The activation gate keeps Polygon out of accepts[] until a record proves it.
+    // The canary runs BEFORE that record exists (it is the proof), so it advertises
+    // via the emergency override — mirror that here so the preflight shows the same
+    // accept-ready posture the canary will actually build.
+    sim.X402_POLYGON_EMERGENCY_OVERRIDE = POLYGON_EMERGENCY_OVERRIDE_SENTINEL;
   }
   return sim;
 }
@@ -124,16 +130,20 @@ async function main() {
   log("[1] Rail resolution (what the Worker would advertise):");
   printRails("Current posture (Polygon NOT enabled):", simulatedEnv(false));
   log("");
-  const polySim = printRails("If X402_POLYGON_ENABLED=1 (canary target posture):", simulatedEnv(true));
+  const polySim = printRails("If X402_POLYGON_ENABLED=1 + emergency override (canary target posture):", simulatedEnv(true));
   const polyWouldActivate = polySim.active.some((a) => a.network.id === POLYGON_ID);
   if (!polyWouldActivate) {
     fail(
       "rail-resolution",
-      `Polygon would NOT enter accepts[] even with ${POLYGON_NETWORK.enable_env}=1 — ` +
+      `Polygon would NOT enter accepts[] even with ${POLYGON_NETWORK.enable_env}=1 + the canary override — ` +
         `no EVM payTo resolved. Set X402_PAYTO (or ${POLYGON_NETWORK.payto_env}).`
     );
   } else {
-    log(`\n  ok: with ${POLYGON_NETWORK.enable_env}=1, Polygon (${POLYGON_ID}) would be accept-ready.`);
+    log(
+      `\n  ok: with ${POLYGON_NETWORK.enable_env}=1 + the canary emergency override, Polygon (${POLYGON_ID}) ` +
+        `would be accept-ready. NOTE: in production the flag ALONE advertises nothing — a valid activation ` +
+        `record is required (this preflight uses the override only to model the proving run).`
+    );
   }
   log("");
 

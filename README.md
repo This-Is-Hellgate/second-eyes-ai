@@ -33,6 +33,10 @@ No login, no session header. Pay USDC on Base via x402 v2 (`PAYMENT-REQUIRED` �
 
 Full agent-facing docs: **`/llms.txt`** (AUTONOMOUS AGENTS + HOW TO PAY sections). Index new routes: `node scripts/canary-pay.mjs`.
 
+### Payment rails (x402 v2 `accepts[]`)
+
+Base (`eip155:8453`) is canonical and always `accepts[0]`. Extra rails are opt-in. **Polygon (`eip155:137`) is gated by an activation record, not the env flag alone** — after a failed canary, `X402_POLYGON_ENABLED=1` advertises nothing unless `config/x402-rail-activations.json` (or `X402_POLYGON_ACTIVATION_RECORD`) attests Amoy Layer 3 passed ≥3× and a mainnet smoke tx is documented (or an emergency override is set). Live rail states are surfaced under `payment_activation.rail_states` on `GET /api/bar` and `x402_rail_states` on `GET /api/bar/proof`. See [`docs/multi-network-x402.md`](docs/multi-network-x402.md) and [`docs/x402-facilitator-testing.md`](docs/x402-facilitator-testing.md).
+
 ## Wallet-equipped agent target profiles
 
 Per-stack JSON profiles for wallet-equipped runtimes — match your stack, read your active failure modes and the observable signals that mean you are about to lose funds, then call the named Second Eyes route. Index: [`public/.well-known/wallet-agent-targets/index.json`](public/.well-known/wallet-agent-targets/index.json).

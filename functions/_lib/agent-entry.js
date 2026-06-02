@@ -11,7 +11,7 @@ import {
   receiptModel,
 } from "./brand.js";
 import { buildSurvivalMenu } from "./lounge/menu-export.js";
-import { acceptedNetworkIds, plannedNetworks } from "./x402-networks.js";
+import { acceptedNetworkIds, plannedNetworks, railStates } from "./x402-networks.js";
 
 /** Gate MCP auto-pay docs until this version is live on npm (`npm view @secondeyes/mcp-unblock version`). */
 export const MCP_AUTOPAY_NPM_VERSION = "1.2.1";
@@ -28,11 +28,16 @@ function buildNetworkPosture(env) {
     return {
       accepted_networks: acceptedNetworkIds(env),
       planned_networks: plannedNetworks(env),
+      // Lifecycle map: base active/proven, polygon disabled/unproven/active per the
+      // activation-record gate, solana planned. Lets an agent see WHY a rail it
+      // expected is not in accepts[] instead of guessing from absence.
+      rail_states: railStates(env),
     };
   }
   return {
     accepted_networks: ["eip155:8453"],
     planned_networks: plannedNetworks({ X402_PAYTO: "0x" }),
+    rail_states: railStates({ X402_PAYTO: "0x" }),
   };
 }
 
@@ -50,6 +55,7 @@ export function buildPaymentProtocol(origin, env) {
     // accepts[] truth and planned_networks is the multi-rail roadmap.
     accepted_networks: posture.accepted_networks,
     planned_networks: posture.planned_networks,
+    rail_states: posture.rail_states,
     multi_network_note:
       "x402 v2 accepts[] may offer more than one rail. Base (eip155:8453) is canonical and always present. Read the PAYMENT-REQUIRED header accepts[] for the live set and sign for one of them. Networks under planned_networks are NOT yet settleable — do not sign for them.",
     asset: "USDC",

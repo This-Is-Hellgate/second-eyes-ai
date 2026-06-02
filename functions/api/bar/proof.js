@@ -11,7 +11,7 @@ import {
   trustSnapshot,
   receiptModel,
 } from "../../_lib/brand.js";
-import { x402ConfigWarnings } from "../../_lib/x402-networks.js";
+import { x402ConfigWarnings, railStates } from "../../_lib/x402-networks.js";
 
 const PROOF_CHECK_TIMEOUT_MS = 4000;
 
@@ -113,6 +113,7 @@ export async function onRequestGet(context) {
   );
 
   const configWarnings = x402ConfigWarnings(context.env);
+  const rail_states = railStates(context.env);
   const pass = checks.every((c) => c.pass) && configWarnings.length === 0;
 
   return accessJson(
@@ -129,6 +130,7 @@ export async function onRequestGet(context) {
           ? `x402 rail misconfiguration: ${configWarnings.map((w) => w.code).join(", ")}.`
           : "One or more proof checks failed.",
       x402_config_warnings: configWarnings,
+      x402_rail_states: rail_states,
       trust_snapshot: trustSnapshot(origin),
       receipts: receiptModel(origin),
       payment_ledger: `${origin}/api/bar/proof/payments`,

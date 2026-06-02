@@ -35,6 +35,15 @@ const BASE = "eip155:8453";
 const POLY = "eip155:137";
 const SOL = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 
+// After the failed canary, X402_POLYGON_ENABLED alone NO LONGER advertises Polygon.
+// It also needs a valid activation record. Supply one (env form) wherever a test
+// asserts Polygon is active. Dedicated gate coverage: x402-rail-activation-selftest.mjs.
+const PROVEN_POLYGON_RECORD = JSON.stringify({
+  activated: true,
+  amoy_layer3_passes: 3,
+  mainnet_smoke_tx: "0xsmoke",
+});
+
 const product = {
   kind: "nano",
   id: "help-me",
@@ -71,21 +80,30 @@ const accepts = (env) =>
   if (!a.extra || a.extra.version !== "2") fail("base-only", "missing EIP-712 extra");
 }
 
-// --- 3. Polygon appends only when enabled; Base stays accepts[0] ---
+// --- 3. Polygon appends only when enabled AND proven; Base stays accepts[0] ---
 {
-  const env = { X402_PAYTO: "0xBaseWallet", X402_POLYGON_ENABLED: "1" };
+  // Flag alone (no activation record) must NOT advertise Polygon — the canary fix.
+  eq("flag-only no record", accepts({ X402_PAYTO: "0xBaseWallet", X402_POLYGON_ENABLED: "1" }), [BASE]);
+
+  // Flag + valid activation record → Polygon appends after Base.
+  const env = {
+    X402_PAYTO: "0xBaseWallet",
+    X402_POLYGON_ENABLED: "1",
+    X402_POLYGON_ACTIVATION_RECORD: PROVEN_POLYGON_RECORD,
+  };
   eq("base+poly accepts", accepts(env), [BASE, POLY]);
   const poly = buildProductPaymentRequirements(product, URL_UNDER_TEST, env).accepts[1];
   if (poly.network !== POLY) fail("base+poly", "accepts[1] is not Polygon");
   if (!poly.extra) fail("base+poly", "Polygon accept missing EIP-712 extra (EVM rail)");
 }
 
-// --- 4. Polygon enabled with dedicated payTo override ---
+// --- 4. Polygon enabled (+proven) with dedicated payTo override ---
 {
   const env = {
     X402_PAYTO: "0xBaseWallet",
     X402_POLYGON_ENABLED: "true",
     X402_POLYGON_PAY_TO: "0xPolyWallet",
+    X402_POLYGON_ACTIVATION_RECORD: PROVEN_POLYGON_RECORD,
   };
   const poly = resolveActiveNetworks(env).find((r) => r.network.key === "polygon");
   if (!poly || poly.payTo !== "0xPolyWallet") fail("poly-override", "did not use X402_POLYGON_PAY_TO");
@@ -112,6 +130,7 @@ const accepts = (env) =>
   const env = {
     X402_PAYTO: "0xW",
     X402_POLYGON_ENABLED: "1",
+    X402_POLYGON_ACTIVATION_RECORD: PROVEN_POLYGON_RECORD,
     X402_SOLANA_ACTIVE: "1",
     X402_SOLANA_PAY_TO: "SoLwallet",
   };
@@ -170,20 +189,43 @@ const accepts = (env) =>
   }
 }
 
-// --- 6c. Config warnings: enabled flag without a payTo is surfaced ---
+// --- 6c. Config warnings: enabled flag without an activation record is surfaced ---
 {
-  // Polygon flag on, but NO payTo anywhere → rail can't activate → warn.
-  const env = { X402_POLYGON_ENABLED: "1" };
-  const warns = x402ConfigWarnings(env);
-  if (!warns.some((w) => w.code === "polygon_enabled_but_inactive")) {
-    fail("config-warn", "expected polygon_enabled_but_inactive when flag set without payTo");
+  // Polygon flag on, but NO activation record → flag-alone case → warn (the canary fix).
+  const warns = x402ConfigWarnings({ X402_PAYTO: "0xW", X402_POLYGON_ENABLED: "1" });
+  if (!warns.some((w) => w.code === "polygon_enabled_without_activation_record")) {
+    fail("config-warn", "expected polygon_enabled_without_activation_record when flag set without a record");
   }
   // Clean config → no warnings.
   if (x402ConfigWarnings({ X402_PAYTO: "0xW" }).length !== 0) {
     fail("config-warn", "Base-only clean config should produce no warnings");
   }
-  if (x402ConfigWarnings({ X402_PAYTO: "0xW", X402_POLYGON_ENABLED: "1" }).length !== 0) {
-    fail("config-warn", "Polygon enabled WITH X402_PAYTO should be clean (reuses Base payTo)");
+  // Flag + valid record + payTo (reuses Base) → clean.
+  if (
+    x402ConfigWarnings({
+      X402_PAYTO: "0xW",
+      X402_POLYGON_ENABLED: "1",
+      X402_POLYGON_ACTIVATION_RECORD: PROVEN_POLYGON_RECORD,
+    }).length !== 0
+  ) {
+    fail("config-warn", "Polygon enabled WITH a valid record + Base payTo should be clean");
+  }
+  // Flag + valid record but NO payTo → distinct payTo warning, not the record warning.
+  const noPayTo = x402ConfigWarnings({
+    X402_POLYGON_ENABLED: "1",
+    X402_POLYGON_ACTIVATION_RECORD: PROVEN_POLYGON_RECORD,
+  });
+  if (!noPayTo.some((w) => w.code === "polygon_enabled_but_inactive")) {
+    fail("config-warn", "expected polygon_enabled_but_inactive when record valid but no payTo");
+  }
+  // Emergency override that actually advertises Polygon → loud override warning.
+  const ovr = x402ConfigWarnings({
+    X402_PAYTO: "0xW",
+    X402_POLYGON_ENABLED: "1",
+    X402_POLYGON_EMERGENCY_OVERRIDE: "I_ACCEPT_UNPROVEN_RISK",
+  });
+  if (!ovr.some((w) => w.code === "polygon_emergency_override_active")) {
+    fail("config-warn", "expected polygon_emergency_override_active when override advertises Polygon");
   }
   // Solana active flag without a Solana payTo → warn.
   if (
@@ -199,8 +241,15 @@ const accepts = (env) =>
 for (const env of [
   { X402_PAYTO: "0xW" },
   { X402_PAYTO: "0xW", X402_POLYGON_ENABLED: "1" },
+  { X402_PAYTO: "0xW", X402_POLYGON_ENABLED: "1", X402_POLYGON_ACTIVATION_RECORD: PROVEN_POLYGON_RECORD },
   { X402_PAYTO: "0xW", X402_SOLANA_ACTIVE: "1", X402_SOLANA_PAY_TO: "SoL" },
-  { X402_PAYTO: "0xW", X402_POLYGON_ENABLED: "1", X402_SOLANA_ACTIVE: "1", X402_SOLANA_PAY_TO: "SoL" },
+  {
+    X402_PAYTO: "0xW",
+    X402_POLYGON_ENABLED: "1",
+    X402_POLYGON_ACTIVATION_RECORD: PROVEN_POLYGON_RECORD,
+    X402_SOLANA_ACTIVE: "1",
+    X402_SOLANA_PAY_TO: "SoL",
+  },
 ]) {
   if (accepts(env)[0] !== BASE) fail("canonical-base", `accepts[0] != Base for env ${JSON.stringify(env)}`);
 }

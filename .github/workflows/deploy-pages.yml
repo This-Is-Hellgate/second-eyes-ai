@@ -10,7 +10,16 @@ on:
   workflow_dispatch:
     inputs:
       enable_polygon:
-        description: Set X402_POLYGON_ENABLED=1 before deploy (Polygon mainnet rail)
+        description: >-
+          Set X402_POLYGON_ENABLED=1 before deploy. NOTE: the flag alone no longer
+          advertises Polygon — a valid activation record (config/x402-rail-activations.json
+          or X402_POLYGON_ACTIVATION_RECORD) must also attest settlement is proven.
+        type: boolean
+        default: false
+      disable_polygon:
+        description: >-
+          Unset X402_POLYGON_ENABLED before deploy (returns to Base-only). Takes
+          precedence over enable_polygon when both are checked.
         type: boolean
         default: false
 
@@ -33,12 +42,35 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Enable Polygon x402 rail
-        if: github.event_name == 'workflow_dispatch' && inputs.enable_polygon
+      # Disable wins over enable when both are checked — fail safe toward Base-only.
+      - name: Disable Polygon x402 rail
+        if: github.event_name == 'workflow_dispatch' && inputs.disable_polygon
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: echo "1" | npx wrangler pages secret put X402_POLYGON_ENABLED --project-name=second-eyes-ai
+        run: |
+          set -euo pipefail
+          # Prefer deleting the secret outright; if it is absent (or delete is
+          # non-interactive-unfriendly) fall back to setting it to "0", which the
+          # rail registry's truthy() reads as disabled. Either way Polygon leaves accepts[].
+          if echo "y" | npx wrangler pages secret delete X402_POLYGON_ENABLED --project-name=second-eyes-ai; then
+            echo "Deleted X402_POLYGON_ENABLED secret."
+          else
+            echo "Delete failed or secret absent — setting X402_POLYGON_ENABLED=0."
+            echo "0" | npx wrangler pages secret put X402_POLYGON_ENABLED --project-name=second-eyes-ai
+          fi
+
+      - name: Enable Polygon x402 rail
+        if: github.event_name == 'workflow_dispatch' && inputs.enable_polygon && !inputs.disable_polygon
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          echo "1" | npx wrangler pages secret put X402_POLYGON_ENABLED --project-name=second-eyes-ai
+          echo "Set X402_POLYGON_ENABLED=1. Reminder: Polygon still requires a VALID activation"
+          echo "record (config/x402-rail-activations.json or X402_POLYGON_ACTIVATION_RECORD) to"
+          echo "actually enter accepts[]. The flag alone advertises nothing."
 
       - name: Deploy to Cloudflare Pages
         id: deploy
