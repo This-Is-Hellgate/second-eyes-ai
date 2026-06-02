@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { payAndRetryService, walletStatus, LOUNGE_SERVICE_PRICES_USD, SURVIVAL_PRICE_MAX_USD, x402ServicePath } from "./x402-wallet.js";
+import { payAndRetryService, walletStatus, LOUNGE_SERVICE_PRICES_USD, SURVIVAL_PRICE_MAX_USD, x402ServicePath, ZERO_ARG_AUTOPAY_SLUGS, INPUT_REQUIRED_SLUGS } from "./x402-wallet.js";
 
 // Single source of truth for the advertised version: the published package.
 const { version: PKG_VERSION } = JSON.parse(
@@ -157,14 +157,18 @@ server.registerTool(
   }
 );
 
-const ORDER_SLUG_LIST = Object.keys(LOUNGE_SERVICE_PRICES_USD).join(" | ");
+const ORDER_SLUG_LIST = ZERO_ARG_AUTOPAY_SLUGS.join(" | ");
+const INPUT_REQUIRED_LIST = [...INPUT_REQUIRED_SLUGS].join(" | ");
 const ORDER_DESCRIPTION =
   `COSTS USDC (Base) — launch pricing $0.01–$0.05 per call (max $${SURVIVAL_PRICE_MAX_USD}). ` +
   "Order a survival service by slug. Happy path: proof_bar → enter_lounge (get session_id) → order_service. " +
   "Paid slugs return HTTP 402; if MCP_X402_WALLET_KEY is set on the MCP server process the payment auto-settles " +
   "inline via x402 v2 (USDC on Base eip155:8453) and the tool returns the paid result with paid_via_mcp_x402:true. " +
   "If no wallet is configured the tool returns the 402 body with x402_error.code and REST retry instructions. " +
-  `Allowed slugs (autopay default): ${ORDER_SLUG_LIST}.`;
+  `Autopay-default slugs (zero-arg, convert to a paid 200): ${ORDER_SLUG_LIST}. ` +
+  `Excluded from zero-arg autopay because they need a caller-supplied input this tool cannot pass: ${INPUT_REQUIRED_LIST} — ` +
+  "call /api/bar/x402/transcribe and /api/bar/x402/extract directly with the required input (a blind order_service " +
+  "retry would reach the door and dead-end on no_input).";
 
 server.registerTool(
   "order_service",
@@ -176,7 +180,8 @@ server.registerTool(
       slug: z
         .string()
         .describe(
-          `Service slug, each ≤ $0.05 USDC: ${ORDER_SLUG_LIST}`
+          `Zero-arg autopay slug, each ≤ $0.05 USDC: ${ORDER_SLUG_LIST}. ` +
+            `${INPUT_REQUIRED_LIST} are routable but need a caller-supplied input — call /api/bar/x402/transcribe or /api/bar/x402/extract directly.`
         ),
     },
     outputSchema: {

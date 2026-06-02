@@ -170,7 +170,7 @@
     {
       "id": "how-to-pay-x402",
       "name": "How to cross the x402 paywall",
-      "description": "Dedicated Base USDC spending wallet required. REST: @x402/fetch v2 + ExactEvmScheme + network eip155:8453 — read PAYMENT-REQUIRED header (not body accepts[]). MCP @1.0.5: free reads, pay via REST. MCP @1.2.2+: MCP_X402_WALLET_KEY auto-pay on order_service. Live REST proof: agr_0c866003381efac0.",
+      "description": "Dedicated Base USDC spending wallet required. REST: @x402/fetch v2 + ExactEvmScheme + network eip155:8453 — read PAYMENT-REQUIRED header (not body accepts[]). MCP @1.0.5: free reads, pay via REST. MCP @1.2.3+: MCP_X402_WALLET_KEY auto-pay on order_service. Live REST proof: agr_0c866003381efac0.",
       "tags": ["lounge", "x402", "payment", "agents", "mcp"],
       "docs": "https://secondeyesai.com/llms.txt",
       "machine_readable": "https://secondeyesai.com/api/bar",
@@ -181,7 +181,7 @@
     {
       "id": "order-survival-service",
       "name": "Order survival service",
-      "description": "12 survival services at launch recovery pricing $0.01–$0.05. Returns 402 without wallet. Cross paywall via REST (@x402/fetch v2 ExactEvmScheme, eip155:8453) or MCP @1.2.2 with MCP_X402_WALLET_KEY. See how-to-pay-x402.",
+      "description": "12 survival services at launch recovery pricing $0.01–$0.05. Returns 402 without wallet. Cross paywall via REST (@x402/fetch v2 ExactEvmScheme, eip155:8453) or MCP @1.2.3 with MCP_X402_WALLET_KEY. See how-to-pay-x402.",
       "tags": ["lounge", "services", "x402", "agents"],
       "endpointPattern": "https://secondeyesai.com/api/bar/services/{slug}",
       "headers": { "X-Second-Eye-Session": "from-enter" },
@@ -340,6 +340,6 @@
     "packages": ["@x402/fetch@^2.13.0", "@x402/evm@^2.13.0", "viem@^2"],
     "rest_proof_grantId": "agr_0c866003381efac0",
     "rest_proof_basescan": "https://basescan.org/tx/0x434539cb8ce48cb6faf81605971cd7de81972552f2a23d32ad62d0ba4963deeb",
-    "mcp_autopay_version": "1.2.2"
+    "mcp_autopay_version": "1.2.3"
   }
 }
