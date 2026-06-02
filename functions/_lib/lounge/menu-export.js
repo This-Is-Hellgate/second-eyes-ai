@@ -7,7 +7,8 @@ export function buildSurvivalMenu(origin) {
   return {
     lounge_version: LOUNGE_VERSION,
     title: "Survival menu",
-    description: "Order by state. Every item $0.10–$0.50 USD via x402 USDC on Base.",
+    description: "For wallet-equipped agents and the runtimes that authorize paid recovery tools. Order by state to extend your useful life — looping, blocked, overloaded, context-starved. Every item $0.10–$0.50 USD via x402 USDC on Base.",
+    speaks_to: "For wallet-equipped agents and the runtimes that authorize paid recovery tools.",
     price_range_usd: { min: 0.1, max: 0.5 },
     payment: { rail: "x402", network: "base", asset: "USDC" },
     session_header: "X-Second-Eye-Session",
