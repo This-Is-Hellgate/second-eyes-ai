@@ -345,6 +345,54 @@ function checkPackages(where, packages) {
   }
 }
 
+// --- DISCOVERY COMPAT SURFACE GUARD --------------------------------------------
+// The /openapi.json + /v{0}/openapi.json + /v{1,2}/x402/discovery/resources +
+// /api-docs compat surfaces are built by functions/_lib/discovery.js. They must
+// advertise Base as the only active rail (Polygon/Solana planned only, never
+// active), declare x402 v2, and quote the same per-door PRICE_USD the live routes
+// charge. This guard fails CI if the discovery surface drifts from the routes.
+{
+  const where = "discovery.js";
+  const { buildOpenApi, buildX402Resources } = await import("../functions/_lib/discovery.js");
+
+  const ORIGIN = "https://secondeyesai.com";
+  const spec = buildOpenApi(ORIGIN, {});
+  const res = buildX402Resources(ORIGIN, {}, { discoveryVersion: 2 });
+
+  if (spec.openapi !== "3.1.0") fail(where, `openapi ${spec.openapi} != 3.1.0`);
+  const pay = spec["x-payment"] || {};
+  if (pay.x402Version !== X402_VERSION) fail(where, `openapi x-payment.x402Version ${pay.x402Version} != ${X402_VERSION}`);
+  if (!(pay.active_networks || []).includes(NETWORK)) fail(where, `openapi active_networks missing ${NETWORK}`);
+  if ((pay.active_networks || []).includes("eip155:137")) fail(where, "openapi advertises Polygon as active (must be planned only)");
+  if ((res.network_active || []).includes("eip155:137")) fail(where, "x402 resources advertise Polygon as active (must be planned only)");
+  if (!(res.network_active || []).includes(NETWORK)) fail(where, `x402 resources active rail missing ${NETWORK}`);
+  if (res.x402Version !== X402_VERSION) fail(where, `x402 resources x402Version ${res.x402Version} != ${X402_VERSION}`);
+
+  // Per-door price parity with the live route PRICE_USD constants.
+  const doorPrice = (rel) => {
+    const m = readFileSync(join(ROOT, rel), "utf8").match(/const PRICE_USD\s*=\s*([\d.]+)/);
+    return m ? Number(m[1]) : null;
+  };
+  const doorRoute = {
+    "help-me": "functions/api/bar/x402/help-me.js",
+    "schema-repair": "functions/api/bar/x402/schema-repair.js",
+    "context-pressure": "functions/api/bar/x402/context-pressure.js",
+    "payment-confirmation-check": "functions/api/bar/x402/payment-confirmation-check.js",
+    "transcribe": "functions/api/bar/x402/transcribe.js",
+    "extract": "functions/api/bar/x402/extract.js",
+    "doctor": "functions/api/bar/x402/doctor.js",
+    "index-check": "functions/api/bar/x402/index-check.js",
+  };
+  for (const r of res.resources) {
+    const rel = doorRoute[r.slug];
+    if (!rel) continue;
+    const want = doorPrice(rel);
+    if (want !== null && r.price_usd !== want) {
+      fail(where, `x402 resource ${r.slug} price_usd ${r.price_usd} != route PRICE_USD ${want}`);
+    }
+  }
+}
+
 if (failures.length) {
   console.error("Discovery consistency check FAILED:\n");
   for (const f of failures) console.error(`  ✗ ${f}`);

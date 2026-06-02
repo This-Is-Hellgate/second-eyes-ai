@@ -22,6 +22,14 @@ on:
       - "functions/api/bar/x402/**"
       - "functions/_lib/x402.js"
       - "functions/_lib/x402-networks.js"
+      - "functions/_lib/discovery.js"
+      - "functions/openapi.json.js"
+      - "functions/v0/openapi.json.js"
+      - "functions/v1/x402/discovery/resources.js"
+      - "functions/v2/x402/discovery/resources.js"
+      - "functions/api-docs.js"
+      - "scripts/discovery-compat-selftest.mjs"
+      - "public/robots.txt"
       - "functions/_lib/x402-rail-activation.js"
       - "functions/_lib/x402-payment-log.js"
       - "functions/_lib/agent-entry.js"
@@ -65,6 +73,9 @@ jobs:
 
       - name: Run discovery consistency check
         run: node scripts/discovery-consistency-check.mjs
+
+      - name: Run discovery compat surface self-test
+        run: node scripts/discovery-compat-selftest.mjs
 
       - name: Run x402 multi-network self-test
         run: node scripts/x402-multinetwork-selftest.mjs

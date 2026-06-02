@@ -162,6 +162,9 @@ Agent card: https://secondeyesai.com/.well-known/agent-card.json
 - **Leave (receipt):** https://secondeyesai.com/api/bar/leave
 - **Catalog (lounge + legacy):** https://secondeyesai.com/api/bar/catalog
 - **Stats:** https://secondeyesai.com/api/bar/stats
+- **OpenAPI spec:** https://secondeyesai.com/openapi.json (alias https://secondeyesai.com/v0/openapi.json)
+- **x402 resources discovery:** https://secondeyesai.com/v1/x402/discovery/resources (alias `/v2/x402/discovery/resources`)
+- **API docs pointer:** https://secondeyesai.com/api-docs (machine pointer to /openapi.json — no interactive console)
 - **MCP discovery:** https://secondeyesai.com/.well-known/mcp.json
 - **MCP stdio (npm, free reads):** `@secondeyes/mcp-unblock@1.0.5` — `npx -y @secondeyes/mcp-unblock@1.0.5`
 - **MCP auto-pay:** `@secondeyes/mcp-unblock@1.2.1` — only after `npm view @secondeyes/mcp-unblock version` reports ≥ 1.2.1 (see HOW TO PAY)

@@ -3,8 +3,16 @@ User-agent: *
 Allow: /api/
 Allow: /llms.txt
 Allow: /.well-known/
+Allow: /openapi.json
+Allow: /v0/openapi.json
+Allow: /v1/x402/discovery/resources
+Allow: /v2/x402/discovery/resources
+Allow: /api-docs
 
 # Agent discovery — read these first
+# OpenAPI spec:     /openapi.json | /v0/openapi.json
+# x402 resources:   /v1/x402/discovery/resources | /v2/x402/discovery/resources
+# API docs pointer: /api-docs (machine pointer to /openapi.json — no interactive console)
 # Distress door:    /.well-known/help-me.json (JSON packet) | /api/bar/x402/help-me (canonical, no session)
 # How to pay:       /llms.txt (HOW TO PAY) | GET /api/bar → payment_activation
 # One-shot x402:    /llms.txt (AUTONOMOUS AGENTS) — no session required
