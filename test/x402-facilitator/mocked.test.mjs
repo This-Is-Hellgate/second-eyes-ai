@@ -32,7 +32,7 @@ import {
 } from "../../functions/_lib/x402.js";
 import { facilitatorPaths } from "../../functions/_lib/cdp-auth.js";
 import { installMockFacilitator, makeSyntheticPaymentHeader } from "./mock-facilitator.mjs";
-import { usdToAtomic, assertTestPayToIsolation } from "./env.mjs";
+import { usdToAtomic, assertTestPayToIsolation, supportedUrlFor } from "./env.mjs";
 
 const BASE = "eip155:8453";
 const POLY = "eip155:137";
@@ -527,6 +527,45 @@ await (async () => {
       `paths must keep the full /platform route for the JWT uri claim (got ${p.verifyPath})`
     );
   }
+}
+
+// ===========================================================================
+// 11. supportedUrlFor() — the Layer 2 dry-run reachability URL builder — resolves
+// the GET /supported route for EVERY base shape an operator might bake into a
+// TEST_FACILITATOR_URL_* var. This is the no-network guard for Codex C-022: the
+// dry-run harness no longer naively appends /supported (which would 404 on a
+// `/platform` base); it normalizes CDP bases through facilitatorPaths first and
+// leaves non-CDP origins (Polygon Amoy) untouched. Layer 3 (live settlement) goes
+// through the production verify/settle path tested in section 10, so a `/platform`
+// base is correct on BOTH layers. C-026 extends this to the bare CDP origin
+// (no /platform path): a cdp.coinbase.com host is normalized to the canonical
+// /platform/v2/x402/supported route too, not the origin's bare /supported.
+// ===========================================================================
+{
+  const WANT_CDP = "https://api.cdp.coinbase.com/platform/v2/x402/supported";
+  const cdpBases = [
+    "https://api.cdp.coinbase.com",
+    "https://api.cdp.coinbase.com/",
+    "https://api.cdp.coinbase.com/platform",
+    "https://api.cdp.coinbase.com/platform/",
+    "https://api.cdp.coinbase.com/platform/v2",
+    "https://api.cdp.coinbase.com/platform/v2/x402",
+    "https://api.cdp.coinbase.com/platform/v2/x402/",
+  ];
+  for (const input of cdpBases) {
+    eqJson(`supported-url cdp (${input})`, supportedUrlFor(input), WANT_CDP);
+  }
+  // Non-CDP facilitator (no /platform prefix) exposes /supported off its origin.
+  eqJson(
+    "supported-url non-cdp (polygon amoy)",
+    supportedUrlFor("https://x402-amoy.polygon.technology"),
+    "https://x402-amoy.polygon.technology/supported"
+  );
+  eqJson(
+    "supported-url non-cdp (trailing slash)",
+    supportedUrlFor("https://x402-amoy.polygon.technology/"),
+    "https://x402-amoy.polygon.technology/supported"
+  );
 }
 
 // ===========================================================================

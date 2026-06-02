@@ -9,6 +9,8 @@
 // X402_POLYGON_PAY_TO, X402_SOLANA_PAY_TO) — NOT the spec's idealized aliases —
 // because the test harness must match what an operator actually sets.
 
+import { facilitatorPaths } from "../../functions/_lib/cdp-auth.js";
+
 // ---------------------------------------------------------------------------
 // Gates — the only thing standing between this harness and real spend.
 // ---------------------------------------------------------------------------
@@ -97,6 +99,45 @@ export function facilitatorUrlFor(env, net) {
     "solana-devnet": "TEST_FACILITATOR_URL_SOLANA_DEVNET",
   }[net];
   return env[overrideKey] || TESTNETS[net].defaultFacilitatorUrl;
+}
+
+/** CDP facilitator hosts that serve the canonical /platform/v2/x402 route. */
+const CDP_FACILITATOR_HOST = /(^|\.)cdp\.coinbase\.com$/i;
+
+/**
+ * Build the GET /supported reachability URL for a configured facilitator base,
+ * tolerant of however much of the CDP path the operator baked in.
+ *
+ * The CDP /supported endpoint lives at `<origin>/platform/v2/x402/supported`, so
+ * a CDP base MUST resolve to that full route regardless of how much of the path
+ * the operator typed: the canonical `<origin>/platform`, a fully-qualified
+ * `<origin>/platform/v2/x402`, OR the bare origin `https://api.cdp.coinbase.com`
+ * with no path at all. Naively appending `/supported` would 404 on every one of
+ * those (`/platform/supported`, a duplicated path, or `/supported` on the origin).
+ * We detect a CDP base by EITHER a `/platform` path segment OR a cdp.coinbase.com
+ * host, reuse the production facilitatorPaths() normalization (which strips any
+ * trailing /platform, /platform/v2, or /platform/v2/x402 and re-derives the
+ * canonical origin), then append the canonical /supported route.
+ *
+ * Non-CDP facilitators (e.g. Polygon Amoy at x402-amoy.polygon.technology) expose
+ * /supported directly off their origin and carry no /platform prefix, so we append
+ * /supported to the trimmed base unchanged.
+ */
+export function supportedUrlFor(baseUrl) {
+  const trimmed = String(baseUrl || "").replace(/\/+$/, "");
+  let isCdp = /\/platform(\/|$)/.test(trimmed);
+  if (!isCdp) {
+    try {
+      isCdp = CDP_FACILITATOR_HOST.test(new URL(trimmed).hostname);
+    } catch {
+      isCdp = false;
+    }
+  }
+  if (isCdp) {
+    const { base } = facilitatorPaths(trimmed);
+    return `${base}/platform/v2/x402/supported`;
+  }
+  return `${trimmed}/supported`;
 }
 
 /** A facilitator URL is mainnet-ish if it lacks any testnet marker. */
