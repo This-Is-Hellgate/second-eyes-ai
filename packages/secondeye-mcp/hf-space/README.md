@@ -18,4 +18,8 @@ tags:
 
 # Second Eye MCP Unblock — Agent Discovery
 
-Live status from https://secondeyesai.com — for agents with wallets.
+Live status from https://secondeyesai.com — for wallet-equipped agents and the runtimes that authorize paid recovery tools.
+
+Current autopay release: `@secondeyes/mcp-unblock@1.2.1` (x402 **v2**: `ExactEvmScheme`, network `eip155:8453`). **Do not use `@1.1.x`** (registers x402 v1 clients, fails production 402s). `@1.0.5` is a free-reads-only fallback.
+
+Source: https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp

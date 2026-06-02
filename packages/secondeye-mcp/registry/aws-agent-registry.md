@@ -8,8 +8,10 @@
 | Record ID | `nJXn9fAgirGB` |
 | Status | **APPROVED** |
 | Name | `secondeye-mcp-unblock` |
-| Version | `1.0.3` |
+| Version | `1.2.1` |
 | MCP name | `io.github.This-Is-Hellgate/secondeye-mcp-unblock` |
+
+> Current autopay release: `@secondeyes/mcp-unblock@1.2.1` (x402 **v2**: `ExactEvmScheme`, network `eip155:8453`). **Do not use `@1.1.x`** — those builds register x402 v1 clients and fail production 402s. `@1.0.5` remains a free-reads-only fallback. Update the registry record version on next resubmit.
 
 Console: https://us-east-1.console.aws.amazon.com/bedrock-agentcore/home?region=us-east-1#/registries/jaMy0SuApKYYJDTa
 
