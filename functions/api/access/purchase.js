@@ -9,6 +9,7 @@ import { recordAccessGrant, findAccessGrantByTxRef, findAccessGrantByStripeSessi
 import { issueBarTabToken } from "../../_lib/bar-pay.js";
 import { attachSaleMark, markHeaders, descendantsCount, lineageBlock } from "../../_lib/marks.js";
 import { paymentDegradedBody } from "../../_lib/resilience.js";
+import { readRequestId } from "../../_lib/x402-payment-log.js";
 import {
   buildPaymentRequirements,
   encodePaymentResponse,
@@ -80,7 +81,10 @@ export async function onRequestGet(context) {
     );
   }
 
-  const settled = await verifyAndSettlePayment(paymentHeader, requirements, env);
+  const settled = await verifyAndSettlePayment(paymentHeader, requirements, env, {
+    route: new URL(request.url).pathname,
+    requestId: readRequestId(request),
+  });
   if (!settled.ok) {
     if (settled.degraded) {
       const origin = `${new URL(request.url).protocol}//${new URL(request.url).host}`;
