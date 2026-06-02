@@ -8,7 +8,7 @@
  * packs as session-less, pay-per-call x402 endpoints that settle to the single
  * lounge wallet (X402_PAYTO).
  *
- * Price per slug comes from the shared SERVICE_PRICES table ($0.10–$0.50).
+ * Price per slug comes from the shared SERVICE_PRICES table ($0.01–$0.05).
  * Exact static routes (index-check, doctor) win over this dynamic file — Pages
  * Functions resolve concrete filenames before [slug].
  *

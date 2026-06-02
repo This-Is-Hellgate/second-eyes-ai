@@ -4,7 +4,7 @@ const PACKS = {
   "cursor-mcp-wiring": {
     slug: "cursor-mcp-wiring",
     tap_type: "tool_pack",
-    price_usd: 5,
+    price_usd: 1,
     access: "free",
     snapshot_id: "snap_cursor_mcp_wiring_2026_05_27",
     published_at: "2026-05-27T00:00:00Z",
@@ -55,7 +55,7 @@ const PACKS = {
   "github-mcp": {
     slug: "github-mcp",
     tap_type: "tool_pack",
-    price_usd: 5,
+    price_usd: 1,
     access: "paid",
     snapshot_id: "snap_github_mcp_2026_05_27",
     published_at: "2026-05-27T00:00:00Z",
@@ -118,7 +118,7 @@ const PACKS = {
   "mcp-transport-auth": {
     slug: "mcp-transport-auth",
     tap_type: "tool_pack",
-    price_usd: 5,
+    price_usd: 1,
     access: "paid",
     snapshot_id: "snap_mcp_transport_2026_05_27",
     published_at: "2026-05-27T00:00:00Z",
@@ -154,7 +154,7 @@ const PACKS = {
 const STUB = (slug, name) => ({
   slug,
   tap_type: "tool_pack",
-  price_usd: 5,
+  price_usd: 1,
   access: "paid",
   status: "stocking",
   lead: `${name} — pack in progress. Catalog listing is live; full cited JSON shipping next.`,

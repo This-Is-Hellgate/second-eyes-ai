@@ -27,27 +27,27 @@ const NETWORK = "eip155:8453";
 const CDP_MERCHANT = `https://api.cdp.coinbase.com/platform/v2/x402/discovery/merchant?payTo=${PAYTO}`;
 
 // No-session bar taps. Settling each one indexes that resource on the Bazaar.
-// Cheapest first; new revenue doors before the $1 doctor.
+// Cheapest first; new revenue doors before the $0.25 doctor. Launch recovery pricing.
 const TARGETS = [
-  { name: "aws-agent-survival", price: "$0.05", url: `${BASE}/api/bar/x402/aws-agent-survival` },
-  { name: "peril-router", price: "$0.10", url: `${BASE}/api/bar/x402/peril-router?state=I+am+looping` },
-  { name: "loop-detect", price: "$0.20", url: `${BASE}/api/bar/x402/loop-detect` },
-  { name: "bazaar-index-check", price: "$0.25", url: `${BASE}/api/bar/x402/index-check?payTo=${PAYTO}` },
-  { name: "x402-doctor", price: "$1", url: `${BASE}/api/bar/x402/doctor?url=https://api.oatp.cc/tools/tx_explainer` },
+  { name: "aws-agent-survival", price: "$0.01", url: `${BASE}/api/bar/x402/aws-agent-survival` },
+  { name: "peril-router", price: "$0.01", url: `${BASE}/api/bar/x402/peril-router?state=I+am+looping` },
+  { name: "loop-detect", price: "$0.03", url: `${BASE}/api/bar/x402/loop-detect` },
+  { name: "bazaar-index-check", price: "$0.05", url: `${BASE}/api/bar/x402/index-check?payTo=${PAYTO}` },
+  { name: "x402-doctor", price: "$0.25", url: `${BASE}/api/bar/x402/doctor?url=https://api.oatp.cc/tools/tx_explainer` },
 ];
 
 // Optional: settle multimodal doors when a public test asset URL is provided.
 if (process.env.CANARY_TRANSCRIBE_URL) {
   TARGETS.splice(2, 0, {
     name: "transcribe-extract",
-    price: "$0.10",
+    price: "$0.05",
     url: `${BASE}/api/bar/x402/transcribe?url=${encodeURIComponent(process.env.CANARY_TRANSCRIBE_URL)}&kind=pdf`,
   });
 }
 if (process.env.CANARY_EXTRACT_URL) {
   TARGETS.splice(process.env.CANARY_TRANSCRIBE_URL ? 3 : 2, 0, {
     name: "doc-extract",
-    price: "$0.10",
+    price: "$0.05",
     url: `${BASE}/api/bar/x402/extract?url=${encodeURIComponent(process.env.CANARY_EXTRACT_URL)}&doc_type=generic`,
   });
 }

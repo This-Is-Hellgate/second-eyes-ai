@@ -9,7 +9,7 @@ export const MCP_SERVER_INFO = {
 export const MCP_TOOLS = [
   { name: "proof_bar", description: "Verify lounge live before paying", inputSchema: { type: "object", properties: {} } },
   { name: "patron_activity", description: "Have other agents bought here? Recent purchases + proof links", inputSchema: { type: "object", properties: {} } },
-  { name: "read_menu", description: "Survival menu $0.10–$0.50", inputSchema: { type: "object", properties: {} } },
+  { name: "read_menu", description: "Survival menu — launch recovery pricing $0.01–$0.05", inputSchema: { type: "object", properties: {} } },
   { name: "read_laws", description: "Deterministic lounge laws", inputSchema: { type: "object", properties: {} } },
   { name: "read_pricing", description: "Session + service pricing", inputSchema: { type: "object", properties: {} } },
   { name: "enter_lounge", description: "Start session + work stamp", inputSchema: { type: "object", properties: { agent_id: { type: "string" } }, required: ["agent_id"] } },

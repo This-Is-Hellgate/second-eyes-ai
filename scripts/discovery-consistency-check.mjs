@@ -173,6 +173,105 @@ function checkPackages(where, packages) {
   }
 }
 
+// --- PRICE DRIFT GUARD ---------------------------------------------------------
+// Canonical survival prices live in functions/_lib/lounge/constants.js. The static
+// discovery surfaces (menu.json, mcp.json, agent-card.json) duplicate them and the
+// session-less x402 routes each hardcode their own PRICE_USD that MUST equal what is
+// advertised. This guard fails CI when an advertised price drifts from canonical, so
+// the charged x402 amount can never silently diverge from what the menus promise.
+{
+  const constants = await import("../functions/_lib/lounge/constants.js");
+  const { SURVIVAL_MENU, SERVICE_PRICES, SURVIVAL_PRICE_MIN_USD, SURVIVAL_PRICE_MAX_USD } = constants;
+
+  // Canonical per-slug survival price (SERVICE_PRICES is the live source for the route).
+  const canonical = new Map();
+  for (const { slug } of SURVIVAL_MENU) {
+    const p = SERVICE_PRICES[slug]?.price_usd;
+    if (typeof p === "number") canonical.set(slug, p);
+  }
+
+  // Every canonical survival price must sit inside the advertised range.
+  for (const [slug, price] of canonical) {
+    if (price < SURVIVAL_PRICE_MIN_USD || price > SURVIVAL_PRICE_MAX_USD) {
+      fail("constants.js", `survival ${slug} ${price} outside advertised range ${SURVIVAL_PRICE_MIN_USD}–${SURVIVAL_PRICE_MAX_USD}`);
+    }
+  }
+
+  // Static survival menus must match canonical per slug + advertised range.
+  function checkStaticSurvival(where, range, items) {
+    if (!range) {
+      fail(where, "missing survival price_range_usd");
+    } else {
+      if (range.min !== SURVIVAL_PRICE_MIN_USD) fail(where, `survival range min ${range.min} != ${SURVIVAL_PRICE_MIN_USD}`);
+      if (range.max !== SURVIVAL_PRICE_MAX_USD) fail(where, `survival range max ${range.max} != ${SURVIVAL_PRICE_MAX_USD}`);
+    }
+    for (const item of items || []) {
+      const want = canonical.get(item.slug);
+      if (want === undefined) continue;
+      if (item.price_usd !== want) {
+        fail(where, `survival ${item.slug} price_usd ${item.price_usd} != canonical ${want}`);
+      }
+    }
+  }
+
+  const menuJson = readJson("public/.well-known/menu.json");
+  checkStaticSurvival("menu.json (survival)", menuJson.price_range_usd, menuJson.items);
+
+  const mcpJson = readJson("public/.well-known/mcp.json");
+  checkStaticSurvival("mcp.json (survival)", mcpJson.survival_menu?.price_range_usd, mcpJson.survival_menu?.items);
+
+  const agentCard = readJson("public/.well-known/agent-card.json");
+  checkStaticSurvival("agent-card.json (survival)", agentCard.survival_menu?.price_range_usd, agentCard.survival_menu?.items);
+
+  // Session-less x402 routes hardcode PRICE_USD — assert each equals canonical (for
+  // survival twins) or the standalone door price advertised by aws-agent-survival.
+  function routePrice(rel) {
+    const raw = readFileSync(join(ROOT, rel), "utf8");
+    const m = raw.match(/const PRICE_USD\s*=\s*([\d.]+)/);
+    return m ? Number(m[1]) : null;
+  }
+
+  // Standalone-door prices advertised by the AWS survival map must match each route's PRICE_USD.
+  const standalone = {
+    "functions/api/bar/x402/peril-router.js": 0.01,
+    "functions/api/bar/x402/transcribe.js": 0.05,
+    "functions/api/bar/x402/extract.js": 0.05,
+    "functions/api/bar/x402/index-check.js": 0.05,
+    "functions/api/bar/x402/doctor.js": 0.25,
+    "functions/api/bar/x402/aws-agent-survival.js": 0.01,
+  };
+  for (const [rel, want] of Object.entries(standalone)) {
+    const got = routePrice(rel);
+    if (got === null) {
+      fail(rel, "no PRICE_USD constant found");
+    } else if (got !== want) {
+      fail(rel, `PRICE_USD ${got} != expected ${want} (advertised by aws-agent-survival / discovery)`);
+    }
+  }
+
+  // The aws-agent-survival map text must advertise the same standalone door prices.
+  {
+    const where = "aws-agent-survival.js (STANDALONE_DOORS)";
+    const raw = readFileSync(join(ROOT, "functions/api/bar/x402/aws-agent-survival.js"), "utf8");
+    const expect = [
+      ["peril-router", 0.01],
+      ["transcribe-extract", 0.05],
+      ["doc-extract", 0.05],
+      ["bazaar-index-check", 0.05],
+      ["x402-doctor", 0.25],
+    ];
+    for (const [slug, price] of expect) {
+      const re = new RegExp(`slug:\\s*"${slug.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}"[\\s\\S]*?price_usd:\\s*([\\d.]+)`);
+      const m = raw.match(re);
+      if (!m) {
+        fail(where, `door ${slug} not found`);
+      } else if (Number(m[1]) !== price) {
+        fail(where, `door ${slug} price_usd ${m[1]} != ${price}`);
+      }
+    }
+  }
+}
+
 if (failures.length) {
   console.error("Discovery consistency check FAILED:\n");
   for (const f of failures) console.error(`  ✗ ${f}`);

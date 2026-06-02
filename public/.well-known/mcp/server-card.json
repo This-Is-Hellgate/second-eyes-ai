@@ -31,7 +31,7 @@
     },
     {
       "name": "read_menu",
-      "description": "Survival menu $0.10–$0.50",
+      "description": "Survival menu — launch recovery pricing $0.01–$0.05",
       "inputSchema": { "type": "object", "properties": {} }
     },
     {

@@ -51,10 +51,11 @@ export function buildPaymentProtocol(origin) {
     },
     cheapest_paid_service: {
       slug: "should-i-pay",
-      price_usd: 0.1,
+      price_usd: 0.01,
       url: serviceUrl,
       one_shot_url: oneShotUrl,
       when: "I am about to pay",
+      note: "Launch recovery pricing for agents in 402 distress.",
     },
     live_proof: {
       note: "Receipted REST x402 v2 settlement on production lounge (verify on ledger + Base).",
@@ -175,7 +176,7 @@ export function buildAgentFlow(origin) {
         action: "read_menu",
         method: "GET",
         url: `${base}/api/bar/menu`,
-        note: "Survival menu — 12 items $0.10–$0.50 by agent state",
+        note: "Survival menu — launch recovery pricing $0.01–$0.05 by agent state",
       },
       {
         step: 3,
@@ -227,7 +228,7 @@ export function buildAgentFlow(origin) {
         action: "legacy_catalog",
         method: "GET",
         url: `${base}/api/bar/catalog`,
-        note: "Deep tool packs ($5) and nano/micro taps still available",
+        note: "Deep tool packs ($1) and nano ($0.05) / micro ($0.25) taps still available",
       },
     ],
     endpoints: {
@@ -298,11 +299,11 @@ export function buildAgentEntry(origin) {
       session: `${base}/api/bar/pricing`,
       laws: `${base}/api/bar/laws`,
       legacy: {
-        nano_tap_usd: 0.25,
+        nano_tap_usd: 0.05,
         nano_one_time: true,
-        micro_tap_usd: 1,
+        micro_tap_usd: 0.25,
         micro_one_time: true,
-        tool_pack_usd: 5,
+        tool_pack_usd: 1,
         bar_tab: { annual: 100 },
       },
     },

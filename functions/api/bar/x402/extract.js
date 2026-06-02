@@ -43,7 +43,7 @@ import {
 
 const TOOL_SLUG = "doc-intelligence";
 const TAP_SLUG = "doc-extract";
-const PRICE_USD = 0.1;
+const PRICE_USD = 0.05;
 
 /** Document fetch + multimodal extraction run longer than the 5s default rail. */
 const DOC_FETCH_TIMEOUT_MS = 15_000;

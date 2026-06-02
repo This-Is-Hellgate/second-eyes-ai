@@ -7,20 +7,20 @@ export const BAR_CENTER = {
   function: "agent_survival_supplies_with_proof",
 };
 
-/** $1 — one-time single tap fetch (one use). */
+/** $0.25 — one-time single tap fetch (one use). Launch recovery pricing. */
 export const MICRO_TAP = {
   id: "micro",
   label: "Micro tap",
-  priceUsd: 1,
+  priceUsd: 0.25,
   singleUse: true,
   ttlSeconds: 900,
 };
 
-/** $5 — full context pack for one MCP tool (all taps in tool). */
+/** $1 — full context pack for one MCP tool (all taps in tool). Launch recovery pricing. */
 export const TOOL_PURCHASE = {
   id: "tool",
   label: "Tool purchase",
-  priceUsd: 5,
+  priceUsd: 1,
   singleUse: false,
 };
 

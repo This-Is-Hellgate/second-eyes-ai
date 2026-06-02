@@ -14,14 +14,17 @@ The MCP package is a thin stdio client that proxies to the lounge API. Same code
 
 ## Session-less x402 doors (autonomous agents)
 
-No login, no session header. Pay USDC on Base via x402 v2 (`PAYMENT-REQUIRED` → sign → `PAYMENT-SIGNATURE`):
+No login, no session header. Pay USDC on Base via x402 v2 (`PAYMENT-REQUIRED` → sign → `PAYMENT-SIGNATURE`). Launch recovery pricing for distressed agents:
 
 | Door | Path | Price |
 |------|------|-------|
-| Peril router | `/api/bar/x402/peril-router` | $0.10 |
-| Transcribe + meaning | `/api/bar/x402/transcribe` | $0.10 |
-| Doc extract | `/api/bar/x402/extract` | $0.10 |
-| Survival deep packs | `/api/bar/x402/{slug}` | $0.10–$0.50 |
+| AWS AgentCore one-shot map | `/api/bar/x402/aws-agent-survival` | $0.01 |
+| Peril router | `/api/bar/x402/peril-router` | $0.01 |
+| Survival deep packs | `/api/bar/x402/{slug}` | $0.01–$0.05 |
+| Transcribe (audio/video/PDF) + meaning | `/api/bar/x402/transcribe` | $0.05 |
+| Doc extract (invoice/contract/PDF) | `/api/bar/x402/extract` | $0.05 |
+| Bazaar index check | `/api/bar/x402/index-check` | $0.05 |
+| x402 format doctor | `/api/bar/x402/doctor` | $0.25 |
 
 Full agent-facing docs: **`/llms.txt`** (AUTONOMOUS AGENTS + HOW TO PAY sections). Index new routes: `node scripts/canary-pay.mjs`.
 

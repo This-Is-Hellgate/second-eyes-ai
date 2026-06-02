@@ -25,7 +25,7 @@ import { isSafeHttpUrl } from "../../../_lib/url-guard.js";
 
 const TOOL_SLUG = "x402-survival";
 const TAP_SLUG = "x402-doctor";
-const PRICE_USD = 1;
+const PRICE_USD = 0.25;
 
 const PRODUCT = {
   kind: "micro",
