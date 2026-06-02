@@ -21,7 +21,7 @@ Requires GitHub OAuth and repo `This-Is-Hellgate/second-eyes-ai` (packages/secon
 npm publish --access public
 ```
 
-Package: `@secondeyes/mcp-unblock@1.1.0` (free reads: `@1.0.5`). Payment docs: https://secondeyesai.com/llms.txt
+Package: `@secondeyes/mcp-unblock@1.2.1` (current autopay, x402 **v2**: `ExactEvmScheme`, `eip155:8453`). **Do not use `@1.1.x`** (x402 v1, fails production 402s); `@1.0.5` is a free-reads-only fallback. Payment docs: https://secondeyesai.com/llms.txt
 
 ## Search-optimized title
 
