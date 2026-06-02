@@ -12,6 +12,7 @@
 import { checkBazaarIndex } from "../../../_lib/bazaar-index.js";
 import {
   corsOptions,
+  readOptionalJsonBody,
   handlePaidFetch,
   hasBarTabAccess,
   hasToolAccess,
@@ -61,18 +62,19 @@ export async function onRequestGet(context) {
 }
 
 export async function onRequestPost(context) {
-  let input;
-  try {
-    const data = await context.request.json();
-    input = { payTo: data?.payTo || null, url: data?.url || null };
-  } catch {
+  // An empty/blank body is a valid bare probe and must reach the x402 paywall (402);
+  // only a non-empty malformed body is 400. payTo/url are optional and resolved
+  // after payment, mirroring the GET-no-params path.
+  const parsed = await readOptionalJsonBody(context.request);
+  if (!parsed.ok) {
     return accessJson(
       { error: "invalid_json", note: "POST a JSON body: { payTo, url }." },
       400,
       { "Access-Control-Allow-Origin": "*" }
     );
   }
-  return handle(context, input);
+  const data = parsed.data;
+  return handle(context, { payTo: data?.payTo || null, url: data?.url || null });
 }
 
 function handle(context, input) {

@@ -49,6 +49,28 @@ export function bearerToken(request) {
   return auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
 }
 
+/**
+ * Parse an optional JSON POST body for a paid x402 door. An EMPTY or whitespace-only
+ * body is a valid bare probe ("just paywall me") and must resolve to {} so the
+ * handler reaches the x402 paywall (402) — the same place a bare GET lands. Only a
+ * NON-empty body that fails to parse is genuinely malformed.
+ *
+ * Returns { ok: true, data } on success (data is always a plain object), or
+ * { ok: false } when a non-empty body is not valid JSON object — the caller emits
+ * 400 invalid_json. Request.json() rejects on an empty body, which is exactly the
+ * trap (an empty POST 400ing before the paywall) this avoids.
+ */
+export async function readOptionalJsonBody(request) {
+  const raw = (await request.text()).trim();
+  if (!raw) return { ok: true, data: {} };
+  try {
+    const data = JSON.parse(raw);
+    return { ok: true, data: data && typeof data === "object" ? data : {} };
+  } catch {
+    return { ok: false };
+  }
+}
+
 /** CDP Bazaar crawl must get 402 before lounge session gate — agents still need session to pay. */
 export function discoveryPaywall402(context, product, origin) {
   if (product.priceUsd <= 0) return null;

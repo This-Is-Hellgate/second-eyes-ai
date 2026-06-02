@@ -84,13 +84,16 @@ function parseGetInput(request) {
 }
 
 async function parsePostInput(request) {
+  // Read the raw body once and treat empty/blank as a bare probe regardless of the
+  // declared content-type, so an empty POST (even with Content-Type: application/json)
+  // reaches the x402 paywall via no_input rather than 400ing on request.json().
+  const raw = (await request.text()).trim();
+  if (!raw) return { url: null, body: null };
   const ct = request.headers.get("content-type") || "";
   if (!ct.includes("application/json")) {
-    const raw = (await request.text()).trim();
-    if (!raw) return { url: null, body: null };
     return { url: null, body: JSON.parse(raw) };
   }
-  const data = await request.json();
+  const data = JSON.parse(raw);
   if (typeof data?.body === "string") {
     return { url: data.url || null, body: JSON.parse(data.body) };
   }
