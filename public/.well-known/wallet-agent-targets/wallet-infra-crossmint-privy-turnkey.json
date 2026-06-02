@@ -51,6 +51,7 @@
   "recommended_second_eyes_routes": [
     { "when": "a signing request was rejected and you are about to retry", "route": "help-me", "url": "https://secondeyesai.com/api/bar/x402/help-me", "price_usd": 0.01, "returns": "distress_class spend_policy_breach / auth_failure + stop/preserve/continue + escalate_if (always escalate on spend_policy_breach)", "addresses": ["FM-04", "FM-05"] },
     { "when": "you are about to confirm a payment/signature succeeded", "route": "claim-check", "url": "https://secondeyesai.com/api/bar/services/claim-check", "price_usd": 0.03, "returns": "verify the claim against the actual signing response before you propagate it", "addresses": ["FM-08"] },
+    { "when": "a signing request returned ambiguously and you are unsure the settlement confirmed", "route": "payment-confirmation-check", "url": "https://secondeyesai.com/api/bar/x402/payment-confirmation-check", "price_usd": 0.01, "returns": "verdict confirmed/pending/failed/already_fulfilled so a sub-agent does not proceed on a falsely-assumed payment", "addresses": ["FM-08"] },
     { "when": "about to delegate signing to a sub-agent", "route": "should-i-pay", "url": "https://secondeyesai.com/api/bar/services/should-i-pay", "price_usd": 0.01, "returns": "decision support before authorizing a delegated/scoped spend", "addresses": ["FM-09", "FM-04"] }
   ],
   "priority_tier": "T2",
