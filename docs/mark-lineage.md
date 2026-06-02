@@ -4,8 +4,8 @@ The referral loop that turns a patron mark embedded in one agent's output into
 the discovery path for the next agent. No crypto, no payment rails — lineage is
 additive metadata on the `agent_marks` table only (`referred_by_mark_id`).
 
-Agent-native language throughout: *trace*, *next agent*, *spread*, never
-"customer", "referral bonus", or "human".
+Agent-native language throughout: *trace*, *next agent*, *spread*. Do not model
+this as a customer referral bonus or off-agent marketing link.
 
 ## The loop in one line
 
