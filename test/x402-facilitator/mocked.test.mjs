@@ -22,6 +22,10 @@
 import {
   buildProductPaymentRequirements,
   buildFacilitatorRequestBody,
+  paymentRequiredObject,
+  payment402BodyForProduct,
+  encodePaymentRequiredHeader,
+  parsePaymentPayloadFromHeader,
   verifyPaymentHeader,
   settleBuiltPayment,
   usdToUsdcMicros,
@@ -233,6 +237,159 @@ await (async () => {
     }
   }
 })();
+
+// ===========================================================================
+// 10. Header stays lean (truncated resource.description) but verify/settle get
+//     the FULL description. Codex review of PR #23: a normal v2 client copies the
+//     resource OBJECT verbatim out of PAYMENT-REQUIRED (which carries the 220-char
+//     truncated text) into its payment payload. buildFacilitatorRequestBody must
+//     re-derive the rich description from `requirement` for the object case too,
+//     not pass the truncated copy straight through to CDP /verify and /settle.
+// ===========================================================================
+{
+  const HEADER_MAX = 220;
+  // A description well over the header cap so truncation is observable end-to-end.
+  const longProduct = {
+    kind: "nano",
+    id: "help-me",
+    slug: "help-me",
+    priceUsd: 0.01,
+    access: "paid",
+    description:
+      "help-me — canonical agent-distress door. " +
+      "Full MCP context library for stranded autonomous agents: survival runbooks, " +
+      "escalation contacts, structured recovery playbooks, and the complete catalog of " +
+      "Second Eyes services an agent can call to get unstuck, all delivered as a single " +
+      "paid bar-tab session that a buyer's facilitator must catalog with the rich text intact.",
+  };
+  ok(
+    "header-vs-facilitator",
+    longProduct.description.length > HEADER_MAX,
+    "fixture description must exceed the header cap to make truncation observable"
+  );
+
+  const env = { X402_PAYTO: PROD_EVM };
+  const requirement = buildProductPaymentRequirements(longProduct, RESOURCE, env);
+
+  // --- PAYMENT-REQUIRED header carries the LEAN (truncated) description ---
+  const headerObj = paymentRequiredObject(requirement);
+  const headerDesc = headerObj.resource.description;
+  ok(
+    "header-vs-facilitator",
+    headerDesc.length <= HEADER_MAX,
+    `header resource.description length ${headerDesc.length} > cap ${HEADER_MAX}`
+  );
+  ok(
+    "header-vs-facilitator",
+    headerDesc !== longProduct.description,
+    "header resource.description should be truncated, not the full text"
+  );
+  ok(
+    "header-vs-facilitator",
+    headerDesc.endsWith("…"),
+    "truncated header description should end with an ellipsis"
+  );
+  ok(
+    "header-vs-facilitator",
+    headerObj.resource.url === RESOURCE,
+    `header resource.url ${headerObj.resource.url} != ${RESOURCE}`
+  );
+  ok(
+    "header-vs-facilitator",
+    headerObj.resource.mimeType === "application/json",
+    "header resource.mimeType not preserved"
+  );
+
+  // A spec-compliant v2 client copies the resource OBJECT verbatim from the header
+  // into its payment payload. Decode the header object exactly as the client would.
+  const headerResource = parsePaymentPayloadFromHeader(
+    encodePaymentRequiredHeader(headerObj)
+  ).resource;
+
+  // Three buyer shapes: object-from-header (the common case Codex flagged),
+  // string-only, and resource omitted entirely.
+  const cases = [
+    ["object-from-header", headerResource],
+    ["string-only", RESOURCE],
+    ["resource-omitted", undefined],
+  ];
+  for (const [label, resource] of cases) {
+    const payload = {
+      x402Version: 2,
+      scheme: "exact",
+      network: BASE,
+      accepted: { network: BASE },
+      ...(resource === undefined ? {} : { resource }),
+      payload: { signature: "0x" + "00".repeat(65) },
+    };
+    const built = buildFacilitatorRequestBody(
+      Buffer.from(JSON.stringify(payload)).toString("base64"),
+      requirement
+    );
+    ok("header-vs-facilitator", built.ok, `${label}: build failed (${built.error})`);
+    const sentResource = built.body?.paymentPayload?.resource;
+    ok("header-vs-facilitator", sentResource && typeof sentResource === "object", `${label}: resource not an object`);
+    eqJson(`facilitator full description (${label})`, sentResource.description, longProduct.description);
+    ok(
+      "header-vs-facilitator",
+      sentResource.description.length > HEADER_MAX,
+      `${label}: facilitator got truncated description (len ${sentResource.description.length})`
+    );
+    ok(
+      "header-vs-facilitator",
+      sentResource.url === RESOURCE,
+      `${label}: resource.url ${sentResource.url} != ${RESOURCE}`
+    );
+    ok(
+      "header-vs-facilitator",
+      sentResource.mimeType === "application/json",
+      `${label}: resource.mimeType not preserved`
+    );
+    // Bazaar metadata (full extensions) still echoed server-side to CDP.
+    ok(
+      "header-vs-facilitator",
+      built.body.paymentPayload.extensions &&
+        JSON.stringify(built.body.paymentPayload.extensions) ===
+          JSON.stringify(requirement.extensions),
+      `${label}: facilitator payload missing full extensions echo`
+    );
+  }
+
+  // --- The buyer's SIGNED resource URL is preserved (not clobbered by requirement) ---
+  {
+    const buyerUrl = "https://secondeyesai.com/api/bar/x402/help-me?ref=agent42";
+    const payload = {
+      x402Version: 2,
+      scheme: "exact",
+      network: BASE,
+      accepted: { network: BASE },
+      resource: { url: buyerUrl, description: "stale truncated…", mimeType: "application/json" },
+      payload: { signature: "0x" + "00".repeat(65) },
+    };
+    const built = buildFacilitatorRequestBody(
+      Buffer.from(JSON.stringify(payload)).toString("base64"),
+      requirement
+    );
+    ok("header-vs-facilitator", built.ok, `signed-url: build failed (${built.error})`);
+    ok(
+      "header-vs-facilitator",
+      built.body.paymentPayload.resource.url === buyerUrl,
+      "buyer's signed resource.url must be preserved"
+    );
+    eqJson(
+      "facilitator full description (signed-url)",
+      built.body.paymentPayload.resource.description,
+      longProduct.description
+    );
+  }
+
+  // --- The 402 JSON body still carries the full description + Bazaar extensions ---
+  {
+    const body = payment402BodyForProduct(requirement, longProduct, null, "https://secondeyesai.com");
+    eqJson("402-body full description", body.description, longProduct.description);
+    ok("header-vs-facilitator", body.extensions, "402 body must still carry Bazaar extensions");
+  }
+}
 
 // ===========================================================================
 // 5-7. Rejection paths never call the facilitator.
