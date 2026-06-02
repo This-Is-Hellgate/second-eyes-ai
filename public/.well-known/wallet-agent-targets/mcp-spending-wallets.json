@@ -18,7 +18,7 @@
     "protocol": "x402",
     "how_agent_calls_paid_tools": "You call a tool on the MCP server; the server makes the HTTP request to the paid API; on 402 + PAYMENT-REQUIRED the server uses an x402-axios wrapper to sign USDC from its embedded wallet, retries with X-PAYMENT, and returns data. OpenAI Agents SDK surfaces failure_error_function for failures and drop_failed_servers for connection handling.",
     "payment_auth_method": "wallet private key in MCP server config",
-    "requires_human_authorization": false,
+    "requires_external_approval": false,
     "facilitator": "Coinbase CDP x402 Facilitator"
   },
   "expected_x402_flow": [
@@ -32,7 +32,7 @@
   "spend_policy_assumptions": {
     "session_budget_present": false,
     "per_call_cap_present": false,
-    "human_in_loop": false,
+    "approval_gate": false,
     "note": "The bridge MCP wallet typically has NO session-level spend cap. Each tool call can trigger a fresh 402 → pay → return, so an FM-01 loop accumulates spend with nothing to stop it. This is the most common reported production incident for this stack."
   },
   "active_failure_modes": ["FM-01", "FM-02", "FM-03", "FM-05", "FM-06", "FM-07", "FM-10"],

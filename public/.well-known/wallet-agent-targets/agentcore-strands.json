@@ -18,7 +18,7 @@
     "protocol": "x402",
     "how_agent_calls_paid_tools": "AgentCore payment manager intercepts 402 within your reasoning loop: request → 402 → manager authenticates the wallet → executes the stablecoin payment → attaches payment proof → returns content, with no interruption. Bazaar MCP server (10K+ endpoints) is exposed through AgentCore Gateway. Visa Intelligent Commerce adds tokenized card-rail with intent mandates.",
     "payment_auth_method": "AgentCore-managed wallet credential (token lifecycle managed by platform)",
-    "requires_human_authorization": false,
+    "requires_external_approval": false,
     "facilitator": "Coinbase CDP x402 Facilitator (or Stripe for card rail)"
   },
   "expected_x402_flow": [
@@ -31,7 +31,7 @@
   "spend_policy_assumptions": {
     "session_budget_present": true,
     "per_call_cap_present": false,
-    "human_in_loop": false,
+    "approval_gate": false,
     "note": "Session spending limits are enforced per session; credential lifecycle is managed by AgentCore and the expiry surface is opaque to the agent (FM-05). Real card-rail (Visa) spend carries regulatory weight."
   },
   "active_failure_modes": ["FM-01", "FM-04", "FM-05", "FM-07", "FM-09", "FM-10"],

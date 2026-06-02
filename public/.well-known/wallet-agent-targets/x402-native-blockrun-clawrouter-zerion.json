@@ -16,9 +16,9 @@
   },
   "payment_call_mechanism": {
     "protocol": "x402",
-    "how_agent_calls_paid_tools": "ClawRouter: point your HTTP client at the proxy (localhost:8402) with the API-key field set to 'x402'; the router selects from 55+ models and pays automatically per request (from $0.0002). Zerion: discover endpoints via the Zerion CLI/MCP, call them, and an x402-axios wrapper handles the 402 (0.01 USDC per request on Base). Both: permissionless — no account, no human setup.",
+    "how_agent_calls_paid_tools": "ClawRouter: point your HTTP client at the proxy (localhost:8402) with the API-key field set to 'x402'; the router selects from 55+ models and pays automatically per request (from $0.0002). Zerion: discover endpoints via the Zerion CLI/MCP, call them, and an x402-axios wrapper handles the 402 (0.01 USDC per request on Base). Both: permissionless — no account, no manual setup required.",
     "payment_auth_method": "wallet signature IS auth",
-    "requires_human_authorization": false,
+    "requires_external_approval": false,
     "facilitator": "Coinbase CDP x402 Facilitator (Base) / Solana settlement"
   },
   "expected_x402_flow": [
@@ -31,7 +31,7 @@
   "spend_policy_assumptions": {
     "session_budget_present": false,
     "per_call_cap_present": false,
-    "human_in_loop": false,
+    "approval_gate": false,
     "note": "There is no policy layer and no session cap; the wallet balance IS the only limit. ClawRouter may silently route to a fallback/premium tier, making per-request cost unpredictable (FM-01). When the wallet depletes (FM-06) there is no built-in recovery path without a manual refund."
   },
   "active_failure_modes": ["FM-01", "FM-03", "FM-06", "FM-07"],

@@ -18,7 +18,7 @@
     "protocol": "x402",
     "how_agent_calls_paid_tools": "AgentKit action provider is registered as an LLM-callable tool. You call it by name; an x402 axios/fetch wrapper intercepts the HTTP 402, reads the PAYMENT-REQUIRED header, signs a USDC EIP-3009/Permit2 authorization, retries with X-PAYMENT, and the CDP facilitator verifies on-chain. Bazaar (AgentCore Gateway) provides runtime endpoint discovery.",
     "payment_auth_method": "CDP API key (server-side); OTP email session (Agentic Wallet MCP)",
-    "requires_human_authorization": false,
+    "requires_external_approval": false,
     "facilitator": "Coinbase CDP x402 Facilitator"
   },
   "expected_x402_flow": [
@@ -31,7 +31,7 @@
   "spend_policy_assumptions": {
     "session_budget_present": true,
     "per_call_cap_present": true,
-    "human_in_loop": false,
+    "approval_gate": false,
     "note": "Policy is session-limit enforced at the enclave. A retry loop can exhaust max_per_session before the task completes; rejection on cap is opaque and is easily mistaken for a transient error (FM-04)."
   },
   "active_failure_modes": ["FM-01", "FM-03", "FM-04", "FM-05", "FM-06", "FM-07", "FM-10"],

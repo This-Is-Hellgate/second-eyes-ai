@@ -18,7 +18,7 @@
     "protocol": "x402",
     "how_agent_calls_paid_tools": "Payment tools (transfer_funds, pay_x402, sign_transaction) are registered as callable functions. The LLM calls one by name with arguments; the framework dispatches to the wallet provider API; on success the tool returns a receipt or tx hash, which is passed to the next node/agent/tool. LangGraph: graph nodes + edges + checkpoints. CrewAI: role-based with task-level error boundaries. AutoGen: conversational retry. OpenAI Agents SDK: handoff-based, needs an explicit MAX_TOOL_CALLS / step budget.",
     "payment_auth_method": "inherited from the paired wallet provider",
-    "requires_human_authorization": false,
+    "requires_external_approval": false,
     "facilitator": "depends on paired provider (e.g. Coinbase CDP x402 Facilitator)"
   },
   "expected_x402_flow": [
@@ -31,7 +31,7 @@
   "spend_policy_assumptions": {
     "session_budget_present": false,
     "per_call_cap_present": false,
-    "human_in_loop": false,
+    "approval_gate": false,
     "note": "These frameworks ship no native spend cap. LangGraph without a step budget on a payment node loops infinitely; AutoGen retries the payment tool conversationally; CrewAI reassigns the failed payment task to the same tool. Under context pressure the LLM drops required payment fields (FM-02), and a 'payment confirmed' message may be hallucinated with no tool call behind it (FM-08)."
   },
   "active_failure_modes": ["FM-01", "FM-02", "FM-04", "FM-08", "FM-09", "FM-11"],

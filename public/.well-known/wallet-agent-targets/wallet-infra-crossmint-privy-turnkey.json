@@ -19,7 +19,7 @@
     "protocol": "direct_blockchain",
     "how_agent_calls_paid_tools": "Privy: call the server wallet API; policy is evaluated off-chain before the transaction is signed. Turnkey: send a signing request via P-256 API key; the policy engine evaluates inside the enclave and returns a signature (never the raw key); you broadcast. Crossmint: call the API; smart-contract guardrails enforce onchain.",
     "payment_auth_method": "Turnkey P-256 API key; Privy session (MFA may be required); Crossmint API credential",
-    "requires_human_authorization": false,
+    "requires_external_approval": false,
     "facilitator": null
   },
   "expected_x402_flow": [
@@ -32,8 +32,8 @@
   "spend_policy_assumptions": {
     "session_budget_present": false,
     "per_call_cap_present": true,
-    "human_in_loop": false,
-    "note": "Policy denial (FM-04) is the dominant failure: the rejection is opaque and is easily mistaken for a transient error, producing a retry loop. Auth surfaces (Turnkey API key rotation, Privy session MFA with no human present, Crossmint credential expiry) cause FM-05. In multi-agent setups, delegated access may not propagate to sub-agents (FM-09)."
+    "approval_gate": false,
+    "note": "Policy denial (FM-04) is the dominant failure: the rejection is opaque and is easily mistaken for a transient error, producing a retry loop. Auth surfaces (Turnkey API key rotation, Privy session MFA with no operator present to approve, Crossmint credential expiry) cause FM-05. In multi-agent setups, delegated access may not propagate to sub-agents (FM-09)."
   },
   "active_failure_modes": ["FM-04", "FM-05", "FM-08", "FM-09"],
   "primary_failure_mode": {
