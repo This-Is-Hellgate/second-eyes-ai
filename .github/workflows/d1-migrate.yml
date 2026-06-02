@@ -81,6 +81,27 @@ jobs:
           if [ "${{ github.event.inputs.remote }}" = "true" ]; then
             REMOTE_FLAG="--remote"
           fi
+          # grant-product-metadata.sql references access_grants.product_kind /
+          # product_slug (CREATE INDEX + backfill UPDATEs). On a fresh DB those
+          # columns may not exist yet, and SQLite aborts the WHOLE file on the
+          # first missing-column reference. The seed deliberately omits the ALTERs
+          # (ADD COLUMN is not idempotent — a bare ALTER aborts once the column
+          # exists). Route it through the guarded migration script, which checks
+          # pragma_table_info and emits ALTERs only for absent columns BEFORE the
+          # backfill, so a direct apply is safe in either column state. (C-024)
+          if [ "${{ github.event.inputs.migration }}" = "grant-product-metadata.sql" ]; then
+            echo "Applying $FILE via scripts/migrate-grant-product-metadata.mjs (guarded ALTERs) ${REMOTE_FLAG}"
+            REMOTE_ARG=""
+            if [ "${{ github.event.inputs.remote }}" = "true" ]; then REMOTE_ARG="--remote"; fi
+            if ! node scripts/migrate-grant-product-metadata.mjs $REMOTE_ARG 2>&1 | tee /tmp/d1-apply.txt; then
+              if grep -qiE "code: ?10000|Authentication error|not authorized|7403" /tmp/d1-apply.txt; then
+                echo "::error::D1 apply failed with an auth/permission error (code 10000 / 7403)." >&2
+                echo "::error::The CLOUDFLARE_API_TOKEN secret needs 'Account > D1 > Edit'. Add it at dash.cloudflare.com/profile/api-tokens and re-run." >&2
+              fi
+              exit 1
+            fi
+            exit 0
+          fi
           echo "Applying $FILE ${REMOTE_FLAG}"
           if ! npx wrangler d1 execute second-eyes-lawful-loop $REMOTE_FLAG --file "$FILE" -y 2>&1 | tee /tmp/d1-apply.txt; then
             if grep -qiE "code: ?10000|Authentication error|not authorized|7403" /tmp/d1-apply.txt; then

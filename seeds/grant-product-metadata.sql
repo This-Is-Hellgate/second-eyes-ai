@@ -18,11 +18,15 @@
 -- soon as one settlement has landed. That abort is the prod "duplicate column"
 -- failure. Keeping only the idempotent backfill here makes the file re-runnable.
 --
--- If you need to apply this file BEFORE any settlement has created the columns,
--- run the migration script first (it adds the columns idempotently):
---   node scripts/migrate-grant-product-metadata.mjs --remote
--- then this backfill (or let the d1-migrate workflow run this file) — both orders
--- are safe.
+-- DO NOT run this file directly with `wrangler d1 execute --file` on a DB where
+-- the columns do not exist yet: the CREATE INDEX and UPDATEs below reference
+-- product_slug / product_kind, so SQLite aborts the whole file if they are absent.
+-- Use the guarded migration script, which adds any missing columns idempotently
+-- FIRST, then runs this backfill — safe in either column state:
+--   node scripts/migrate-grant-product-metadata.mjs --remote   # (or --dry-run)
+-- The d1-migrate workflow auto-routes this filename through that script, so the
+-- workflow path is safe too. Running this file alone is only safe once the columns
+-- already exist (e.g. after the runtime guard ensureGrantProductColumns()).
 
 CREATE INDEX IF NOT EXISTS idx_access_grants_product_slug ON access_grants(product_slug);
 

@@ -120,7 +120,11 @@ export async function touchSession(env, sessionId, { walletFingerprint: wf = nul
   // closeStaleSessions() sweep applies, via the shared chooseStaleClosure().
   const closure = chooseStaleClosure(row, now);
   if (closure) {
-    const closed = await terminateSession(env, sessionId, closure.exit_type);
+    // C-023: bound left_at to the policy boundary, not wall-clock now. A session
+    // first touched hours after it went stale must still close at its idle/max-TTL
+    // boundary — otherwise left_at - entered_at (and billing) inflates by the gap
+    // between staleness and the lookup. Mirrors closeStaleSessions()'s bounded SQL.
+    const closed = await terminateSession(env, sessionId, closure.exit_type, closure.left_at_ms);
     const error = closure.exit_type === "max_ttl" ? "session_max_ttl" : "session_idle_timeout";
     return { ok: false, error, session: closed };
   }
@@ -248,13 +252,23 @@ export async function getSessionHealth(env) {
   };
 }
 
-export async function terminateSession(env, sessionId, exitType) {
+/**
+ * Close an active session. When `leftAtMs` is supplied (a stale-closure boundary
+ * from chooseStaleClosure), left_at and the billed elapsed time are bounded to
+ * that policy boundary instead of wall-clock now (C-023) — so a session touched
+ * long after it went stale does not inflate left_at - entered_at or its cost.
+ * A normal leave (no boundary) closes at now, as before.
+ */
+export async function terminateSession(env, sessionId, exitType, leftAtMs = null) {
   const row = await getSession(env, sessionId);
   if (!row) return null;
   if (row.status !== "active") return row;
 
-  const ts = nowIso();
-  const elapsed = elapsedSeconds(row);
+  const now = nowIso();
+  const leftAt = Number.isFinite(leftAtMs) ? new Date(leftAtMs).toISOString() : now;
+  const elapsed = Number.isFinite(leftAtMs)
+    ? Math.max(0, Math.floor((leftAtMs - new Date(row.entered_at).getTime()) / 1000))
+    : elapsedSeconds(row);
   const cost = sessionCostUsd(elapsed);
   const tier = pricingTierReached(elapsed);
 
@@ -263,14 +277,14 @@ export async function terminateSession(env, sessionId, exitType) {
       `UPDATE bar_sessions SET status = 'closed', left_at = ?, exit_type = ?,
        session_cost_usd = ?, pricing_tier_reached = ?, updated_at = ? WHERE id = ?`
     )
-      .bind(ts, exitType, cost, tier, ts, sessionId)
+      .bind(leftAt, exitType, cost, tier, now, sessionId)
       .run();
   }
 
   return {
     ...row,
     status: "closed",
-    left_at: ts,
+    left_at: leftAt,
     exit_type: exitType,
     session_cost_usd: cost,
     pricing_tier_reached: tier,

@@ -59,14 +59,33 @@ function existingColumns() {
   return have;
 }
 
+/**
+ * Pure: given the set of target columns that already exist, return the ALTER
+ * statements needed to add the absent ones (in stable order). Emitting ALTERs
+ * ONLY for absent columns is what keeps a direct apply safe in either state —
+ * SQLite ADD COLUMN aborts when the column already exists. Exported for the
+ * no-spend self-test (scripts/grant-product-migrate-selftest.mjs).
+ */
+export function altersForMissingColumns(have) {
+  const present = have instanceof Set ? have : new Set(have || []);
+  const alters = [];
+  if (!present.has("product_kind")) alters.push("ALTER TABLE access_grants ADD COLUMN product_kind TEXT;");
+  if (!present.has("product_slug")) alters.push("ALTER TABLE access_grants ADD COLUMN product_slug TEXT;");
+  return alters;
+}
+
+/** Pure: full migration SQL = guarded ALTERs (for absent columns) + the backfill seed. */
+export function composeMigrationSql(have, backfillSql) {
+  const alters = altersForMissingColumns(have);
+  return `${alters.join("\n")}\n${backfillSql}`;
+}
+
 function main() {
   const have = existingColumns();
-  const alters = [];
-  if (!have.has("product_kind")) alters.push("ALTER TABLE access_grants ADD COLUMN product_kind TEXT;");
-  if (!have.has("product_slug")) alters.push("ALTER TABLE access_grants ADD COLUMN product_slug TEXT;");
+  const alters = altersForMissingColumns(have);
 
   const backfill = readFileSync(join(root, "seeds", "grant-product-metadata.sql"), "utf8");
-  const sql = `${alters.join("\n")}\n${backfill}`;
+  const sql = composeMigrationSql(have, backfill);
 
   console.log(`access_grants existing target columns: ${[...have].join(", ") || "(none)"}`);
   console.log(`ALTERs to apply: ${alters.length ? alters.join(" ") : "(none — columns already present)"}`);
@@ -96,4 +115,7 @@ function main() {
   }
 }
 
-main();
+// Run only when invoked as a script, not when imported by the self-test.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main();
+}

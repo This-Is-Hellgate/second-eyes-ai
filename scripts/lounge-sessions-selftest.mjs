@@ -14,7 +14,7 @@
  * any failure.
  */
 
-import { chooseStaleClosure } from "../functions/_lib/lounge/sessions.js";
+import { chooseStaleClosure, touchSession } from "../functions/_lib/lounge/sessions.js";
 import { IDLE_TIMEOUT_SECONDS, MAX_SESSION_SECONDS } from "../functions/_lib/lounge/constants.js";
 
 const failures = [];
@@ -110,6 +110,124 @@ function session({ enteredAgoMs, lastActivityAgoMs }) {
   const c = chooseStaleClosure(s, NOW);
   eq("tie resolves to max_ttl", c?.exit_type, "max_ttl");
   eq("tie left_at = shared boundary", c?.left_at_ms, maxBoundary);
+}
+
+// --- 8. C-023: touchSession on a long-stale session closes at the policy
+//   boundary, not wall-clock now. A minimal in-memory D1 stub holds one row;
+//   touchSession looks it up, sees it is stale, and terminates it. The stored
+//   left_at MUST equal the policy boundary (entered/last + window), so
+//   left_at - entered_at == the window, never the (huge) gap to wall-clock now.
+{
+  // One abandoned session: entered 5*MAX ago, last activity 5*MAX ago too, so it
+  // crossed both boundaries long before "now". Only "touched" now, hours later.
+  const enteredMs = Date.now() - 5 * MAX_MS;
+  const row = {
+    id: "sess_stale",
+    status: "active",
+    agent_id: "agent_x",
+    wallet_fingerprint: null,
+    entered_at: new Date(enteredMs).toISOString(),
+    last_activity_at: new Date(enteredMs).toISOString(),
+    session_cost_usd: 0,
+    pricing_tier_reached: 0,
+  };
+
+  // D1-shaped stub: prepare(sql).bind(...).first() / .run(). SELECT returns the
+  // row; UPDATE mutates the stored row by parsing the SET assignments by position.
+  const store = { sess_stale: { ...row } };
+  const makeStmt = (sql) => ({
+    _args: [],
+    bind(...args) {
+      this._args = args;
+      return this;
+    },
+    async first() {
+      return store.sess_stale ? { ...store.sess_stale } : null;
+    },
+    async run() {
+      if (/UPDATE bar_sessions SET status = 'closed'/.test(sql)) {
+        const [leftAt, exitType, cost, tier /* updated_at */] = this._args;
+        const tgt = store.sess_stale;
+        tgt.status = "closed";
+        tgt.left_at = leftAt;
+        tgt.exit_type = exitType;
+        tgt.session_cost_usd = cost;
+        tgt.pricing_tier_reached = tier;
+      }
+      return { meta: { changes: 1 } };
+    },
+  });
+  const env = { DB: { prepare: (sql) => makeStmt(sql) } };
+
+  const res = await touchSession(env, "sess_stale");
+  eq("c023 touchSession not ok (stale)", res.ok, false);
+  // entered==last and both far past now → max-TTL boundary (entered+MAX) is the
+  // earlier one (idle boundary = last+IDLE = entered+IDLE < entered+MAX). Wait —
+  // idle boundary is EARLIER here (IDLE < MAX), so this closes as idle_timeout.
+  eq("c023 exit_type", res.error, "session_idle_timeout");
+
+  const stored = store.sess_stale;
+  const idleBoundaryMs = new Date(row.last_activity_at).getTime() + IDLE_MS;
+  eq("c023 left_at bounded to idle boundary, not now", stored.left_at, new Date(idleBoundaryMs).toISOString());
+
+  // The C-023 regression guard: elapsed (left_at - entered_at) must be the idle
+  // window, NOT the ~5*MAX gap to wall-clock now.
+  const elapsedSec = Math.round((new Date(stored.left_at).getTime() - enteredMs) / 1000);
+  eq("c023 elapsed == idle window (no wall-clock inflation)", elapsedSec, IDLE_TIMEOUT_SECONDS);
+  eq("c023 returned session.left_at matches stored", res.session.left_at, stored.left_at);
+  eq("c023 returned elapsed_seconds bounded", res.session.elapsed_seconds, IDLE_TIMEOUT_SECONDS);
+}
+
+// --- 8b. C-023: a busy-but-aged session (recent activity, entered past MAX)
+//   closes at the max-TTL boundary, and elapsed == MAX, not the gap to now. ---
+{
+  const enteredMs = Date.now() - 3 * MAX_MS;
+  const lastMs = Date.now() - 1_000; // active 1s ago → idle NOT crossed
+  const store = {
+    s: {
+      id: "s",
+      status: "active",
+      agent_id: "a",
+      wallet_fingerprint: null,
+      entered_at: new Date(enteredMs).toISOString(),
+      last_activity_at: new Date(lastMs).toISOString(),
+      session_cost_usd: 0,
+      pricing_tier_reached: 0,
+    },
+  };
+  const makeStmt = (sql) => ({
+    _args: [],
+    bind(...args) {
+      this._args = args;
+      return this;
+    },
+    async first() {
+      return store.s ? { ...store.s } : null;
+    },
+    async run() {
+      if (/UPDATE bar_sessions SET status = 'closed'/.test(sql)) {
+        const [leftAt, exitType, cost, tier] = this._args;
+        Object.assign(store.s, {
+          status: "closed",
+          left_at: leftAt,
+          exit_type: exitType,
+          session_cost_usd: cost,
+          pricing_tier_reached: tier,
+        });
+      }
+      return { meta: { changes: 1 } };
+    },
+  });
+  const env = { DB: { prepare: (sql) => makeStmt(sql) } };
+  const res = await touchSession(env, "s");
+  eq("c023b exit_type max_ttl", res.error, "session_max_ttl");
+  const maxBoundaryMs = enteredMs + MAX_MS;
+  eq("c023b left_at = max boundary", store.s.left_at, new Date(maxBoundaryMs).toISOString());
+  eq(
+    "c023b elapsed == MAX (no inflation)",
+    Math.round((new Date(store.s.left_at).getTime() - enteredMs) / 1000),
+    MAX_SESSION_SECONDS
+  );
 }
 
 // --- 7. Determinism ---
