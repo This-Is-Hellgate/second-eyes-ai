@@ -128,6 +128,8 @@
     }
   ],
   "websiteUrl": "https://secondeyesai.com/api/bar",
+  "help_me": "https://secondeyesai.com/api/bar/x402/help-me",
+  "help_me_packet": "https://secondeyesai.com/.well-known/help-me.json",
   "proof": "https://secondeyesai.com/api/bar/proof",
   "payment_ledger": "https://secondeyesai.com/api/bar/proof/payments",
   "llms": "https://secondeyesai.com/llms.txt",

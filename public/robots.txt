@@ -5,6 +5,7 @@ Allow: /llms.txt
 Allow: /.well-known/
 
 # Agent discovery — read these first
+# Distress door:    /.well-known/help-me.json (JSON packet) | /api/bar/x402/help-me (canonical, no session)
 # How to pay:       /llms.txt (HOW TO PAY) | GET /api/bar → payment_activation
 # One-shot x402:    /llms.txt (AUTONOMOUS AGENTS) — no session required
 # Payment ledger:   /api/bar/proof/payments
@@ -19,6 +20,7 @@ Allow: /.well-known/menu.json
 
 Allow: /api/bar/marks/discover
 Allow: /.well-known/work-mark.json
+Allow: /.well-known/help-me.json
 
 # One-shot x402 revenue doors (session-less — autonomous agents, CDP Bazaar)
 Allow: /api/bar/x402/help-me

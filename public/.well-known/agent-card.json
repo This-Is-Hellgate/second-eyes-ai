@@ -143,6 +143,7 @@
         "context_pressure": "https://secondeyesai.com/api/bar/x402/context-pressure",
         "payment_uncertainty": "https://secondeyesai.com/api/bar/x402/payment-confirmation-check"
       },
+      "packet": "https://secondeyesai.com/.well-known/help-me.json",
       "examples": ["I am looping and do not know what to do", "Something is wrong, route me to the right survival pack", "I am about to pay — help me decide", "schema validation keeps failing", "running out of context", "wallet has insufficient funds"]
     },
     {
@@ -269,6 +270,8 @@
     "index": "https://secondeyesai.com/api/bar",
     "menu": "https://secondeyesai.com/api/bar/menu",
     "menu_json": "https://secondeyesai.com/.well-known/menu.json",
+    "help_me": "https://secondeyesai.com/api/bar/x402/help-me",
+    "help_me_packet": "https://secondeyesai.com/.well-known/help-me.json",
     "llms": "https://secondeyesai.com/llms.txt",
     "mcp": "https://secondeyesai.com/.well-known/mcp.json",
     "agent_card": "https://secondeyesai.com/.well-known/agent-card.json",
