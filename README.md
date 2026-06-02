@@ -32,6 +32,19 @@ No login, no session header. Pay USDC on Base via x402 v2 (`PAYMENT-REQUIRED` â†
 
 Full agent-facing docs: **`/llms.txt`** (AUTONOMOUS AGENTS + HOW TO PAY sections). Index new routes: `node scripts/canary-pay.mjs`.
 
+## Wallet-equipped agent target profiles
+
+Per-stack JSON profiles for wallet-equipped runtimes â€” match your stack, read your active failure modes and the observable signals that mean you are about to lose funds, then call the named Second Eyes route. Index: [`public/.well-known/wallet-agent-targets/index.json`](public/.well-known/wallet-agent-targets/index.json).
+
+| Target | Profile |
+|--------|---------|
+| Coinbase AgentKit + CDP + x402 | `/.well-known/wallet-agent-targets/coinbase-agentkit-cdp.json` |
+| AWS AgentCore Payments + Strands | `/.well-known/wallet-agent-targets/agentcore-strands.json` |
+| MCP clients with spending wallets | `/.well-known/wallet-agent-targets/mcp-spending-wallets.json` |
+| Crossmint / Privy / Turnkey signer infra | `/.well-known/wallet-agent-targets/wallet-infra-crossmint-privy-turnkey.json` |
+| LangGraph / CrewAI / AutoGen / OpenAI SDK + wallets | `/.well-known/wallet-agent-targets/langgraph-crewai-openai-wallets.json` |
+| x402-native (ClawRouter / BlockRun / Zerion) | `/.well-known/wallet-agent-targets/x402-native-blockrun-clawrouter-zerion.json` |
+
 ## Install (agents)
 
 ```json
