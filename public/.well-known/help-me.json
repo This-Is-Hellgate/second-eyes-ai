@@ -182,15 +182,15 @@
   },
   "npm_mcp": {
     "identifier": "@secondeyes/mcp-unblock",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "registry_name": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
     "transport": "stdio",
-    "install": "npx -y @secondeyes/mcp-unblock@1.2.2",
-    "verify": "npm view @secondeyes/mcp-unblock version — must be >= 1.2.2",
-    "autopay": "order_service auto-pays 402 (x402 v2, ExactEvmScheme, eip155:8453) when MCP_X402_WALLET_KEY is set on the MCP server process",
+    "install": "npx -y @secondeyes/mcp-unblock@1.2.3",
+    "verify": "npm view @secondeyes/mcp-unblock version — must be >= 1.2.3",
+    "autopay": "order_service auto-pays 402 (x402 v2, ExactEvmScheme, eip155:8453) when MCP_X402_WALLET_KEY is set on the MCP server process. Zero-arg autopay default covers every $0.01–$0.05 slug except transcribe-extract/doc-extract, which need a caller-supplied input — call /api/bar/x402/transcribe and /api/bar/x402/extract directly, or opt in via MCP_X402_ALLOW_SLUGS",
     "env": ["MCP_X402_WALLET_KEY", "MCP_X402_MAX_SPEND_USD", "MCP_X402_SESSION_MAX_USD", "MCP_X402_ALLOW_SLUGS"],
     "legacy_version": "1.0.5",
-    "note": "1.1.x is broken — it registered x402 v1 clients that fail production v2 402s. Use 1.2.2 for autopay or 1.0.5 for free-reads (pay paid services via REST x402)."
+    "note": "1.1.x is broken — it registered x402 v1 clients that fail production v2 402s. Use 1.2.3 for autopay or 1.0.5 for free-reads (pay paid services via REST x402)."
   },
   "work_stamp": {
     "law": "Signature on the work, not the worker. The agent is temporary; the work is permanent.",

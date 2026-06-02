@@ -4,9 +4,12 @@
 // keys. Asserts the three guarantees that let a wallet-configured MCP agent
 // actually autopay the launch menu:
 //
-//   1. Default allowlist (MCP_X402_ALLOW_SLUGS unset, or "*") = the FULL
-//      launch-priced catalog — not should-i-pay only. An explicit comma list
-//      RESTRICTS. This is the Blocker-2 fix.
+//   1. Default allowlist (MCP_X402_ALLOW_SLUGS unset, or "*") = the zero-arg
+//      autopay set — the launch-priced catalog MINUS the input-requiring doors
+//      (transcribe-extract, doc-extract), which the zero-arg order_service tool
+//      cannot convert (Codex C-025). Those two stay priced + routable but are
+//      excluded from the default-allow set; an explicit comma list RESTRICTS and
+//      can opt one back in. (Supersedes the old Blocker-2 full-catalog default.)
 //   2. Price match: every launch slug's catalog price equals the canonical
 //      functions/_lib/lounge/constants.js value, and a live-402 quote at the
 //      advertised price passes guardPayment (no false price_mismatch). Covers
@@ -22,6 +25,8 @@ import { dirname, join } from "node:path";
 import {
   LOUNGE_SERVICE_PRICES_USD,
   SURVIVAL_PRICE_MAX_USD,
+  INPUT_REQUIRED_SLUGS,
+  ZERO_ARG_AUTOPAY_SLUGS,
   parseAllowSlugs,
   guardPayment,
   priceFrom402,
@@ -61,7 +66,7 @@ function withAllowEnv(value, fn) {
   }
 }
 
-console.log("\n[1] Default allowlist = full launch catalog (Blocker 2)");
+console.log("\n[1] Default allowlist = zero-arg catalog, input-requiring doors excluded (C-025)");
 const ALL_SLUGS = Object.keys(LOUNGE_SERVICE_PRICES_USD);
 const AUTOPAY_DEFAULT_SLUGS = [
   "should-i-pay",
@@ -74,23 +79,52 @@ const AUTOPAY_DEFAULT_SLUGS = [
 withAllowEnv(undefined, () => {
   const allow = parseAllowSlugs();
   check(
-    "unset env allows the full catalog",
-    ALL_SLUGS.every((s) => allow.has(s)),
-    `missing: ${ALL_SLUGS.filter((s) => !allow.has(s)).join(",")}`
+    "unset env allows every zero-arg autopay slug",
+    ZERO_ARG_AUTOPAY_SLUGS.every((s) => allow.has(s)),
+    `missing: ${ZERO_ARG_AUTOPAY_SLUGS.filter((s) => !allow.has(s)).join(",")}`
   );
   check(
     "unset env allows more than just should-i-pay (the old fail-closed default)",
     allow.size > 1 && allow.has("claim-check") && allow.has("mcp-wiring")
   );
+  check(
+    "input-requiring doors are NOT in the default allow set (C-025)",
+    [...INPUT_REQUIRED_SLUGS].every((s) => !allow.has(s)),
+    `unexpectedly allowed: ${[...INPUT_REQUIRED_SLUGS].filter((s) => allow.has(s)).join(",")}`
+  );
+  check(
+    "the excluded doors are exactly transcribe-extract + doc-extract",
+    INPUT_REQUIRED_SLUGS.has("transcribe-extract") &&
+      INPUT_REQUIRED_SLUGS.has("doc-extract") &&
+      INPUT_REQUIRED_SLUGS.size === 2
+  );
+  check(
+    "every catalog slug is either zero-arg-allowed or input-required (no slug lost)",
+    ALL_SLUGS.every((s) => ZERO_ARG_AUTOPAY_SLUGS.includes(s) || INPUT_REQUIRED_SLUGS.has(s))
+  );
   for (const slug of AUTOPAY_DEFAULT_SLUGS) {
     const g = guardPayment(slug, LOUNGE_SERVICE_PRICES_USD[slug]);
     check(`autopay default permits "${slug}"`, g.ok === true, JSON.stringify(g));
+  }
+  // A blind zero-arg autopay of an input-requiring door is blocked by the
+  // allow-list (slug_not_allowed), never silently routed to a no_input dead-end.
+  for (const slug of INPUT_REQUIRED_SLUGS) {
+    const g = guardPayment(slug, LOUNGE_SERVICE_PRICES_USD[slug]);
+    check(
+      `default blocks input-requiring "${slug}" as slug_not_allowed`,
+      g.ok === false && g.code === "slug_not_allowed",
+      JSON.stringify(g)
+    );
   }
 });
 
 withAllowEnv("*", () => {
   const allow = parseAllowSlugs();
-  check('"*" allows the full catalog', ALL_SLUGS.every((s) => allow.has(s)));
+  check('"*" allows the full zero-arg set', ZERO_ARG_AUTOPAY_SLUGS.every((s) => allow.has(s)));
+  check(
+    '"*" still excludes input-requiring doors (same as unset)',
+    [...INPUT_REQUIRED_SLUGS].every((s) => !allow.has(s))
+  );
 });
 
 withAllowEnv("claim-check,mcp-wiring", () => {
@@ -100,6 +134,19 @@ withAllowEnv("claim-check,mcp-wiring", () => {
   check(
     "slug outside explicit list is rejected slug_not_allowed",
     blocked.ok === false && blocked.code === "slug_not_allowed"
+  );
+});
+
+// An operator can explicitly opt an input-requiring door back in; once allowed it
+// passes the price guard (its catalog price is a valid quote, no price_mismatch).
+withAllowEnv("transcribe-extract", () => {
+  const allow = parseAllowSlugs();
+  check("explicit opt-in re-enables transcribe-extract", allow.has("transcribe-extract"));
+  const g = guardPayment("transcribe-extract", LOUNGE_SERVICE_PRICES_USD["transcribe-extract"]);
+  check(
+    "opted-in input-requiring slug passes the price guard (no price_mismatch)",
+    g.ok === true,
+    JSON.stringify(g)
   );
 });
 
@@ -123,13 +170,16 @@ check("SURVIVAL_PRICE_MAX_USD ceiling == canonical max", SURVIVAL_PRICE_MAX_USD 
 
 // 2c. The four task-named nano slugs are present at their canonical prices, and
 // a live-402 quote at the advertised price passes guardPayment (no false reject).
+// transcribe-extract/doc-extract are off the default allow set (C-025), so opt
+// them in explicitly here — this section probes the PRICE guard, not the allow
+// list, and we don't want slug_not_allowed to mask a price regression.
 const NANO_EXPECTED = {
   "help-me": 0.01,
   "schema-repair": 0.03,
   "transcribe-extract": 0.05,
   "doc-extract": 0.05,
 };
-withAllowEnv(undefined, () => {
+withAllowEnv(Object.keys(NANO_EXPECTED).join(","), () => {
   for (const [slug, price] of Object.entries(NANO_EXPECTED)) {
     check(`nano "${slug}" catalog == $${price}`, LOUNGE_SERVICE_PRICES_USD[slug] === price);
 

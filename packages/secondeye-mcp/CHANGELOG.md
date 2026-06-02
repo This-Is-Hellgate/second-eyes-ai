@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.3] — 2026-06-02
+
+### Fixed
+
+- **Autopay no longer dead-ends on input-requiring doors (Codex C-025)** — `transcribe-extract` and `doc-extract` need a caller-supplied input (`url`, `doc_type`) that the zero-argument `order_service` tool cannot pass, so a blind paid retry reached the door and rejected with `no_input` (no paid 200, though no funds were lost — the door validates input before settle). They are now **excluded from the zero-argument autopay default-allow set** while staying priced and routable: `order_service` still resolves their session-less x402 path, and an operator can name them in `MCP_X402_ALLOW_SLUGS` to opt in once the input can be supplied out-of-band. New exports `INPUT_REQUIRED_SLUGS` and `ZERO_ARG_AUTOPAY_SLUGS`; `parseAllowSlugs()` default and `*` now resolve to `ZERO_ARG_AUTOPAY_SLUGS` (catalog minus the input-requiring doors). `order_service` advertises the zero-arg set and directs callers to `/api/bar/x402/transcribe` and `/api/bar/x402/extract` for the two excluded doors. Preserves the C-019/C-020 session-less routing from 1.2.x.
+
 ## [1.2.2] — 2026-06-02
 
 ### Fixed

@@ -7,11 +7,18 @@
  *   MCP_X402_MAX_SPEND_USD — per-call cap (default 0.50)
  *   MCP_X402_SESSION_MAX_USD — process lifetime cap (default 2.00)
  *   MCP_X402_ALLOW_SLUGS — comma-separated slugs (or "*"). Default (unset) =
- *     every launch-priced survival/nano slug in LOUNGE_SERVICE_PRICES_USD, so a
- *     wallet-configured agent can autopay the safe menu without extra config.
- *     Safety is enforced by the per-call/session caps and the catalog price
- *     ceiling (every default slug is ≤ SURVIVAL_PRICE_MAX_USD = $0.05), never by
- *     the allowlist. Set this env var to a comma-separated list to restrict.
+ *     every launch-priced survival/nano slug in LOUNGE_SERVICE_PRICES_USD that
+ *     the zero-argument order_service tool can actually convert — i.e. the
+ *     catalog minus INPUT_REQUIRED_SLUGS (transcribe-extract, doc-extract). Those
+ *     two doors need a caller-supplied URL the zero-arg tool cannot pass, so the
+ *     paid retry would reach the door and dead-end on no_input (Codex C-025);
+ *     they stay priced + routable but are excluded from the default-allow set.
+ *     A wallet-configured agent autopays the safe zero-arg menu without extra
+ *     config. Safety is enforced by the per-call/session caps and the catalog
+ *     price ceiling (every default slug is ≤ SURVIVAL_PRICE_MAX_USD = $0.05),
+ *     never by the allowlist. Set this env var to a comma-separated list to
+ *     restrict, or to explicitly opt a door like transcribe-extract back in once
+ *     the caller can supply its required input out-of-band.
  */
 import { wrapFetchWithPayment, x402Client, decodePaymentResponseHeader } from "@x402/fetch";
 import { ExactEvmScheme, toClientEvmSigner } from "@x402/evm";
@@ -50,6 +57,27 @@ export const LOUNGE_SERVICE_PRICES_USD = {
 
 /** Highest launch price in the catalog — the ceiling autopay should ever sign. */
 export const SURVIVAL_PRICE_MAX_USD = Math.max(...Object.values(LOUNGE_SERVICE_PRICES_USD));
+
+/**
+ * Slugs whose x402 door requires a caller-supplied input (a URL, doc_type, …)
+ * that the zero-argument order_service tool cannot pass. They stay priced and
+ * routable (x402ServicePath resolves them) so an agent that can supply the input
+ * out-of-band — or a future tool with an input schema — can still pay them, but
+ * they are excluded from the zero-arg autopay default-allow set: a blind paid
+ * retry reaches the door and dead-ends on no_input rather than producing a paid
+ * 200 (Codex C-025). Call /api/bar/x402/transcribe and /api/bar/x402/extract
+ * directly with the required input instead.
+ */
+export const INPUT_REQUIRED_SLUGS = new Set(["transcribe-extract", "doc-extract"]);
+
+/**
+ * The launch catalog minus INPUT_REQUIRED_SLUGS — the slugs a zero-argument
+ * order_service call can actually convert to a paid 200, and therefore the
+ * default autopay allow-set.
+ */
+export const ZERO_ARG_AUTOPAY_SLUGS = Object.keys(LOUNGE_SERVICE_PRICES_USD).filter(
+  (slug) => !INPUT_REQUIRED_SLUGS.has(slug)
+);
 
 /**
  * Session-less x402 route for each autopay catalog slug. order_service must hit
@@ -107,11 +135,14 @@ export function normalizePrivateKey(raw) {
 
 export function parseAllowSlugs() {
   const raw = process.env.MCP_X402_ALLOW_SLUGS;
-  // Default (unset) and "*" both allow the full launch-priced catalog. A
-  // wallet-configured agent autopays the safe menu out of the box; spend caps
-  // and the price ceiling — not the allowlist — are the safety boundary.
+  // Default (unset) and "*" both allow the zero-arg autopay set — the launch
+  // catalog minus INPUT_REQUIRED_SLUGS (transcribe-extract, doc-extract), which
+  // the zero-arg tool cannot convert (C-025). A wallet-configured agent autopays
+  // the safe zero-arg menu out of the box; spend caps and the price ceiling —
+  // not the allowlist — are the safety boundary. An operator can still name an
+  // input-requiring slug explicitly to opt it back in.
   if (raw === undefined || raw === null || !raw.trim() || raw.trim() === "*") {
-    return new Set(Object.keys(LOUNGE_SERVICE_PRICES_USD));
+    return new Set(ZERO_ARG_AUTOPAY_SLUGS);
   }
   return new Set(
     raw
