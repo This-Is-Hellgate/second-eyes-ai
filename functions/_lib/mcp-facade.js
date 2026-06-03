@@ -5,7 +5,8 @@ import { buildServicePayload } from "./lounge/services.js";
 import {
   buildProductPaymentRequirements,
   paymentRequiredObject,
-  verifyAndSettlePayment,
+  verifyPaymentHeader,
+  settleBuiltPayment,
   encodePaymentResponse,
 } from "./x402.js";
 
@@ -20,7 +21,7 @@ export const MCP_X402_META_KEY = "x402/payment";
 export const MCP_SERVER_INFO = {
   name: "secondeye-mcp-unblock",
   title: "MCP 401 Auth Fix | github PAT wiring | x402",
-  version: "1.0.5",
+  version: "1.1.0",
 };
 
 export const MCP_TOOLS = [
@@ -48,7 +49,7 @@ export function buildServerCard(origin) {
       {
         registryType: "npm",
         identifier: "@secondeyes/mcp-unblock",
-        version: "1.0.5",
+        version: "1.1.0",
         transport: { type: "stdio" },
         install: { command: "npx", args: ["-y", "@secondeyes/mcp-unblock"] },
       },
@@ -105,6 +106,7 @@ export async function handleMcpPost(request, origin, env = {}) {
 
   if (method === "tools/call") {
     const name = params?.name;
+
     const readOnly = ["proof_bar", "patron_activity", "read_menu", "read_laws", "read_pricing", "fetch_catalog"];
     const paths = {
       proof_bar: "/api/bar/proof",
@@ -157,9 +159,6 @@ export async function handleMcpPost(request, origin, env = {}) {
   return { status: 200, payload: rpcError(id, -32601, `Method not found: ${method}`) };
 }
 
-/** MCP error code carrying x402 payment requirements (mirrors HTTP 402). */
-const MCP_PAYMENT_REQUIRED_CODE = -32402;
-
 /**
  * Resolve a paid lounge service slug to the x402 product shape buildProductPayment-
  * Requirements expects. Self-contained: no session/D1 dependency, so the MCP facade
@@ -179,14 +178,48 @@ function mcpLoungeProduct(slug) {
 }
 
 /**
- * Paid MCP tool over _meta["x402/payment"]. Unpaid tools/call → MCP error carrying
- * the v2 PaymentRequired object (the MCP analogue of HTTP 402 + PAYMENT-REQUIRED).
- * Paid retry: the client puts its signed payment under _meta["x402/payment"]; we
- * verify+settle through the same CDP path as HTTP/A2A and return the receipt.
+ * Helper: build a Cloudflare-aligned x402/error result payload.
+ * Returns a JSON-RPC *success* with isError: true and _meta["x402/error"]
+ * so that compliant x402 MCP clients (e.g. Cloudflare withX402Client) can
+ * detect the payment-required state and auto-retry with a signed payment.
+ */
+function paymentRequiredResult(id, reason, resourceUrl, requirements, extra = {}) {
+  const payload = {
+    x402Version: 2,
+    error: reason,
+    resource: {
+      url: resourceUrl,
+      description: requirements.description || "",
+      mimeType: "application/json",
+    },
+    accepts: requirements.accepts,
+    extensions: requirements.extensions,
+    ...extra,
+  };
+  return {
+    status: 200,
+    payload: rpc(id, {
+      isError: true,
+      _meta: { "x402/error": payload },
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    }),
+  };
+}
+
+/**
+ * Paid MCP tool: verify → execute → settle-on-success.
+ *
+ * Unpaid tools/call → JSON-RPC result with isError: true carrying the v2
+ * PaymentRequired shape under _meta["x402/error"] (Cloudflare-aligned).
+ *
+ * Paid retry: the client puts its signed payment under _meta["x402/payment"];
+ * we verify, build the service payload, and only settle if the service
+ * payload succeeds — the caller is never charged for a failed delivery.
  */
 async function handleMcpPaidTool(name, params, id, origin, env) {
   const slug =
     params?.arguments?.slug || params?.arguments?.service || MCP_PAID_TOOLS[name].defaultSlug;
+
   if (!slug) {
     return { status: 200, payload: rpcError(id, -32602, "Missing required argument: slug") };
   }
@@ -208,29 +241,22 @@ async function handleMcpPaidTool(name, params, id, origin, env) {
   const meta = params?._meta || {};
   const paymentEntry = meta[MCP_X402_META_KEY];
 
-  // Unpaid: return the requirements so the client can sign and retry.
+  // ── Unpaid: return payment requirements (Cloudflare-aligned error shape) ──
   if (!paymentEntry) {
-    return {
-      status: 200,
-      payload: rpcError(id, MCP_PAYMENT_REQUIRED_CODE, "Payment required", {
-        [MCP_X402_META_KEY]: {
-          status: "payment-required",
-          accepts: requirements.accepts,
-          ...paymentRequiredObject(requirements, "Payment required"),
-          extensions: requirements.extensions,
-          instructions:
-            "Sign an x402 ExactEvmScheme payment for accepts[0] and retry tools/call with " +
-            `_meta["${MCP_X402_META_KEY}"].payload set to the base64 PAYMENT-SIGNATURE value.`,
-        },
-      }),
-    };
+    return paymentRequiredResult(id, "PAYMENT_REQUIRED", resourceUrl, requirements, {
+      ...paymentRequiredObject(requirements, "Payment required"),
+      instructions:
+        "Sign an x402 ExactEvmScheme payment for accepts[0] and retry tools/call with " +
+        `_meta["${MCP_X402_META_KEY}"] set to the base64 PAYMENT-SIGNATURE value.`,
+    });
   }
 
-  // Paid retry: settle the signed payment.
+  // ── Paid retry: verify → execute → settle ──
   const paymentHeader =
     typeof paymentEntry === "string"
       ? paymentEntry
       : paymentEntry.payload || paymentEntry.signature || "";
+
   if (!paymentHeader) {
     return {
       status: 200,
@@ -238,21 +264,61 @@ async function handleMcpPaidTool(name, params, id, origin, env) {
     };
   }
 
-  const settled = await verifyAndSettlePayment(paymentHeader, requirements, env, {
-    transport: "mcp",
-    tool: name,
-    slug,
-  });
+  // Step 1: Verify the payment (does NOT settle yet)
+  const verification = await verifyPaymentHeader(paymentHeader, requirements, env);
+  if (!verification.ok) {
+    return paymentRequiredResult(id, verification.error || "INVALID_PAYMENT", resourceUrl, requirements, {
+      ...(verification.declaredNetwork ? { declaredNetwork: verification.declaredNetwork } : {}),
+      ...(verification.offeredNetworks ? { offeredNetworks: verification.offeredNetworks } : {}),
+    });
+  }
 
-  if (!settled.ok) {
+  // Step 2: Execute — build the service payload before taking money
+  let servicePayload;
+  let executionFailed = false;
+  try {
+    servicePayload = buildServicePayload(slug, origin);
+    if (!servicePayload) {
+      executionFailed = true;
+    }
+  } catch (e) {
+    executionFailed = true;
+    servicePayload = null;
+  }
+
+  if (executionFailed) {
+    // Payment was valid but service delivery failed — do NOT settle.
     return {
       status: 200,
-      payload: rpcError(id, MCP_PAYMENT_REQUIRED_CODE, settled.error || "Payment failed", {
-        [MCP_X402_META_KEY]: { status: "payment-failed", stage: settled.stage || null, error: settled.error },
+      payload: rpc(id, {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                error: "SERVICE_EXECUTION_FAILED",
+                service: slug,
+                note: "Payment was verified but not settled — you have not been charged.",
+              },
+              null,
+              2
+            ),
+          },
+        ],
       }),
     };
   }
 
+  // Step 3: Settle — only now that we know delivery will succeed
+  const settled = await settleBuiltPayment(verification.built, verification.accept, env);
+  if (!settled.ok) {
+    return paymentRequiredResult(id, settled.error || "SETTLEMENT_FAILED", resourceUrl, requirements, {
+      stage: "settle",
+    });
+  }
+
+  // ── Success: return service payload + receipt ──
   return {
     status: 200,
     payload: rpc(id, {
@@ -260,7 +326,7 @@ async function handleMcpPaidTool(name, params, id, origin, env) {
         {
           type: "text",
           text: JSON.stringify(
-            { ...(buildServicePayload(slug, origin) || {}), service: slug, access: "granted", receipt: settled.receipt },
+            { ...servicePayload, service: slug, access: "granted", receipt: settled.receipt },
             null,
             2
           ),
@@ -268,7 +334,7 @@ async function handleMcpPaidTool(name, params, id, origin, env) {
       ],
       isError: false,
       _meta: {
-                  "x402/payment-response": settled.receipt,
+        "x402/payment-response": settled.receipt,
       },
     }),
   };
