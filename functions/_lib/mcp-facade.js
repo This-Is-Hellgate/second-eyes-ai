@@ -1,6 +1,7 @@
 /** Minimal streamable-HTTP MCP facade for registry scanners (Smithery, etc.). Full tools via stdio npm package. */
 
 import { SERVICE_PRICES } from "./lounge/constants.js";
+import { buildServicePayload } from "./lounge/services.js";
 import {
   buildProductPaymentRequirements,
   paymentRequiredObject,
@@ -259,7 +260,7 @@ async function handleMcpPaidTool(name, params, id, origin, env) {
         {
           type: "text",
           text: JSON.stringify(
-            { service: slug, access: "granted", receipt: settled.receipt },
+            { ...(buildServicePayload(slug, origin) || {}), service: slug, access: "granted", receipt: settled.receipt },
             null,
             2
           ),
@@ -267,11 +268,7 @@ async function handleMcpPaidTool(name, params, id, origin, env) {
       ],
       isError: false,
       _meta: {
-        [MCP_X402_META_KEY]: {
-          status: "payment-completed",
-          receipt: settled.receipt,
-          response: encodePaymentResponse(settled.receipt),
-        },
+                  "x402/payment-response": settled.receipt,
       },
     }),
   };
