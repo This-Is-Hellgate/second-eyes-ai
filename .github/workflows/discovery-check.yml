@@ -16,6 +16,9 @@ on:
       - "packages/secondeye-mcp/src/x402-wallet.js"
       - "packages/secondeye-mcp/package-lock.json"
       - "test/x402-wallet/**"
+      - "test/x402-extensions/**"
+      - "functions/_lib/x402-extensions.js"
+      - "functions/_lib/mcp-facade.js"
       - "scripts/discovery-consistency-check.mjs"
       - "scripts/x402-multinetwork-selftest.mjs"
       - "scripts/x402-rail-activation-selftest.mjs"
@@ -150,3 +153,12 @@ jobs:
 
       - name: Run wallet-agent-target routing self-test (no /api/bar/services dead-ends)
         run: node test/x402-wallet/wallet-target-routes.test.mjs
+
+      - name: Run x402 v2 extension surface self-test (bazaar/identifier/receipt/batch/auth-capture/eip2612)
+        run: node test/x402-extensions/extensions.test.mjs
+
+      - name: Run MCP x402 payment-channel self-test (_meta x402/payment)
+        run: node test/x402-extensions/mcp-payment.test.mjs
+
+      - name: Run Coinbase Python x402 action-provider compatibility self-test
+        run: node test/x402-extensions/coinbase-python-compat.test.mjs

@@ -1,5 +1,21 @@
 /** Minimal streamable-HTTP MCP facade for registry scanners (Smithery, etc.). Full tools via stdio npm package. */
 
+import { SERVICE_PRICES } from "./lounge/constants.js";
+import {
+  buildProductPaymentRequirements,
+  paymentRequiredObject,
+  verifyAndSettlePayment,
+  encodePaymentResponse,
+} from "./x402.js";
+
+/** Paid MCP tools settle x402 over the _meta["x402/payment"] channel in tools/call. */
+const MCP_PAID_TOOLS = {
+  order_service: { defaultSlug: null },
+};
+
+/** The MCP x402 payment _meta key (mirrors the A2A x402.payment.* metadata namespace). */
+export const MCP_X402_META_KEY = "x402/payment";
+
 export const MCP_SERVER_INFO = {
   name: "secondeye-mcp-unblock",
   title: "MCP 401 Auth Fix | github PAT wiring | x402",
@@ -47,11 +63,13 @@ function rpc(id, result) {
   return { jsonrpc: "2.0", id: id ?? null, result };
 }
 
-function rpcError(id, code, message) {
-  return { jsonrpc: "2.0", id: id ?? null, error: { code, message } };
+function rpcError(id, code, message, data) {
+  const error = { code, message };
+  if (data !== undefined) error.data = data;
+  return { jsonrpc: "2.0", id: id ?? null, error };
 }
 
-export async function handleMcpPost(request, origin) {
+export async function handleMcpPost(request, origin, env = {}) {
   let body;
   try {
     body = await request.json();
@@ -108,6 +126,10 @@ export async function handleMcpPost(request, origin) {
       };
     }
 
+    if (MCP_PAID_TOOLS[name]) {
+      return handleMcpPaidTool(name, params, id, origin, env);
+    }
+
     return {
       status: 200,
       payload: rpc(id, {
@@ -132,6 +154,127 @@ export async function handleMcpPost(request, origin) {
   }
 
   return { status: 200, payload: rpcError(id, -32601, `Method not found: ${method}`) };
+}
+
+/** MCP error code carrying x402 payment requirements (mirrors HTTP 402). */
+const MCP_PAYMENT_REQUIRED_CODE = -32402;
+
+/**
+ * Resolve a paid lounge service slug to the x402 product shape buildProductPayment-
+ * Requirements expects. Self-contained: no session/D1 dependency, so the MCP facade
+ * can quote a price and settle without booting the lounge session machinery.
+ */
+function mcpLoungeProduct(slug) {
+  const priceUsd = SERVICE_PRICES[slug]?.price_usd;
+  if (priceUsd === undefined) return null;
+  return {
+    kind: "lounge",
+    id: `lounge-${slug}`,
+    slug,
+    priceUsd,
+    oneTime: true,
+    description: `Lounge survival service: ${slug}`,
+  };
+}
+
+/**
+ * Paid MCP tool over _meta["x402/payment"]. Unpaid tools/call → MCP error carrying
+ * the v2 PaymentRequired object (the MCP analogue of HTTP 402 + PAYMENT-REQUIRED).
+ * Paid retry: the client puts its signed payment under _meta["x402/payment"]; we
+ * verify+settle through the same CDP path as HTTP/A2A and return the receipt.
+ */
+async function handleMcpPaidTool(name, params, id, origin, env) {
+  const slug =
+    params?.arguments?.slug || params?.arguments?.service || MCP_PAID_TOOLS[name].defaultSlug;
+  if (!slug) {
+    return { status: 200, payload: rpcError(id, -32602, "Missing required argument: slug") };
+  }
+
+  const product = mcpLoungeProduct(slug);
+  if (!product) {
+    return { status: 200, payload: rpcError(id, -32602, `Unknown service slug: ${slug}`) };
+  }
+
+  const resourceUrl = `${origin}/api/bar/services/${slug}`;
+  const requirements = buildProductPaymentRequirements(product, resourceUrl, env);
+  if (!requirements) {
+    return {
+      status: 200,
+      payload: rpcError(id, -32603, "x402 not configured (X402_PAYTO unset) — cannot quote payment"),
+    };
+  }
+
+  const meta = params?._meta || {};
+  const paymentEntry = meta[MCP_X402_META_KEY];
+
+  // Unpaid: return the requirements so the client can sign and retry.
+  if (!paymentEntry) {
+    return {
+      status: 200,
+      payload: rpcError(id, MCP_PAYMENT_REQUIRED_CODE, "Payment required", {
+        [MCP_X402_META_KEY]: {
+          status: "payment-required",
+          accepts: requirements.accepts,
+          ...paymentRequiredObject(requirements, "Payment required"),
+          extensions: requirements.extensions,
+          instructions:
+            "Sign an x402 ExactEvmScheme payment for accepts[0] and retry tools/call with " +
+            `_meta["${MCP_X402_META_KEY}"].payload set to the base64 PAYMENT-SIGNATURE value.`,
+        },
+      }),
+    };
+  }
+
+  // Paid retry: settle the signed payment.
+  const paymentHeader =
+    typeof paymentEntry === "string"
+      ? paymentEntry
+      : paymentEntry.payload || paymentEntry.signature || "";
+  if (!paymentHeader) {
+    return {
+      status: 200,
+      payload: rpcError(id, -32602, `_meta["${MCP_X402_META_KEY}"] present but carries no payload`),
+    };
+  }
+
+  const settled = await verifyAndSettlePayment(paymentHeader, requirements, env, {
+    transport: "mcp",
+    tool: name,
+    slug,
+  });
+
+  if (!settled.ok) {
+    return {
+      status: 200,
+      payload: rpcError(id, MCP_PAYMENT_REQUIRED_CODE, settled.error || "Payment failed", {
+        [MCP_X402_META_KEY]: { status: "payment-failed", stage: settled.stage || null, error: settled.error },
+      }),
+    };
+  }
+
+  return {
+    status: 200,
+    payload: rpc(id, {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(
+            { service: slug, access: "granted", receipt: settled.receipt },
+            null,
+            2
+          ),
+        },
+      ],
+      isError: false,
+      _meta: {
+        [MCP_X402_META_KEY]: {
+          status: "payment-completed",
+          receipt: settled.receipt,
+          response: encodePaymentResponse(settled.receipt),
+        },
+      },
+    }),
+  };
 }
 
 export function mcpJsonResponse(payload, status = 200) {
