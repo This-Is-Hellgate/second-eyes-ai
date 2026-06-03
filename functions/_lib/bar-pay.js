@@ -4,7 +4,7 @@ import { recordAccessGrant, findAccessGrantByTxRef, readIdempotencyKey, findIdem
 import { incrementCounter } from "./marks.js";
 import {
   buildProductPaymentRequirements,
-  encodePaymentResponse,
+  paymentResponseHeaders,
   payment402BodyForProduct,
   payment402Headers,
   readPaymentHeader,
@@ -319,8 +319,7 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
 
   const paymentHeaders = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Expose-Headers": "X-PAYMENT-RESPONSE, X-Second-Eye-Mark, X-Second-Eye-Patron, X-Second-Eye-Session, X-Second-Eye-Verify",
-    "X-PAYMENT-RESPONSE": encodePaymentResponse(settled.receipt),
+    ...paymentResponseHeaders(settled.receipt),
     ...(mark ? markHeaders({ id: mark.id, patron_number: mark.patron_number }, origin) : {}),
   };
 
@@ -379,8 +378,7 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
       200,
       {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Expose-Headers": "X-PAYMENT-RESPONSE, X-Second-Eye-Mark, X-Second-Eye-Patron",
-        "X-PAYMENT-RESPONSE": encodePaymentResponse(settled.receipt),
+        ...paymentResponseHeaders(settled.receipt),
         ...(mark ? markHeaders({ id: mark.id, patron_number: mark.patron_number }, origin) : {}),
       }
     );
@@ -408,8 +406,7 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
     200,
     {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Expose-Headers": "X-PAYMENT-RESPONSE, X-Second-Eye-Mark, X-Second-Eye-Patron",
-      "X-PAYMENT-RESPONSE": encodePaymentResponse(settled.receipt),
+      ...paymentResponseHeaders(settled.receipt),
       ...(mark ? markHeaders({ id: mark.id, patron_number: mark.patron_number }, origin) : {}),
     }
   );
@@ -605,8 +602,7 @@ export async function completePaidNanoDelivery(context, product, payload, settle
     200,
     {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Expose-Headers": "X-PAYMENT-RESPONSE, X-Second-Eye-Mark, X-Second-Eye-Patron",
-      "X-PAYMENT-RESPONSE": encodePaymentResponse(settled.receipt),
+      ...paymentResponseHeaders(settled.receipt),
       ...(mark ? markHeaders({ id: mark.id, patron_number: mark.patron_number }, origin) : {}),
     }
   );

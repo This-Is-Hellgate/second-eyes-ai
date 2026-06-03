@@ -15,6 +15,7 @@ import {
   selectAcceptForPayload,
   payloadNetwork,
 } from "./x402-networks.js";
+import { allExtensions } from "./x402-extensions.js";
 
 const x402Circuit = () => getCircuit("x402_facilitator", { failureThreshold: 5, openMs: 30_000 });
 
@@ -135,7 +136,10 @@ export function buildProductPaymentRequirements(product, requestUrl, env) {
   };
 
   const schema = product.bazaarOutputSchema || defaultBazaarSchema(product);
-  requirements.extensions = bazaarExtension(resource, schema);
+  requirements.extensions = {
+    ...bazaarExtension(resource, schema),
+    ...allExtensions(product),
+  };
 
   return requirements;
 }
@@ -613,4 +617,20 @@ export async function settleBuiltPayment(builtBody, accept, env) {
 
 export function encodePaymentResponse(receipt) {
   return btoa(JSON.stringify(receipt));
+}
+
+/**
+ * The v2 settlement-confirmation headers. The x402 v2 HTTP spec names the response
+ * header PAYMENT-RESPONSE (base64 settlement confirmation); legacy CDP/agentkit
+ * clients read X-PAYMENT-RESPONSE. Emit BOTH so a strict v2 client and an existing
+ * client both find the receipt. Spread onto any post-settlement 200.
+ */
+export function paymentResponseHeaders(receipt) {
+  const encoded = encodePaymentResponse(receipt);
+  return {
+    "PAYMENT-RESPONSE": encoded,
+    "X-PAYMENT-RESPONSE": encoded,
+    "Access-Control-Expose-Headers":
+      "PAYMENT-RESPONSE, X-PAYMENT-RESPONSE, X-Second-Eye-Mark, X-Second-Eye-Patron, X-Second-Eye-Session, X-Second-Eye-Verify",
+  };
 }

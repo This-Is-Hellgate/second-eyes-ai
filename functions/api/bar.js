@@ -12,7 +12,7 @@ export async function onRequestOptions() {
 export async function onRequestPost(context) {
   const url = new URL(context.request.url);
   const origin = `${url.protocol}//${url.host}`;
-  const { status, payload } = await handleMcpPost(context.request, origin);
+  const { status, payload } = await handleMcpPost(context.request, origin, context.env);
   if (payload === null) {
     return new Response(null, { status, headers: { "Access-Control-Allow-Origin": "*" } });
   }
