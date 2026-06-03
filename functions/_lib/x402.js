@@ -15,7 +15,7 @@ import {
   selectAcceptForPayload,
   payloadNetwork,
 } from "./x402-networks.js";
-import { allExtensions } from "./x402-extensions.js";
+import { allExtensions, headerDiscoveryExtensions } from "./x402-extensions.js";
 
 const x402Circuit = () => getCircuit("x402_facilitator", { failureThreshold: 5, openMs: 30_000 });
 
@@ -140,6 +140,10 @@ export function buildProductPaymentRequirements(product, requestUrl, env) {
     ...bazaarExtension(resource, schema),
     ...allExtensions(product),
   };
+  // Compact subset that rides the PAYMENT-REQUIRED header so the Coinbase Python
+  // x402_action_provider populates discoveryInfo.extensions (it reads only the
+  // decoded header). The full set above stays in the 402 body / settle echo.
+  requirements.headerExtensions = headerDiscoveryExtensions(product);
 
   return requirements;
 }
@@ -232,27 +236,40 @@ function resourceObject(requirements, { truncate } = { truncate: false }) {
 }
 
 /**
- * Canonical x402 v2 payment-required object — the shape the official @x402 client
+ * Canonical x402 v2 payment-required object — the shape the official x402 client
  * decodes from the PAYMENT-REQUIRED header (see coinbase/agentkit x402ActionProvider:
  * "v2 sends requirements in PAYMENT-REQUIRED header; v1 sends in body").
  *
- * The v2 HTTP transport spec (coinbase/x402 specs/transports-v2/http.md) defines the
- * PaymentRequired object as EXACTLY { x402Version, error, resource{url,description,
- * mimeType}, accepts[] } — there is no top-level `extensions` key and no separate
- * extensions header. So the header stays lean: a short resource.description and clean
- * accepts[], no embedded Bazaar schema. The rich Bazaar metadata (full description +
- * extensions.bazaar) is preserved in the 402 JSON body (payment402BodyForProduct) and
- * echoed into the CDP settle payload server-side from requirement.extensions — neither
- * depends on the header carrying it. Keeping it out of the header is what stops large
- * routes (e.g. help-me) from emitting a multi-KB header that proxies/agents drop.
+ * The Coinbase Python x402_action_provider (make_http_request) decodes this header,
+ * reads accepts[] for the pay-path, AND extracts discoveryInfo from the SAME decoded
+ * object: payment_data.get("description") / .get("mimeType") / .get("extensions").
+ * Those live at the TOP LEVEL of the decoded object, not inside resource{} — so a
+ * lean header carrying only {x402Version,error,resource,accepts} yields an EMPTY
+ * discoveryInfo for a Python agent. To make the official provider's discoveryInfo
+ * extraction work we surface a short top-level description, mimeType, and a COMPACT
+ * extensions block (listing identity only — serviceName/tags/iconUrl).
+ *
+ * The header stays small: the description is truncated and `extensions` here is the
+ * compact headerExtensions subset, NOT the full Bazaar input/output schema. The full
+ * description + full extensions.bazaar still ride the 402 JSON body
+ * (payment402BodyForProduct) and the CDP settle echo (buildFacilitatorRequestBody),
+ * so cataloging is unchanged. The header-size gate (8KB ceiling) still holds — see
+ * scripts/x402-header-size-selftest.mjs.
  */
 export function paymentRequiredObject(requirements, error) {
-  return {
+  const resource = resourceObject(requirements, { truncate: true });
+  const obj = {
     x402Version: 2,
     error: error || "PAYMENT-SIGNATURE header is required",
-    resource: resourceObject(requirements, { truncate: true }),
+    resource,
+    description: resource.description,
+    mimeType: resource.mimeType,
     accepts: requirements.accepts,
   };
+  if (requirements.headerExtensions && Object.keys(requirements.headerExtensions).length) {
+    obj.extensions = requirements.headerExtensions;
+  }
+  return obj;
 }
 
 /**

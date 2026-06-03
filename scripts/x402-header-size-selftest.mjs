@@ -12,11 +12,14 @@
 // input/output schema in the base64 header (help-me was ~5.4KB) risks 402 "touches"
 // that some clients/proxies drop before the agent ever retries with payment.
 //
-// The v2 HTTP transport spec (coinbase/x402 specs/transports-v2/http.md) defines the
-// PAYMENT-REQUIRED object as EXACTLY { x402Version, error, resource, accepts } — there
-// is no top-level `extensions` key. So this test asserts the header is spec-lean AND
-// under threshold, and that the discovery metadata still lives in the body + is echoed
-// to CDP on settle (server-side, from requirement.extensions) — so cataloging is intact.
+// The header MUST carry { x402Version, error, resource, accepts } for the pay-path,
+// and MAY additionally carry top-level { description, mimeType, extensions } so the
+// Coinbase Python x402_action_provider (make_http_request) can populate discoveryInfo
+// — it extracts those from the DECODED header object, not from resource{}. The header
+// `extensions` is the COMPACT listing-identity subset only; the full Bazaar
+// input/output schema stays in the 402 body (and the CDP settle echo). So this test
+// asserts the header is under threshold AND its extensions stay small, while the rich
+// discovery metadata is still preserved in the body so cataloging is intact.
 //
 // Run: node scripts/x402-header-size-selftest.mjs   (exit 1 on any failure)
 
@@ -60,7 +63,16 @@ function decodeHeader(b64) {
   return JSON.parse(Buffer.from(b64, "base64").toString("utf8"));
 }
 
-const SPEC_KEYS = ["x402Version", "error", "resource", "accepts"];
+// Required for the pay-path.
+const REQUIRED_KEYS = ["x402Version", "error", "resource", "accepts"];
+// Optional discovery enrichment the Coinbase Python provider reads from the header.
+const OPTIONAL_KEYS = ["description", "mimeType", "extensions"];
+const ALLOWED_KEYS = [...REQUIRED_KEYS, ...OPTIONAL_KEYS];
+
+// The header `extensions` must stay the compact listing-identity subset — never the
+// full Bazaar input/output schema. Hold it well under 1KB so a route can't quietly
+// reintroduce the multi-KB header bloat this gate exists to prevent.
+const HEADER_EXTENSIONS_MAX_BYTES = 1024;
 
 const report = [];
 
@@ -99,13 +111,24 @@ for (const { file, name } of listRoutes()) {
     fail(name, `PAYMENT-REQUIRED header is ${bytes}B (> ${HEADER_MAX_BYTES}B). Trim resource.description / keep Bazaar metadata in the 402 body, not the header.`);
   }
 
-  // (2) spec-canonical shape: no top-level `extensions` in the header
-  if ("extensions" in decoded) {
-    fail(name, "PAYMENT-REQUIRED header carries a top-level `extensions` key — not part of the v2 header object; move it to the 402 JSON body.");
+  // (2) shape: required pay-path keys present, only allowed keys, header extensions stay compact
+  const missing = REQUIRED_KEYS.filter((k) => !(k in decoded));
+  if (missing.length) {
+    fail(name, `PAYMENT-REQUIRED header is missing required keys: ${missing.join(", ")}`);
   }
-  const extraKeys = Object.keys(decoded).filter((k) => !SPEC_KEYS.includes(k));
+  const extraKeys = Object.keys(decoded).filter((k) => !ALLOWED_KEYS.includes(k));
   if (extraKeys.length) {
-    fail(name, `PAYMENT-REQUIRED header has non-spec keys: ${extraKeys.join(", ")}`);
+    fail(name, `PAYMENT-REQUIRED header has unexpected keys: ${extraKeys.join(", ")}`);
+  }
+  if ("extensions" in decoded) {
+    const extBytes = enc(JSON.stringify(decoded.extensions));
+    if (extBytes > HEADER_EXTENSIONS_MAX_BYTES) {
+      fail(name, `header extensions is ${extBytes}B (> ${HEADER_EXTENSIONS_MAX_BYTES}B) — keep only the compact listing identity in the header; the full Bazaar schema belongs in the 402 body.`);
+    }
+    // The full Bazaar input/output schema must NOT ride the header.
+    if (decoded.extensions?.bazaar?.schema || decoded.extensions?.bazaar?.info) {
+      fail(name, "header extensions carries the full bazaar schema — move it to the 402 body; the header keeps only compact listing identity (e.g. bazaar_metadata).");
+    }
   }
   if (!decoded.resource || typeof decoded.resource !== "object" || !decoded.resource.url) {
     fail(name, "header resource must be an object with a url");
@@ -157,5 +180,5 @@ if (failures.length) {
 }
 
 console.log(
-  `\nx402 header-size self-test OK — ${report.length} paid route(s); every PAYMENT-REQUIRED header is spec-lean ({${SPEC_KEYS.join(",")}}) and < ${HEADER_MAX_BYTES}B; full description + Bazaar schema preserved in the 402 body.`
+  `\nx402 header-size self-test OK — ${report.length} paid route(s); every PAYMENT-REQUIRED header carries the pay-path keys ({${REQUIRED_KEYS.join(",")}}) plus compact discovery (${OPTIONAL_KEYS.join(",")}), stays < ${HEADER_MAX_BYTES}B with extensions < ${HEADER_EXTENSIONS_MAX_BYTES}B; full description + Bazaar schema preserved in the 402 body.`
 );

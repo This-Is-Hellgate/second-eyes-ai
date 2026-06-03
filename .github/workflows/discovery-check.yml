@@ -159,3 +159,6 @@ jobs:
 
       - name: Run MCP x402 payment-channel self-test (_meta x402/payment)
         run: node test/x402-extensions/mcp-payment.test.mjs
+
+      - name: Run Coinbase Python x402 action-provider compatibility self-test
+        run: node test/x402-extensions/coinbase-python-compat.test.mjs

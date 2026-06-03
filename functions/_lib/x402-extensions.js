@@ -486,6 +486,21 @@ export function allExtensions(product = {}) {
   };
 }
 
+/**
+ * Compact extensions for the PAYMENT-REQUIRED header. The Coinbase Python
+ * x402_action_provider extracts discoveryInfo from the DECODED header object
+ * (make_http_request: payment_data.get("extensions")), so the only extension
+ * data that reaches a Python agent's discoveryInfo is whatever rides the header.
+ * The full allExtensions() block (with the Bazaar input/output schema and the
+ * deterministic offer/receipt/batch/auth-capture metadata) is multi-KB and stays
+ * in the 402 JSON body — putting it in the header would reintroduce exactly the
+ * bloat the header-size gate prevents. This carries only the small listing
+ * identity (serviceName/tags/iconUrl) an indexer/agent actually wants up front.
+ */
+export function headerDiscoveryExtensions(product = {}) {
+  return { ...bazaarMetadataExtension(product) };
+}
+
 function randomHex(bytes) {
   const arr = new Uint8Array(bytes);
   crypto.getRandomValues(arr);
