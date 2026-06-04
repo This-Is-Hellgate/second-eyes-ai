@@ -307,15 +307,22 @@ await (async () => {
     encodePaymentRequiredHeader(headerObj)
   ).resource;
 
-  // Three buyer shapes: object-from-header (the common case Codex flagged),
-  // string-only, and resource omitted entirely.
+  // The buyer's SIGNED paymentPayload must reach CDP verify/settle UNMUTATED.
+  // Regression guard for PR #27: it rewrote payload.resource and injected
+  // payload.extensions, reshaping the signed object so CDP matched neither
+  // x402V2PaymentPayload nor x402V1PaymentPayload (HTTP 400) -> every settlement
+  // broke. The builder must NOT touch the signed payload. Rich discovery metadata
+  // for the Bazaar rides the PAYMENT-REQUIRED header (truncated, asserted above)
+  // and the 402 JSON body (full, asserted below) -- never the signed payload.
+  //
+  // Three buyer shapes: object-from-header (common case), string-only, omitted.
   const cases = [
     ["object-from-header", headerResource],
     ["string-only", RESOURCE],
     ["resource-omitted", undefined],
   ];
   for (const [label, resource] of cases) {
-    const payload = {
+    const signedPayload = {
       x402Version: 2,
       scheme: "exact",
       network: BASE,
@@ -323,36 +330,35 @@ await (async () => {
       ...(resource === undefined ? {} : { resource }),
       payload: { signature: "0x" + "00".repeat(65) },
     };
-    const built = buildFacilitatorRequestBody(
-      Buffer.from(JSON.stringify(payload)).toString("base64"),
-      requirement
-    );
+    const sentB64 = Buffer.from(JSON.stringify(signedPayload)).toString("base64");
+    const built = buildFacilitatorRequestBody(sentB64, requirement);
     ok("header-vs-facilitator", built.ok, `${label}: build failed (${built.error})`);
-    const sentResource = built.body?.paymentPayload?.resource;
-    ok("header-vs-facilitator", sentResource && typeof sentResource === "object", `${label}: resource not an object`);
-    eqJson(`facilitator full description (${label})`, sentResource.description, longProduct.description);
-    ok(
-      "header-vs-facilitator",
-      sentResource.description.length > HEADER_MAX,
-      `${label}: facilitator got truncated description (len ${sentResource.description.length})`
+
+    // (1) Pass-through unmutated. Compare against the SAME decode path the builder
+    //     used (parsePaymentPayloadFromHeader), so multibyte chars in the
+    //     description can't create a false encoding mismatch (see FIXME atob note).
+    eqJson(
+      `signed payload passed through unmutated (${label})`,
+      built.body.paymentPayload,
+      parsePaymentPayloadFromHeader(sentB64)
     );
+
+    // (2) Builder must not inject extensions into the signed payload.
     ok(
       "header-vs-facilitator",
-      sentResource.url === RESOURCE,
-      `${label}: resource.url ${sentResource.url} != ${RESOURCE}`
+      built.body.paymentPayload.extensions === undefined,
+      `${label}: builder must not inject extensions into the signed payload`
     );
+
+    // (3) paymentRequirements is the clean v2 per-accept shape (no resource/desc).
     ok(
       "header-vs-facilitator",
-      sentResource.mimeType === "application/json",
-      `${label}: resource.mimeType not preserved`
-    );
-    // Bazaar metadata (full extensions) still echoed server-side to CDP.
-    ok(
-      "header-vs-facilitator",
-      built.body.paymentPayload.extensions &&
-        JSON.stringify(built.body.paymentPayload.extensions) ===
-          JSON.stringify(requirement.extensions),
-      `${label}: facilitator payload missing full extensions echo`
+      built.body.paymentRequirements &&
+        built.body.paymentRequirements.scheme === "exact" &&
+        built.body.paymentRequirements.network === BASE &&
+        !("resource" in built.body.paymentRequirements) &&
+        !("description" in built.body.paymentRequirements),
+      `${label}: paymentRequirements not the clean v2 shape`
     );
   }
 
@@ -377,10 +383,16 @@ await (async () => {
       built.body.paymentPayload.resource.url === buyerUrl,
       "buyer's signed resource.url must be preserved"
     );
+    // The signed resource is passed through as the buyer sent it -- the builder must
+    // NOT re-derive the full description onto the signed payload. Compare against the
+    // SAME decode path (parsePaymentPayloadFromHeader) rather than a literal string,
+    // so the known atob multibyte quirk (see FIXME) can't cause a false mismatch.
+    // Full discovery text lives in the 402 body, asserted next.
+    const sentB64Signed = Buffer.from(JSON.stringify(payload)).toString("base64");
     eqJson(
-      "facilitator full description (signed-url)",
-      built.body.paymentPayload.resource.description,
-      longProduct.description
+      "signed-url: resource passed through unmutated",
+      built.body.paymentPayload.resource,
+      parsePaymentPayloadFromHeader(sentB64Signed).resource
     );
   }
 
