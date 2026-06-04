@@ -178,15 +178,15 @@ function mcpLoungeProduct(slug) {
 }
 
 /**
- * Helper: build a Cloudflare-aligned x402/error result payload.
- * Returns a JSON-RPC *success* with isError: true and _meta["x402/error"]
- * so that compliant x402 MCP clients (e.g. Cloudflare withX402Client) can
- * detect the payment-required state and auto-retry with a signed payment.
+ * Helper: build a -32402 MCP error payload carrying the v2 PaymentRequired shape
+ * under _meta[MCP_X402_META_KEY] ("x402/payment").  The test contract (teardown 2b)
+ * requires a JSON-RPC *error* so that err?.data?.[MCP_X402_META_KEY] resolves.
  */
 function paymentRequiredResult(id, reason, resourceUrl, requirements, extra = {}) {
-  const payload = {
+  const metaPayload = {
+    status: "payment-required",
     x402Version: 2,
-    error: reason,
+    error: reason || "PAYMENT-SIGNATURE header is required",
     resource: {
       url: resourceUrl,
       description: requirements.description || "",
@@ -198,10 +198,8 @@ function paymentRequiredResult(id, reason, resourceUrl, requirements, extra = {}
   };
   return {
     status: 200,
-    payload: rpc(id, {
-      isError: true,
-      _meta: { "x402/error": payload },
-      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    payload: rpcError(id, -32402, reason || "Payment required", {
+      [MCP_X402_META_KEY]: metaPayload,
     }),
   };
 }
