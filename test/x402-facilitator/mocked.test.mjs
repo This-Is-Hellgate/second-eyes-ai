@@ -334,13 +334,13 @@ await (async () => {
     const built = buildFacilitatorRequestBody(sentB64, requirement);
     ok("header-vs-facilitator", built.ok, `${label}: build failed (${built.error})`);
 
-    // (1) Pass-through unmutated. Compare against the SAME decode path the builder
-    //     used (parsePaymentPayloadFromHeader), so multibyte chars in the
-    //     description can't create a false encoding mismatch (see FIXME atob note).
+    // (1) Pass-through unmutated: the verify/settle payload deep-equals the buyer's
+    //     original signed object byte-for-byte. Decode is now UTF-8-correct
+    //     (decodeBase64Json), so multibyte descriptions round-trip losslessly.
     eqJson(
       `signed payload passed through unmutated (${label})`,
       built.body.paymentPayload,
-      parsePaymentPayloadFromHeader(sentB64)
+      signedPayload
     );
 
     // (2) Builder must not inject extensions into the signed payload.
@@ -383,16 +383,33 @@ await (async () => {
       built.body.paymentPayload.resource.url === buyerUrl,
       "buyer's signed resource.url must be preserved"
     );
-    // The signed resource is passed through as the buyer sent it -- the builder must
-    // NOT re-derive the full description onto the signed payload. Compare against the
-    // SAME decode path (parsePaymentPayloadFromHeader) rather than a literal string,
-    // so the known atob multibyte quirk (see FIXME) can't cause a false mismatch.
-    // Full discovery text lives in the 402 body, asserted next.
-    const sentB64Signed = Buffer.from(JSON.stringify(payload)).toString("base64");
+    // The signed resource is passed through exactly as the buyer sent it -- the
+    // builder must NOT re-derive the full description onto the signed payload.
+    // Decode is UTF-8-correct now, so this compares to the original object directly.
     eqJson(
       "signed-url: resource passed through unmutated",
       built.body.paymentPayload.resource,
-      parsePaymentPayloadFromHeader(sentB64Signed).resource
+      payload.resource
+    );
+  }
+
+  // --- Regression: multibyte descriptions survive the header encode/decode round-trip ---
+  // Guards the atob UTF-8 bug: bare JSON.parse(atob(...)) corrupted em-dash/ellipsis/
+  // accents/CJK before they reached CDP. encode -> parse must be lossless.
+  {
+    const richResource = {
+      url: RESOURCE,
+      description: "help-me \u2014 canonical door\u2026 caf\u00e9 r\u00e9sum\u00e9 \u4f60\u597d",
+      mimeType: "application/json",
+    };
+    // Encode an object carrying the rich resource directly (the encoder is the one
+    // under test), then decode and confirm the multibyte text is byte-identical.
+    const encoded = encodePaymentRequiredHeader({ x402Version: 2, resource: richResource });
+    const decoded = parsePaymentPayloadFromHeader(encoded);
+    eqJson(
+      "multibyte description survives encode/decode round-trip",
+      decoded.resource.description,
+      richResource.description
     );
   }
 

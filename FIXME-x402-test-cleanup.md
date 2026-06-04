@@ -17,7 +17,7 @@ The items below are SEPARATE, NON-BLOCKING follow-ups. Payments work in producti
 
 ---
 
-## 1. CI test cleanup — `test/x402-facilitator/mocked.test.mjs`
+## 1. CI test cleanup  [RESOLVED 2026-06-04, commits 356a3a2 + decode fix] — `test/x402-facilitator/mocked.test.mjs`
 The mocked test is currently RED because it still asserts PR #27's reverted behavior
 (full description + extensions injected into the signed payload). It must be updated to
 assert the CORRECT contract. TWO blocks need updating, not one:
@@ -47,7 +47,7 @@ decodes via `atob`, which mangles multibyte UTF-8 (see #2). A naive `eqJson` aga
 description's em-dash/ellipsis. Compare structurally, or compare the resource the buyer
 sent vs the resource that came out via the SAME decode path.
 
-## 2. Pre-existing UTF-8 decode bug — `parsePaymentPayloadFromHeader` (x402.js ~line 333)
+## 2. Pre-existing UTF-8 decode bug  [RESOLVED 2026-06-04 — fixed in code, not worked around] — `parsePaymentPayloadFromHeader` (x402.js ~line 333)
 It decodes base64 with `atob(...)`, then `JSON.parse`. `atob` yields a binary string and
 does NOT correctly decode multibyte UTF-8 — so any non-ASCII in `resource.description`
 (em-dash, ellipsis, accents) is corrupted before it reaches CDP.
@@ -60,4 +60,14 @@ does NOT correctly decode multibyte UTF-8 — so any non-ASCII in `resource.desc
 - This is its OWN change with its OWN test. Do NOT bundle it with the test cleanup in #1.
 
 ---
+## RESOLUTION (2026-06-04)
+Both items are now fixed in code, not deferred:
+- #1: mocked.test.mjs rewritten to assert the pass-through-unmutated contract (both
+  verify-body blocks) plus a multibyte round-trip regression guard. Test exits 0.
+- #2: added decodeBase64Json() in x402.js — the exact UTF-8 inverse of the encoder
+  (atob -> Uint8Array -> TextDecoder). Rewired parsePaymentPayloadFromHeader AND
+  parseExtensionResponses. Proven lossless on em-dash/ellipsis/accents/CJK; identical
+  behavior for ASCII, so existing consumers (stripe-x402, x402-payment-log) are
+  unaffected. The test no longer needs the same-decode-path workaround.
+
 Written end of session 2026-06-04 after the 14253d2 fix was deployed and proven.

@@ -103,16 +103,31 @@ function bazaarExtension(_resource, bazaarOutputSchema) {
   };
 }
 
-/** Decode CDP settle EXTENSION-RESPONSES header → bazaar status object. */
-export function parseExtensionResponses(header) {
-  if (!header) return null;
+/**
+ * Decode a base64 (or base64url) string to a UTF-8 JSON object. Exact inverse of
+ * encodePaymentRequiredHeader (UTF-8 -> btoa): atob yields a binary string of bytes,
+ * which we widen back to a Uint8Array and decode as UTF-8. Bare JSON.parse(atob(...))
+ * corrupts every multibyte char (em-dash, ellipsis, accents, CJK) -> garbled discovery
+ * metadata shipped to CDP. Returns null on any malformed input.
+ */
+export function decodeBase64Json(b64) {
   try {
-    const n = header.trim().replace(/-/g, "+").replace(/_/g, "/");
-    const pad = n.length % 4 === 0 ? "" : "=".repeat(4 - (n.length % 4));
-    return JSON.parse(atob(n + pad))?.bazaar || null;
+    const normalized = b64.trim().replace(/-/g, "+").replace(/_/g, "/");
+    const pad =
+      normalized.length % 4 === 0 ? "" : "=".repeat(4 - (normalized.length % 4));
+    const bin = atob(normalized + pad);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return JSON.parse(new TextDecoder().decode(bytes));
   } catch {
     return null;
   }
+}
+
+/** Decode CDP settle EXTENSION-RESPONSES header → bazaar status object. */
+export function parseExtensionResponses(header) {
+  if (!header) return null;
+  return decodeBase64Json(header)?.bazaar || null;
 }
 
 export function buildProductPaymentRequirements(product, requestUrl, env) {
@@ -333,15 +348,10 @@ export function readPaymentHeader(request) {
 export function parsePaymentPayloadFromHeader(paymentHeader) {
   if (!paymentHeader) return null;
   const trimmed = paymentHeader.trim();
-  try {
-    if (trimmed.startsWith("{")) return JSON.parse(trimmed);
-    const normalized = trimmed.replace(/-/g, "+").replace(/_/g, "/");
-    const pad =
-      normalized.length % 4 === 0 ? "" : "=".repeat(4 - (normalized.length % 4));
-    return JSON.parse(atob(normalized + pad));
-  } catch {
-    return null;
+  if (trimmed.startsWith("{")) {
+    try { return JSON.parse(trimmed); } catch { return null; }
   }
+  return decodeBase64Json(trimmed);
 }
 
 /** CDP POST /platform/v2/x402/{verify,settle} body — see verify-a-payment OpenAPI. */
