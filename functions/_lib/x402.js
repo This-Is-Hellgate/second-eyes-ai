@@ -377,27 +377,13 @@ export function buildFacilitatorRequestBody(paymentHeader, requirement) {
   // no maxAmountRequired. It must equal the buyer's paymentPayload.accepted.
   const paymentRequirements = { ...accept };
 
-  // CDP Bazaar associates the settlement to the resource via paymentPayload.resource.
-  // v2 resource is the OBJECT form { url, description, mimeType }. The official client
-  // copies it VERBATIM from PAYMENT-REQUIRED — and that header now carries a 220-char
-  // TRUNCATED description (the PR #23 header-slimming). So the common object case must
-  // NOT be passed through untouched: doing so ships the truncated text to CDP
-  // verify/settle and undercuts Bazaar cataloging.
-  // verify/settle has no header-size constraint, so re-derive description/mimeType from
-  // `requirement` (the full source of truth) for EVERY shape — missing, string, or
-  // object — while preserving the buyer's signed resource URL when they sent one.
+  // Pass the buyer's signed paymentPayload through to CDP verify UNMUTATED.
+  // Rewriting resource/extensions here (PR #27) reshaped the signed payload so CDP
+  // could classify it as neither x402V2PaymentPayload nor x402V1PaymentPayload
+  // (HTTP 400, "must match one of [...]"). Resource enrichment for Bazaar cataloging
+  // belongs on paymentRequirements and the 402 body / settle echo, not smuggled into
+  // the signed payload sent to /verify. Spread so we never mutate the parsed object.
   const enrichedPayload = { ...paymentPayload };
-  const signedResourceUrl =
-    typeof enrichedPayload.resource === "string"
-      ? enrichedPayload.resource
-      : enrichedPayload.resource?.url;
-  enrichedPayload.resource = resourceObject({
-    ...requirement,
-    ...(signedResourceUrl ? { resource: signedResourceUrl } : {}),
-  });
-  if (requirement.extensions && !enrichedPayload.extensions) {
-    enrichedPayload.extensions = requirement.extensions;
-  }
 
   return {
     ok: true,
