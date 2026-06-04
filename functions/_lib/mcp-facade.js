@@ -193,8 +193,8 @@ function paymentRequiredResult(id, reason, resourceUrl, requirements, extra = {}
       mimeType: "application/json",
     },
     accepts: requirements.accepts,
-    extensions: requirements.extensions,
     ...extra,
+    extensions: requirements.extensions,
   };
   return {
     status: 200,
