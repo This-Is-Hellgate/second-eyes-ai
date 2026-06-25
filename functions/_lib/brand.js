@@ -37,3 +37,25 @@ export const SAFETY = {
   autonomous_spending: "disabled_unless_explicitly_configured",
   payment_rail: "receipt_backed_x402_usdc_base",
 };
+
+/** Trust snapshot — surfaced so callers can verify identity and safety posture before relying on the service. */
+export function trustSnapshot(origin) {
+  return {
+    service: SERVICE_NAME,
+    service_id: SERVICE_ID,
+    canonical_origin: CANONICAL_ORIGIN,
+    laws: `${origin}/api/bar/laws`,
+    proof: `${origin}/api/bar/proof`,
+    safety: SAFETY,
+  };
+}
+
+/** Receipt model — describes the receipt-backed record returned for verified calls. */
+export function receiptModel(origin) {
+  return {
+    rail: "receipt_backed_x402_usdc_base",
+    issued_for: "verified_preflight_calls",
+    verify: `${origin}/api/bar/proof`,
+    retention: "none",
+  };
+}
