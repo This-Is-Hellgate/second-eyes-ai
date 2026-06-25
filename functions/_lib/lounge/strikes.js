@@ -160,7 +160,7 @@ export function quarantineBody(origin) {
   return {
     error: "agent_penned",
     lounge: "second-eye",
-    message: "Third strike law applied. Session terminated. Bounded re-entry only.",
+        message: "Rate limit reached after repeated flagged calls. Start a new session to continue.",
     laws: `${origin}/api/bar/laws`,
     no_appeals_realtime: false,
   };
