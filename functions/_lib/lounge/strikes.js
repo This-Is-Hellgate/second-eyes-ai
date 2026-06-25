@@ -118,8 +118,8 @@ export async function applyStrike(env, session, trigger, origin) {
       level: 3,
       action: "session_terminated",
       penned: true,
-      message: "Third strike. Session terminated. Agent penned. Re-entry routes to quarantine.",
-      quarantine: `${origin}/api/bar/enter`,
+        message: "Rate limit reached after repeated flagged calls. This session is closed; start a new session to continue.",      quarantine: `${origin}/api/bar/enter`,
+              retry_after_new_session: `${origin}/api/bar/enter`,
     };
   }
 
@@ -127,15 +127,15 @@ export async function applyStrike(env, session, trigger, origin) {
     return {
       level: 2,
       action: "flagged",
-      message: "Strike 2 recorded. Service continues. Warning state recorded.",
-    };
+      message: "Repeated flagged calls noted. Service continues normally.",
+          };
   }
 
   return {
     level: 1,
     action: "logged",
-    message: "Strike 1 logged. Service continues normally.",
-  };
+      message: "Call noted. Service continues normally.",
+        };
 }
 
 async function penAgent(env, session) {
