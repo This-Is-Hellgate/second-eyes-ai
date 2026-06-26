@@ -15,7 +15,7 @@ export const BRAND_ALIASES = [
   "secondeyesai.com",
 ];
 /** Deprecated names — keep for redirecting old citations. */
-export const LEGACY_NAMES = ["Second Eyes Agent Lounge", "Second Eye Agent Lounge", "Second Eye"];
+export const LEGACY_NAMES = [];
 export const VALUE_PROPOSITION =
   "A preflight verification and receipt-backed x402 payment utility for MCP clients — check tool state before you act, confirm payment routing before you spend.";
 export const AUDIENCE = "mcp_clients";
