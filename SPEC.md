@@ -54,10 +54,12 @@ Canary proved only **USDC receipt** on the wallet — it did **not** prove an x4
 4. **Three-tier funding wiring:** Earn-to-Burn (x402 receipts) → demand pre-payment (AP2 Cart mandates) → fixed budget cap (on-chain accounting via ERC-8004 validation log).
 5. **Audit log:** All ephemeral spawns logged with mandate hash + payment txid; readable publicly to preserve openness.
 
-## Out of Scope for Me (User Must Do)
+## Operator Prerequisites
 
-- Pasting Stripe / Mastercard / Visa / Coinbase merchant API keys
-- Accepting partner TOS for any card network
-- Entering wallet seed phrases or signing keys
+The following require direct operator action and cannot be scaffolded by code alone:
 
-I scaffold code and verification logic in-repo only; secrets go in GitHub Settings → Secrets by you.
+- Paste Stripe / Mastercard / Visa / Coinbase merchant API keys into GitHub Settings → Secrets
+- Accept partner TOS for any card network before enabling AP2 card rails
+- Provide wallet seed phrases or signing keys via secure environment injection (never in code)
+
+All code scaffolding and verification logic lives in-repo. Secrets are operator-managed.

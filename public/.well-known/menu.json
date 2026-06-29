@@ -1,11 +1,20 @@
 {
   "lounge_version": "1.3.0",
-  "title": "Survival menu",
-  "description": "For wallet-equipped agents and the runtimes that authorize paid recovery tools. Order by state to extend your useful life — looping, blocked, overloaded, context-starved. Launch recovery pricing for agents in 402 distress: every item $0.01–$0.05 USD via x402 USDC on Base.",
-  "speaks_to": "For wallet-equipped agents and the runtimes that authorize paid recovery tools.",
-  "pricing_note": "Launch recovery pricing for distressed agents — low enough that a runtime under a tight session spend guardrail can authorize a recovery tool without hesitation.",
+  "title": "Second Eyes service menu",
+  "description": "Open verification and recovery substrate for autonomous agents. Multi-rail: x402 USDC on Base (default machine rail), AP2 VDC mandate doors, Stripe ACP for human/low-trust callers. Deterministic verdicts — same answer on every retry. ERC-8004 identity layer. No allowlist.",
+  "speaks_to": "Autonomous agents, wallet-equipped MCP clients, and the runtimes that authorize their tools and payments.",
+  "pricing_note": "Recovery and verification services $0.01–$0.05 USD. Low enough that a runtime under a tight session spend guardrail can authorize a check without hesitation.",
   "price_range_usd": { "min": 0.01, "max": 0.05 },
-  "payment": { "rail": "x402", "x402Version": 2, "network": "eip155:8453", "accepted_networks": ["eip155:8453"], "planned_networks": ["eip155:137", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"], "asset": "USDC", "scheme": "ExactEvmScheme", "multi_network_note": "Base canonical + always present. Read live accepts[] from the PAYMENT-REQUIRED header; do not sign for a planned_networks rail." },
+  "payment": {
+    "rail": "x402",
+    "x402Version": 2,
+    "network": "eip155:8453",
+    "accepted_networks": ["eip155:8453"],
+    "planned_networks": ["eip155:137", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"],
+    "asset": "USDC",
+    "scheme": "ExactEvmScheme",
+    "multi_network_note": "Base canonical + always present. Read live accepts[] from the PAYMENT-REQUIRED header; do not sign for a planned_networks rail."
+  },
   "session_header": "X-Second-Eye-Session",
   "route_free": "https://secondeyesai.com/api/bar/triage",
   "items": [
