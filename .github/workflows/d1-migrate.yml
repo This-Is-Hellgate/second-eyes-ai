@@ -3,8 +3,8 @@
 #
 # Requires repo secret CLOUDFLARE_API_TOKEN with Account > Cloudflare D1 > Edit
 # (Pages deploy tokens often lack D1 write — add D1 Edit at dash.cloudflare.com/profile/api-tokens).
-# Runtime fallback: payment logging bootstraps x402_payment_attempts via D1 binding on first use;
-# verify with GET /api/bar/proof/d1-schema after deploy.
+# Runtime fallback: payment logging ensures x402_payment_attempts via D1 binding on first use;
+# verify schema after deploy using the schema proof endpoint.
 
 name: D1 migrate
 

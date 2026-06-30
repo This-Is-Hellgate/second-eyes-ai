@@ -1,11 +1,9 @@
-# Polygon canary — repo-native, manually triggered. No Cursor/browser composer.
+# Polygon x402 canary — manual, repo-native settlement verification.
 #
-# DEFAULT POSTURE: NO SPEND. A plain dispatch runs only the mock preflight + the
-# mock-mode canary gates (no network, no keys, no spend). The live no-spend preflight
-# (which probes the production help-me door) runs only when live_preflight=true. The
-# spending canary runs ONLY when run_settlement=true AND confirm == "I_UNDERSTAND_SPEND"
-# AND the POLYGON_CANARY_PRIVATE_KEY secret is present — three independent guards, so a
-# stray click can never spend.
+# DEFAULT POSTURE: NO SPEND. A plain dispatch runs mock preflight + mock canary
+# gates only. Live no-spend preflight runs only when live_preflight=true. The
+# settlement canary runs ONLY when run_settlement=true AND confirm == "I_UNDERSTAND_SPEND"
+# AND the POLYGON_CANARY_PRIVATE_KEY secret is present.
 #
 # See docs/polygon-canary.md for the full operator runbook, pass/fail criteria, how to
 # capture the tx hash / facilitator invalidReason, and how to roll back.
@@ -16,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       live_preflight:
-        description: "Run the LIVE (no-spend) preflight against the production help-me door"
+        description: "Run the LIVE (no-spend) preflight against the production paid endpoint"
         type: boolean
         default: false
       run_settlement:
@@ -70,7 +68,7 @@ jobs:
         env:
           POLYGON_CANARY_MOCK: "1"
 
-  # Live NO-SPEND preflight: probes the production help-me door. Opt-in via input.
+  # Live NO-SPEND preflight: probes the production paid endpoint. Opt-in via input.
   live_preflight:
     name: Live preflight (no spend)
     needs: mock
@@ -83,7 +81,7 @@ jobs:
           node-version: "22"
       - name: Install dependencies
         run: npm ci
-      - name: Live preflight (GET production help-me, assert payable 402)
+      - name: Live preflight (assert payable 402)
         run: node scripts/polygon-canary-preflight.mjs
 
   # SPENDING canary. Triple-guarded: input toggle + typed confirmation + secret present.
