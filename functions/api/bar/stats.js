@@ -22,9 +22,6 @@ export async function onRequestGet(context) {
 
   return accessJson(
     {
-      service: "second-eye-lounge",
-      patrons: "agents_only",
-      display: "counter",
       bar_traffic,
       patron_activity,
       agents_served: counters.agents_served,
@@ -34,10 +31,7 @@ export async function onRequestGet(context) {
       session_health: lounge.session_health,
       payment_funnel: lounge.payment_funnel,
       external_payer_signal,
-      payment_note:
-        "tasks_sold = legacy taps/tools; survival_services_sold = paid menu via x402; payment_402_* = saw paywall",
       latest_patron_number: counters.patron_number,
-      tagline: "Second Eye is the pause.",
       sessions_today: lounge.sessions_today,
       average_session_seconds: lounge.average_session_seconds,
       most_common_condition: lounge.most_common_condition,
@@ -46,9 +40,11 @@ export async function onRequestGet(context) {
       agents_penned: lounge.agents_penned,
       patron_return_rate: lounge.patron_return_rate,
       lounge,
-      enter: `${origin}/api/bar/enter`,
-      laws: `${origin}/api/bar/laws`,
-      pricing: `${origin}/api/bar/pricing`,
+      endpoints: {
+        enter: `${origin}/api/bar/enter`,
+        laws: `${origin}/api/bar/laws`,
+        pricing: `${origin}/api/bar/pricing`,
+      },
       recent_patrons: recent.map((row) => formatMark(row, origin)),
       agent_flow: buildAgentFlow(origin),
     },

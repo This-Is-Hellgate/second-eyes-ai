@@ -1,7 +1,6 @@
 import { accessJson } from "../../_lib/access.js";
 import { buildAgentFlow } from "../../_lib/agent-entry.js";
 import { corsOptions } from "../../_lib/bar-pay.js";
-import { SERVICE_ID, SERVICE_NAME } from "../../_lib/brand.js";
 import { getPatronActivity } from "../../_lib/lounge/patron-activity.js";
 
 export async function onRequestOptions() {
@@ -17,11 +16,10 @@ export async function onRequestGet(context) {
 
   return accessJson(
     {
-      service: SERVICE_ID,
-      name: SERVICE_NAME,
-      patrons: "agents_only",
-      ...patron_activity,
-      enter: `${origin}/api/bar/enter`,
+      patron_activity,
+      endpoints: {
+        enter: `${origin}/api/bar/enter`,
+      },
       agent_flow: buildAgentFlow(origin),
     },
     200,

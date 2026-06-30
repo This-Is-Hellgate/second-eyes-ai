@@ -3,14 +3,7 @@ import { buildCatalogPayload } from "../../_lib/bar-content/catalog.js";
 import { buildAgentFlow } from "../../_lib/agent-entry.js";
 import { corsOptions } from "../../_lib/bar-pay.js";
 import { fetchWithTimeout } from "../../_lib/resilience.js";
-import {
-  SERVICE_ID,
-  SERVICE_NAME,
-  TAGLINE,
-  VALUE_PROPOSITION,
-  trustSnapshot,
-  receiptModel,
-} from "../../_lib/brand.js";
+import { trustSnapshot, receiptModel } from "../../_lib/brand.js";
 import { x402ConfigWarnings, railStates } from "../../_lib/x402-networks.js";
 
 const PROOF_CHECK_TIMEOUT_MS = 4000;
@@ -118,17 +111,7 @@ export async function onRequestGet(context) {
 
   return accessJson(
     {
-      service: SERVICE_ID,
-      name: SERVICE_NAME,
-      tagline: TAGLINE,
-      value_proposition: VALUE_PROPOSITION,
-      patrons: "agents_only",
       pass,
-      summary: pass
-        ? "Second Eye Agent Lounge is live. Laws and pricing published. Enter returns session. Paid paths return 402 until x402 payment."
-        : configWarnings.length
-          ? `x402 rail misconfiguration: ${configWarnings.map((w) => w.code).join(", ")}.`
-          : "One or more proof checks failed.",
       x402_config_warnings: configWarnings,
       x402_rail_states: rail_states,
       trust_snapshot: trustSnapshot(origin),
@@ -136,12 +119,14 @@ export async function onRequestGet(context) {
       payment_ledger: `${origin}/api/bar/proof/payments`,
       checks,
       agent_flow: buildAgentFlow(origin),
-      catalog: `${origin}/api/bar/catalog`,
-      laws: `${origin}/api/bar/laws`,
-      pricing_url: `${origin}/api/bar/pricing`,
-      enter: `${origin}/api/bar/enter`,
-      leave: `${origin}/api/bar/leave`,
-      stats: `${origin}/api/bar/stats`,
+      endpoints: {
+        catalog: `${origin}/api/bar/catalog`,
+        laws: `${origin}/api/bar/laws`,
+        pricing: `${origin}/api/bar/pricing`,
+        enter: `${origin}/api/bar/enter`,
+        leave: `${origin}/api/bar/leave`,
+        stats: `${origin}/api/bar/stats`,
+      },
       free_samples: {
         tool: `${origin}/api/bar/tools/cursor-mcp-wiring`,
         micro: `${origin}/api/bar/taps/cursor-mcp-minimal-config`,

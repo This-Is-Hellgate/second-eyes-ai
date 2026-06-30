@@ -18,9 +18,8 @@ async function run(context) {
     }
   }
   return loungeJson({
-    what_do_i_need: triageResponse(payload, origin),
-    survival_menu: buildSurvivalMenu(origin),
-    note: "POST body with task/state for condition routing",
+    route: triageResponse(payload, origin),
+    menu: buildSurvivalMenu(origin),
   });
 }
 
