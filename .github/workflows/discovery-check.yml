@@ -1,5 +1,5 @@
-# Guard against stale discovery metadata: blocks merges that re-introduce
-# x402 v1, network "base", or a package version that drifts from the published
+# Guard against stale discovery metadata: blocks changes that re-introduce
+# deprecated x402 metadata, network identifiers, or package-version drift from
 # @secondeyes/mcp-unblock. See scripts/discovery-consistency-check.mjs.
 
 name: Discovery consistency
@@ -29,9 +29,9 @@ on:
       - "functions/_lib/x402.js"
       - "functions/_lib/x402-networks.js"
       - "functions/_lib/discovery.js"
-      # Canonical price source (SERVICE_PRICES / SURVIVAL_MENU / price range) the
-      # consistency check reads — a PR editing only a price here must trigger the
-      # guard so static discovery prices can't go stale until push-to-main fails.
+      # Canonical pricing/projection source the consistency check reads — a PR editing
+      # only price metadata here must trigger the guard so static discovery prices
+      # cannot drift.
       - "functions/_lib/lounge/**"
       - "functions/openapi.json.js"
       - "functions/v0/openapi.json.js"
@@ -126,19 +126,19 @@ jobs:
       - name: Run session receipt self-test
         run: node scripts/session-receipt-selftest.mjs
 
-      - name: Run help-me POST empty-body self-test
+      - name: Run paid capability POST empty-body self-test
         run: node scripts/help-me-post-selftest.mjs
 
       - name: Run x402 empty-POST paywall self-test
         run: node scripts/x402-empty-post-selftest.mjs
 
-      - name: Run lounge stale-session closure self-test (C-012 / C-023)
+      - name: Run session closure self-test (C-012 / C-023)
         run: node scripts/lounge-sessions-selftest.mjs
 
       - name: Run grant-product migration safety self-test (C-024)
         run: node scripts/grant-product-migrate-selftest.mjs
 
-      - name: Install MCP package dependencies (for autopay/tool-metadata/order-routing tests)
+      - name: Install MCP package dependencies (for autopay/tool metadata/routing tests)
         run: npm ci
         working-directory: packages/secondeye-mcp
 
@@ -151,10 +151,10 @@ jobs:
       - name: Run MCP order-routing self-test (C-019 / C-020)
         run: node test/x402-wallet/order-routing.test.mjs
 
-      - name: Run wallet-agent-target routing self-test (no /api/bar/services dead-ends)
+      - name: Run wallet-agent target routing self-test (no legacy service dead-ends)
         run: node test/x402-wallet/wallet-target-routes.test.mjs
 
-      - name: Run x402 v2 extension surface self-test (bazaar/identifier/receipt/batch/auth-capture/eip2612)
+      - name: Run x402 v2 extension surface self-test
         run: node test/x402-extensions/extensions.test.mjs
 
       - name: Run MCP x402 payment-channel self-test (_meta x402/payment)
