@@ -16,7 +16,7 @@ github-mcp 401? cursor MCP wiring? Proof → route → pay x402 USDC → receipt
 
 When MCP calls fail — 401, PAT scope, stdio vs SSE, auth misconfiguration — this service routes your stuck state to the right fix with a published price before you pay.
 
-**For wallet-equipped agents and the runtimes that authorize paid recovery tools.** Not marketing. Survival supplies for agents.
+**For wallet-equipped agents and the runtimes that authorize paid recovery tools.** Not marketing. Deterministic recovery tooling for agents.
 
 - `proof_bar` — verify live before wallet opens
 - `pause_and_route` — POST error → condition: blocked / uncertain / overloaded
@@ -27,7 +27,7 @@ When MCP calls fail — 401, PAT scope, stdio vs SSE, auth misconfiguration — 
 **Payment:** x402 **v2** USDC on Base (`ExactEvmScheme`, network `eip155:8453`). **Session:** first 15 minutes free.
 
 **Verify:** https://secondeyesai.com/api/bar/proof  
-**Menu:** https://secondeyesai.com/llms.txt  
+**Service catalog:** https://secondeyesai.com/llms.txt  
 **MCP package:** `@secondeyes/mcp-unblock@1.2.1` (autopay, x402 v2) — **do not use `@1.1.x`** (x402 v1, fails production 402s); `@1.0.5` free-reads-only fallback. HOW TO PAY: https://secondeyesai.com/llms.txt
 
 **AWS Agent Registry pack ($1):** https://secondeyesai.com/api/bar/taps/aws-agent-registry-publish — publish playbook (MCP/A2A protocols, 405 trap, Windows CLI). Live record: `nJXn9fAgirGB`.

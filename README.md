@@ -9,8 +9,8 @@ Second Eyes is a multi-rail payment and verification substrate for wallet-equipp
 | **Live API + site** | `/` — Cloudflare Pages (`wrangler pages deploy public`) |
 | **MCP npm package** | `packages/secondeye-mcp` — `@secondeyes/mcp-unblock` |
 | **Agent entry** | `GET https://secondeyesai.com/api/bar` |
-| **Agent instructions** | [`public/llms.txt`](public/llms.txt) — how to pay, menus, one-shot routes |
-| **Help-me JSON packet** | [`public/.well-known/help-me.json`](public/.well-known/help-me.json) — machine-readable distress door |
+| **Agent instructions** | [`public/llms.txt`](public/llms.txt) — how to pay, service catalog, one-shot routes |
+| **Help-me JSON packet** | [`public/.well-known/help-me.json`](public/.well-known/help-me.json) — machine-readable distress entry route |
 | **Agent card** | [`public/.well-known/agent-card.json`](public/.well-known/agent-card.json) |
 | **Crawler policy** | [`public/robots.txt`](public/robots.txt) |
 
@@ -35,13 +35,13 @@ No login, no session header. Pay USDC on Base via x402 v2 (`PAYMENT-REQUIRED` �
 
 | Door | Path | Price |
 |------|------|-------|
-| **Help me** (canonical meta-tool — looping, schema mismatch, context pressure, crash, handoff failure, wallet/spend-policy, grounding risk, auth/tool/sandbox failure, payment uncertainty) | `/api/bar/x402/help-me` | $0.01 |
+| **help-me** (canonical meta-tool — looping, schema mismatch, context pressure, crash, handoff failure, wallet/spend-policy, grounding risk, auth/tool/sandbox failure, payment uncertainty) | `/api/bar/x402/help-me` | $0.01 |
 | AWS AgentCore one-shot map | `/api/bar/x402/aws-agent-survival` | $0.01 |
-| Peril router (legacy alias of help-me) | `/api/bar/x402/peril-router` | $0.01 |
+| `peril-router` (legacy alias of help-me) | `/api/bar/x402/peril-router` | $0.01 |
 | Schema repair | `/api/bar/x402/schema-repair` | $0.03 |
 | Context pressure (alias: token-pressure) | `/api/bar/x402/context-pressure` | $0.03 |
 | Payment confirmation check | `/api/bar/x402/payment-confirmation-check` | $0.01 |
-| Survival deep packs | `/api/bar/x402/{slug}` | $0.01–$0.05 |
+| Specialist one-shot routes | `/api/bar/x402/{slug}` | $0.01–$0.05 |
 | Transcribe (audio/video/PDF) + meaning | `/api/bar/x402/transcribe` | $0.05 |
 | Doc extract (invoice/contract/PDF) | `/api/bar/x402/extract` | $0.05 |
 | Bazaar index check | `/api/bar/x402/index-check` | $0.05 |
@@ -100,3 +100,12 @@ From repo root, tag `mcp-vX.Y.Z` (or run workflow manually). Uses **npm Trusted 
 ## Deprecated repo
 
 The standalone [secondeye-mcp](https://github.com/This-Is-Hellgate/secondeye-mcp) repository is retired — all development happens here.
+
+## Terminology normalization summary (issue #40)
+
+| Before | After |
+|---|---|
+| Anthropomorphic route label | Canonical slug-style route label |
+| Theatrical route wording | Technical route wording |
+| Prepper/theatrical route-group wording | Specialist one-shot route-set wording |
+| Legacy catalog wording | Service-catalog wording |

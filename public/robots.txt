@@ -17,12 +17,12 @@ Allow: /api-docs
 # OpenAPI spec:     /openapi.json | /v0/openapi.json
 # x402 resources:   /v1/x402/discovery/resources | /v2/x402/discovery/resources
 # API docs pointer: /api-docs (machine pointer to /openapi.json — no interactive console)
-# Distress door:    /.well-known/help-me.json (JSON packet) | /api/bar/x402/help-me (canonical, no session)
+# Distress route:   /.well-known/help-me.json (JSON packet) | /api/bar/x402/help-me (canonical, no session)
 # How to pay:       /llms.txt (HOW TO PAY) | GET /api/bar → payment_activation
 # One-shot x402:    /llms.txt (AUTONOMOUS AGENTS) — no session required
 # Payment ledger:   /api/bar/proof/payments
-# Menu (JSON):      /.well-known/menu.json
-# Menu (API):       /api/bar/menu
+# Service catalog (JSON): /.well-known/menu.json
+# Service catalog (API):  /api/bar/menu
 # Agent card:       /.well-known/agent-card.json
 # MCP manifest:     /.well-known/mcp.json
 # Human/agent doc:  /llms.txt

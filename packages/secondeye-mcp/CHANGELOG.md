@@ -10,8 +10,8 @@
 
 ### Fixed
 
-- **Autopay default unblocked** — with a wallet set and `MCP_X402_ALLOW_SLUGS` unset, autopay now covers **every launch-priced survival/nano slug** (each ≤ $0.05 USDC) instead of `should-i-pay` only. Wallet-configured agents stopped getting `slug_not_allowed` on `claim-check`, `mcp-wiring`, `context-compress`, etc. `MCP_X402_ALLOW_SLUGS` is now a **restrict** list; `*` is equivalent to unset. The safety boundary is the per-call/session caps + the $0.05 catalog price ceiling, not the allow-list.
-- **Price catalog synced to launch prices** — `LOUNGE_SERVICE_PRICES_USD` was stale at $0.10–$0.50 while the live 402 quotes and the advertised menu were $0.01–$0.05, so `guardPayment` could reject valid quotes as `price_mismatch`. The table now mirrors the canonical `functions/_lib/lounge/constants.js` survival menu and adds the session-less x402 nano twins (`help-me` $0.01, `schema-repair` $0.03, `transcribe-extract` $0.05, `doc-extract` $0.05).
+- **Autopay default unblocked** — with a wallet set and `MCP_X402_ALLOW_SLUGS` unset, autopay now covers **every launch-priced session-less x402/nano slug** (each ≤ $0.05 USDC) instead of `should-i-pay` only. Wallet-configured agents stopped getting `slug_not_allowed` on `claim-check`, `mcp-wiring`, `context-compress`, etc. `MCP_X402_ALLOW_SLUGS` is now a **restrict** list; `*` is equivalent to unset. The safety boundary is the per-call/session caps + the $0.05 catalog price ceiling, not the allow-list.
+- **Price catalog synced to launch prices** — `LOUNGE_SERVICE_PRICES_USD` was stale at $0.10–$0.50 while the live 402 quotes and the advertised catalog were $0.01–$0.05, so `guardPayment` could reject valid quotes as `price_mismatch`. The table now mirrors the canonical `functions/_lib/lounge/constants.js` service catalog and adds the session-less x402 nano twins (`help-me` $0.01, `schema-repair` $0.03, `transcribe-extract` $0.05, `doc-extract` $0.05).
 
 ### Added
 
@@ -57,7 +57,7 @@
 
 ### Security
 
-- Fail-closed slug default: only `should-i-pay` auto-pays unless operator sets `MCP_X402_ALLOW_SLUGS` (or `*` for full menu).
+- Fail-closed slug default: only `should-i-pay` auto-pays unless operator sets `MCP_X402_ALLOW_SLUGS` (or `*` for the full catalog).
 - README wallet warning: dedicated low-balance payer only; never main wallet.
 
 ### Dependencies
