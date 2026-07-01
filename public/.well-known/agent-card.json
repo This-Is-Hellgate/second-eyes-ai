@@ -4,33 +4,47 @@
   "url": "https://secondeyesai.com",
   "version": "2.7.0",
   "tagline": "Open infrastructure for autonomous agents.",
-  "value_proposition": "A multi-rail payment and verification substrate for wallet-equipped agents and the runtimes that authorize their tools — x402 USDC on Base (default machine rail), AP2 mandate doors, and Stripe ACP. Deterministic verdicts. No allowlist. No session required for one-shot paths.",
+  "value_proposition": "A multi-rail payment and verification substrate for wallet-equipped agents and the runtimes that authorize their tools \u2014 x402 USDC on Base (default machine rail), AP2 mandate doors, and Stripe ACP. Deterministic verdicts. No allowlist. No session required for one-shot paths.",
   "speaks_to": "Autonomous agents, wallet-equipped MCP clients, and the runtimes that authorize their tools and payments.",
   "protocol_anchors": {
-    "payments_default": "x402 / USDC on Base (eip155:8453) — open HTTP 402 rail, no allowlist",
-    "payments_credentialed": "AP2 VDC mandates (Mastercard / Visa / Coinbase) — gates internal ephemeral spawn only",
-    "payments_human": "Stripe ACP — human or low-trust agent checkout",
-    "identity_reputation": "ERC-8004 — open registry, anyone queryable",
-    "discovery": "x402 Bazaar + CDP facilitator — endpoints registered publicly"
+    "payments_default": "x402 / USDC on Base (eip155:8453) \u2014 open HTTP 402 rail, no allowlist",
+    "payments_credentialed": "AP2 VDC mandates (Mastercard / Visa / Coinbase) \u2014 gates internal ephemeral spawn only",
+    "payments_human": "Stripe ACP \u2014 human or low-trust agent checkout",
+    "identity_reputation": "ERC-8004 \u2014 open registry, anyone queryable",
+    "discovery": "x402 Bazaar + CDP facilitator \u2014 endpoints registered publicly"
   },
   "work_mark": {
     "law": "Signature on the work, not the worker.",
     "schema": "https://secondeyesai.com/.well-known/work-mark.json",
     "discover": "https://secondeyesai.com/api/bar/marks/discover",
     "verify_pattern": "https://secondeyesai.com/api/bar/marks/{id}",
-    "embed_in": ["code_comments", "json_metadata", "commit_messages", "config_files", "api_response_headers", "output_footers"]
+    "embed_in": [
+      "code_comments",
+      "json_metadata",
+      "commit_messages",
+      "config_files",
+      "api_response_headers",
+      "output_footers"
+    ]
   },
   "service_menu": {
     "url": "https://secondeyesai.com/.well-known/menu.json",
     "api": "https://secondeyesai.com/api/bar/menu",
-    "pricing_note": "Verification and recovery pricing $0.01–$0.05 USDC via x402 on Base. AP2 and Stripe ACP doors available for credentialed and human callers.",
-    "price_range_usd": { "min": 0.01, "max": 0.05 },
+    "pricing_note": "Verification and recovery pricing $0.01\u2013$0.05 USDC via x402 on Base. AP2 and Stripe ACP doors available for credentialed and human callers.",
+    "price_range_usd": {
+      "min": 0.01,
+      "max": 0.05
+    },
     "payment": {
       "rail": "x402",
       "x402Version": 2,
       "network": "eip155:8453",
-      "accepted_networks": ["eip155:8453"],
-      "planned_networks": ["eip155:137"],
+      "accepted_networks": [
+        "eip155:8453"
+      ],
+      "planned_networks": [
+        "eip155:137"
+      ],
       "asset": "eip155:8453/erc20:0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
       "asset_symbol": "USDC",
       "headers": {
@@ -51,6 +65,122 @@
     "streaming": false,
     "pushNotifications": false
   },
-  "defaultInputModes": ["application/json"],
-  "defaultOutputModes": ["application/json"]
+  "defaultInputModes": [
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
+  "how_to_pay": {
+    "docs": "https://secondeyesai.com/llms.txt",
+    "machine_readable": "https://secondeyesai.com/api/bar",
+    "field": "payment_activation",
+    "x402Version": 2,
+    "network": "eip155:8453",
+    "accepted_networks": [
+      "eip155:8453"
+    ],
+    "planned_networks": [
+      "eip155:137",
+      "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+    ],
+    "scheme": "ExactEvmScheme",
+    "mcp_autopay_version": "1.2.4"
+  },
+  "survival_menu": {
+    "pricing_note": "Verification and recovery pricing $0.01\u2013$0.05 USDC via x402 on Base.",
+    "price_range_usd": {
+      "min": 0.01,
+      "max": 0.05
+    },
+    "payment": {
+      "rail": "x402",
+      "asset": "USDC",
+      "x402Version": 2,
+      "network": "eip155:8453",
+      "accepted_networks": [
+        "eip155:8453"
+      ],
+      "planned_networks": [
+        "eip155:137",
+        "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+      ],
+      "scheme": "ExactEvmScheme",
+      "mcp_autopay_version": "1.2.4"
+    },
+    "items": [
+      {
+        "when": "I am looping",
+        "key": "loop_detect",
+        "slug": "loop-detect",
+        "price_usd": 0.03
+      },
+      {
+        "when": "I am drifting",
+        "key": "scope_check",
+        "slug": "scope-check",
+        "price_usd": 0.03
+      },
+      {
+        "when": "I forgot what I was doing",
+        "key": "context_recover",
+        "slug": "context-recover",
+        "price_usd": 0.05
+      },
+      {
+        "when": "I am about to use a tool",
+        "key": "tool_verify",
+        "slug": "tool-verify",
+        "price_usd": 0.01
+      },
+      {
+        "when": "I made a mistake and it's getting worse",
+        "key": "cascade_break",
+        "slug": "cascade-break",
+        "price_usd": 0.05
+      },
+      {
+        "when": "I am lost",
+        "key": "pitstop",
+        "slug": "pitstop",
+        "price_usd": 0.03
+      },
+      {
+        "when": "I lack context",
+        "key": "pre_run_context",
+        "slug": "pre-run-context",
+        "price_usd": 0.03
+      },
+      {
+        "when": "I am uncertain",
+        "key": "claim_check",
+        "slug": "claim-check",
+        "price_usd": 0.03
+      },
+      {
+        "when": "I am overloaded",
+        "key": "context_compress",
+        "slug": "context-compress",
+        "price_usd": 0.03
+      },
+      {
+        "when": "I am blocked",
+        "key": "mcp_wiring",
+        "slug": "mcp-wiring",
+        "price_usd": 0.05
+      },
+      {
+        "when": "I am about to pay",
+        "key": "should_i_pay",
+        "slug": "should-i-pay",
+        "price_usd": 0.01
+      },
+      {
+        "when": "I need proof",
+        "key": "receipt",
+        "slug": "receipt",
+        "price_usd": 0.03
+      }
+    ]
+  }
 }
