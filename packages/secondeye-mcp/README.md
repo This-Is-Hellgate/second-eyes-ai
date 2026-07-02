@@ -2,7 +2,7 @@
 
 Second Eyes provides workflow diagnostics, capability routing, execution evidence, and x402 settlement to MCP-compatible agents.
 
-Version `1.2.5` is a registry-consistency release. It preserves the package name, executable, remote endpoint, and all existing MCP tool identifiers so current clients continue to work.
+Version `1.2.6` corrects repository routing and completes the technical-language cleanup. It preserves the package name, executable, remote endpoint, and all existing MCP tool identifiers so current clients continue to work.
 
 ## Install
 
@@ -11,7 +11,7 @@ Version `1.2.5` is a registry-consistency release. It preserves the package name
   "mcpServers": {
     "second-eyes": {
       "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock@1.2.5"],
+      "args": ["-y", "@secondeyes/mcp-unblock@1.2.6"],
       "env": {
         "SECOND_EYE_BASE_URL": "https://secondeyesai.com"
       }
@@ -77,12 +77,6 @@ cd packages/secondeye-mcp
 npm test
 npm pack --dry-run
 ```
-
-## Registry records
-
-- MCP name: `io.github.This-Is-Hellgate/secondeye-mcp-unblock`
-- AWS Agent Registry record: `nJXn9fAgirGB`
-- AWS registry: `jaMy0SuApKYYJDTa`
 
 ## License
 

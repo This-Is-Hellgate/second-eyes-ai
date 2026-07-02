@@ -1,6 +1,6 @@
 {
   "name": "@secondeyes/mcp-unblock",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "mcpName": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
   "description": "Agent workflow diagnostics and capability routing over MCP with x402 settlement on Base",
   "type": "module",
@@ -33,6 +33,10 @@
     "capability routing"
   ],
   "license": "MIT",
+  "homepage": "https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp",
+  "bugs": {
+    "url": "https://github.com/This-Is-Hellgate/second-eyes-ai/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/This-Is-Hellgate/second-eyes-ai.git",
@@ -49,7 +53,7 @@
     "zod": "^4.4.3"
   },
   "scripts": {
-    "test": "node ../../test/x402-wallet/registry-manifest.test.mjs && node ../../test/x402-wallet/autopay-defaults.test.mjs && node ../../test/x402-wallet/tool-metadata.test.mjs && node ../../test/x402-wallet/order-routing.test.mjs",
+    "test": "node ../../test/x402-wallet/registry-manifest.test.mjs && node ../../test/x402-wallet/mcp-folder-hygiene.test.mjs && node ../../test/x402-wallet/spec-authority.test.mjs && node ../../test/x402-wallet/autopay-defaults.test.mjs && node ../../test/x402-wallet/tool-metadata.test.mjs && node ../../test/x402-wallet/order-routing.test.mjs",
     "test:mcp-pay": "node scripts/mcp-order-pay-canary.mjs"
   }
 }

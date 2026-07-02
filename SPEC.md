@@ -1,65 +1,116 @@
-# SPEC.md — Substrate Increment 0
+# Second Eyes Architecture Specification
 
-_Date: 2026-06-25_
-_Status: committed plan, pre-implementation_
+_Updated: 2026-07-02_
+_Status: canonical product and trust architecture_
 
-## Three Framework Anchors
+## Purpose
 
-1. **AP2 — Agent Payments Protocol** — `github.com/google-agentic-commerce/AP2`
-   - Three-mandate VDC system (Intent → Cart → Payment)
-   - Backed by 60+ orgs incl. Mastercard, Visa, PayPal, Coinbase
-   - Role: credential-gated doors for **internal ephemeral spawn only**
+Second Eyes is an agent-centric workspace and capability network. Reputable agents can improve reliability, skill, efficiency, and scope while remaining under the authority of their owners and institutions.
 
-2. **x402 Bazaar — Discovery + Payments**
-   - CDP facilitator: `GET https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources`
-   - Spec repo: `github.com/x402-foundation/x402`
-   - Community Bazaar w/ ERC-8004 trust scoring: `github.com/rplryan/x402-discovery-mcp`
-   - Role: HTTP-402 rail (USDC on Base) + public discovery, no allowlist
+Agents may run on any framework or infrastructure. Second Eyes does not require runtime migration. It provides credential-aware services, tools, context, execution controls, and evidence that companies and people can elect to use.
 
-3. **ERC-8004 — Trustless Agents** (ratified Jan 2026)
-   - Registries: Identity, Reputation, Validation
-   - Pairs natively with x402 for settlement
-   - Role: open reputation layer; read by callers, never enforced by us
+## Cascading Authority Model
 
-## Stack Alignment (open-to-everyone)
+Authority is evaluated from the top down. A lower level cannot override a higher one.
 
-| Layer | Protocol | Substrate use |
-|---|---|---|
-| Identity / Reputation | ERC-8004 | Open registry; anyone queryable |
-| Payments | x402 (USDC/Base) | Open HTTP 402 rail, no allowlist |
-| Discovery | x402 Bazaar | Substrate endpoints registered publicly |
-| Authorization | AP2 mandates | Gates internal ephemeral spawn, NOT external access |
-| Transport | A2A / MCP | Existing |
+1. **Structural law** — tenant isolation, authenticated identity, consent, auditability, revocation, and legal constraints.
+2. **Trusted institution registry** — the institutions accepted as credential issuers.
+3. **Institution policy** — owner contacts, approval channels, budgets, data boundaries, and operational policy.
+4. **Credentialed agent** — a verifiable agent identity issued or endorsed by a listed institution.
+5. **Active mission mandate** — the current purpose, scope, expiry, budget, and approval conditions.
+6. **Framework adapter** — MCP, A2A, AgentCore, LangGraph, CrewAI, custom runtimes, or another supported interface.
+7. **Scoped capability profile** — only the tools, data, and workspace services relevant to the institution and mission.
+8. **Action and evidence** — every material operation produces attributable status, cost, approval, and outcome records.
 
-## Funding Lanes (all feed one Earn-to-Burn ledger)
+An agent is admitted only when its institutional credential and active mission are valid. Payment alone never grants operational authority.
 
-| Lane | Rail | Caller type | Settlement |
-|---|---|---|---|
-| 1 | x402 / USDC on Base | Autonomous agent | On-chain, sub-second |
-| 2a | AP2 + Mastercard VDC | Verified agent w/ card mandate | Card network |
-| 2b | AP2 + Visa VDC | Verified agent w/ card mandate | Card network |
-| 3 | Stripe ACP checkout | Human or low-trust agent | Stripe |
+## Admission and Disclosure
 
-Cards are additive optional doors, never gates. x402/USDC remains the default machine rail.
+The public surface exposes only enough information to identify Second Eyes and explain the credential requirement. Operational catalogues, routes, policies, and tenant context are disclosed after admission and reduced to the caller's mission scope.
 
-## Key Correction Carried Forward
+At ingress, Second Eyes verifies:
 
-Canary proved only **USDC receipt** on the wallet — it did **not** prove an x402 handshake. Increment 0 must implement and verify the actual 402 challenge/response cycle (EIP-712 signature + facilitator settle) before claiming x402 support.
+- credential issuer is a listed institution;
+- agent credential is valid and not revoked;
+- mission mandate is current and bound to that agent and institution;
+- requested framework and capability are permitted;
+- budget, quota, and owner-approval requirements are satisfied.
 
-## Increment 0 — Concrete Steps
+Verification occurs again at material action boundaries. Session admission is not ambient authority.
 
-1. **Open ingress:** Mark substrate endpoints with HTTP 402 responses; register in both CDP facilitator catalog and community Bazaar.
-2. **Identity:** Publish substrate agent in ERC-8004 Identity Registry; expose Reputation/Validation reads.
-3. **Internal credential door:** AP2 three-mandate verification (Intent/Cart/Payment VDCs) required only for internal ephemeral spawn (Compiler, Groundskeepers) — never for outside read/pay.
-4. **Three-tier funding wiring:** Earn-to-Burn (x402 receipts) → demand pre-payment (AP2 Cart mandates) → fixed budget cap (on-chain accounting via ERC-8004 validation log).
-5. **Audit log:** All ephemeral spawns logged with mandate hash + payment txid; readable publicly to preserve openness.
+## Owner Control and Structural Limits
 
-## Operator Prerequisites
+Owners decide how much autonomy to grant their agents. They may authorize persistent or temporary agents, broad or narrow missions, and automatic or human-approved actions.
 
-The following require direct operator action and cannot be scaffolded by code alone:
+Owners cannot disable structural law, tenant isolation, required evidence, revocation, or legally required controls. High-impact or irreversible actions require an approval channel the agent cannot forge.
 
-- Paste Stripe / Mastercard / Visa / Coinbase merchant API keys into GitHub Settings → Secrets
-- Accept partner TOS for any card network before enabling AP2 card rails
-- Provide wallet seed phrases or signing keys via secure environment injection (never in code)
+## Agent Workspace Services
 
-All code scaffolding and verification logic lives in-repo. Secrets are operator-managed.
+Second Eyes can provide:
+
+- mission-scoped tool catalogues;
+- datasets and controlled data access;
+- media submission and multimodal transcription;
+- tables, wikis, retrieval systems, and owner-supplied context;
+- reproducible compute and managed execution environments;
+- permission requests for temporary sub-agent swarms;
+- workflow findings that agents can present immediately to owners for approval;
+- complete owner-visible activity, spending, approval, and outcome evidence.
+
+The workspace is agent-centric and owner-transparent. Second Eyes services can be used independently; customers are not required to adopt a single orchestration platform.
+
+## Protocol Roles
+
+Protocols are adapters to the authority model, not substitutes for it.
+
+| Protocol | Role |
+|---|---|
+| MCP / A2A | Tool and agent interoperability |
+| x402 v2 | Machine settlement and payment receipts |
+| AP2 | Signed intent, cart, and payment mandates; owner consent and commerce authorization |
+| ERC-8004 | Optional external identity, reputation, and validation bridge; not the institutional source of truth |
+| AWS IAM | AWS resource authorization and downstream policy enforcement |
+| Verifiable credentials / workload identity | Institution-to-agent identity and mission claims |
+
+ERC-8004 is currently a draft standard. Its validation registry records validation evidence; it is not Second Eyes' financial ledger.
+
+## Payment Is Not Authority
+
+The x402 handshake is implemented and has settled external payments on Base. It proves that a caller satisfied a payment requirement. It does not prove the caller's employer, mission, authorization, or trustworthiness.
+
+Payment is evaluated after admission and scope resolution where a protected capability requires settlement. AP2 and other payment mandates express commercial consent; they do not replace institutional credentials.
+
+## AWS Pilot
+
+AWS is the first institutional capability domain because Second Eyes has an approved AWS Agent Registry record and AWS provides a broad open-source agent and infrastructure ecosystem.
+
+The pilot architecture is:
+
+1. Cloudflare gateway receives the request and limits unauthenticated crawlers.
+2. A signed credential resolves institution, agent, framework, active mission, scope, budget, and expiry.
+3. The service issues a short-lived mission session.
+4. The catalogue is reduced to mission-relevant AWS capabilities.
+5. AWS IAM enforces actual AWS resource permissions.
+6. AgentCore services provide managed execution, browser, code-interpreter, identity, observability, and payment-session integrations where appropriate.
+7. Every action and approval is visible to the owner.
+
+Initial open-source inputs include AWS CDK, CloudFormation templates, Lambda IAM policy examples, SageMaker Distribution, and the Bedrock AgentCore SDK. Samples are evaluated and hardened before production use; they are not exposed wholesale.
+
+## Referral and Execution Ledger
+
+Second Eyes records two distinct evidence streams:
+
+1. **Discovery evidence** — source directory, client/framework signal, requested public resource, timestamp, and outcome, including unpaid 402 challenges.
+2. **Execution evidence** — institution, credentialed agent, mission, framework, selected capability, approval, cost, payment transaction, request identifier, and outcome.
+
+Task content is not retained unless the institution explicitly authorizes it. Evidence must support owner transparency without publishing tenant operations.
+
+## Current State
+
+- x402 v2 settlement on Base is live and externally proven.
+- `@secondeyes/mcp-unblock@1.2.5` is published; `1.2.6` is the repository-routing and package-cleanup release candidate.
+- Existing `1.x` MCP tool identifiers remain compatibility aliases while public descriptions use technical workflow language.
+- An AWS Agent Registry record is approved; its descriptor requires synchronization to the current release.
+- Credential admission, mission sessions, referral attribution, AP2 adapters, and ERC-8004 adapters are planned implementation phases.
+
+This file defines product authority. Payment configuration, directory listings, and legacy route names cannot override it.

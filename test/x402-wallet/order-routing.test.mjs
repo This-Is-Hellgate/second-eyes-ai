@@ -20,7 +20,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
-  LOUNGE_SERVICE_PRICES_USD,
+  CAPABILITY_PRICES_USD,
   x402RouteSlug,
   x402ServicePath,
 } from "../../packages/secondeye-mcp/src/x402-wallet.js";
@@ -53,7 +53,7 @@ function routeIsLive(routeSlug) {
 }
 
 console.log("\n[1] Every autopay catalog slug resolves to a LIVE session-less x402 route (C-019)");
-for (const slug of Object.keys(LOUNGE_SERVICE_PRICES_USD)) {
+for (const slug of Object.keys(CAPABILITY_PRICES_USD)) {
   const path = x402ServicePath(slug);
   check(`"${slug}" resolves to an /api/bar/x402 path`, typeof path === "string" && path.startsWith("/api/bar/x402/"), JSON.stringify(path));
   const routeSlug = x402RouteSlug(slug);

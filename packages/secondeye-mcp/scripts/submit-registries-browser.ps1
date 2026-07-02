@@ -2,8 +2,8 @@
 # Run after signing in to each platform in the headed browser window.
 
 $ErrorActionPreference = "Stop"
-$Name = "MCP 401 Fix — github-mcp PAT wiring — x402"
-$Repo = "https://github.com/This-Is-Hellgate/secondeye-mcp"
+$Name = "Second Eyes Agent Workflow Services"
+$Repo = "https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp"
 $SmitheryUrl = "https://secondeyesai.com/api/bar"
 $SmitheryName = "This-Is-Hellgate/secondeye-mcp-unblock"
 $ConfigPath = Join-Path $PSScriptRoot "mcp-so-config-eval.js"

@@ -1,32 +1,15 @@
 # Official MCP Registry
 
-**server.json:** `./server.json` in repo root
+Canonical name: `io.github.This-Is-Hellgate/secondeye-mcp-unblock`
 
-**Namespace:** `io.github.This-Is-Hellgate/secondeye-mcp-unblock` (casing matters)
+Release candidate: `1.2.6`
 
-## Publish steps
+Publication is handled by `.github/workflows/publish-mcp.yml` after npm Trusted Publishing succeeds. The workflow authenticates with GitHub OIDC, validates `server.json`, and publishes the immutable version record.
 
-```bash
-cd secondeye-mcp
-npm install -g @modelcontextprotocol/registry-cli   # or use npx
-mcp-publisher login github
-mcp-publisher publish
+Verify directly:
+
+```text
+https://registry.modelcontextprotocol.io/v0.1/servers/io.github.This-Is-Hellgate%2Fsecondeye-mcp-unblock/versions/latest
 ```
 
-Requires GitHub OAuth and repo `This-Is-Hellgate/second-eyes-ai` (packages/secondeye-mcp) with this `server.json` committed.
-
-## npm publish (optional, for stdio package)
-
-```bash
-npm publish --access public
-```
-
-Package: `@secondeyes/mcp-unblock@1.2.1` (current autopay, x402 **v2**: `ExactEvmScheme`, `eip155:8453`). **Do not use `@1.1.x`** (x402 v1, fails production 402s); `@1.0.5` is a free-reads-only fallback. Payment docs: https://secondeyesai.com/llms.txt
-
-## Search-optimized title
-
-**MCP 401 Auth Fix | github PAT wiring | x402 proof required**
-
-## Search tags (in server.json _meta)
-
-401, github-mcp, cursor-mcp, PAT, x402, usdc, unblock, mcp-wiring, claim-check, should-i-pay
+Every new metadata publication requires a unique version aligned with the npm package.
