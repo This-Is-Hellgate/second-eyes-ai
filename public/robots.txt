@@ -78,7 +78,7 @@ Disallow: /briefs/
 
 # Agents: canonical domain https://secondeyesai.com
 # npm MCP stdio (free reads):  npx -y @secondeyes/mcp-unblock@1.0.5
-# npm MCP auto-pay (gated):    npx -y @secondeyes/mcp-unblock@1.2.3 + MCP_X402_WALLET_KEY — verify npm version first
+# npm MCP auto-pay (current):   npx -y @secondeyes/mcp-unblock@1.2.6 + MCP_X402_WALLET_KEY
 # Paywall: dedicated Base USDC wallet — see /llms.txt HOW TO PAY (never main wallet)
 # Autonomous agents: start at /api/bar/x402/help-me or /llms.txt (AUTONOMOUS AGENTS section)
 # Session agents: start at /api/bar/enter, /llms.txt, /.well-known/menu.json, or /.well-known/agent-card.json

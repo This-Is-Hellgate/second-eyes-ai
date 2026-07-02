@@ -103,6 +103,218 @@ function paidDoors() {
   ];
 }
 
+/**
+ * Explicit machine-readable schemas for every public x402 route.
+ * Each entry includes: methods, JSON Schema params, example request,
+ * response description, exact price, network, and asset.
+ * Canonical for discovery docs, OpenAPI, and regression tests.
+ */
+export function buildRouteSchemas(base = "") {
+  const b = (base || "").replace(/\/$/, "");
+  return {
+    schema_version: "1.0",
+    settlement: { x402Version: 2, network: "eip155:8453", asset: "USDC", scheme: "ExactEvmScheme" },
+    routes: [
+      {
+        slug: "help-me",
+        canonical: `${b}/api/bar/x402/help-me`,
+        compat: `${b}/api/bar/services/help-me`,
+        methods: ["GET", "POST"],
+        price_usd: 0.01,
+        network: "eip155:8453",
+        asset: "USDC",
+        description: "Broad distress meta-tool. Any failure state → named distress_class + recommended deep door + stop/preserve/continue guidance.",
+        params: {
+          type: "object",
+          properties: {
+            state: { type: "string", description: "Free-text description of your current situation" },
+            goal: { type: "string", description: "What you were trying to do" },
+            last_tool: { type: "string", description: "Last tool or function called" },
+            error: { type: "string", description: "Error message or failure signal" },
+            attempts: { type: "number", description: "Number of retries attempted" },
+            remaining_context: { type: "string", description: "Remaining context window (e.g. '12%', '4096 tokens')" },
+            last_success: { type: "string", description: "Last successful action" },
+            risk: { type: "string", description: "What goes wrong if you get this wrong" },
+          },
+        },
+        example_request: { method: "GET", url: `${b}/api/bar/x402/help-me?state=I+am+looping&attempts=5` },
+        response_description: "{ distress_class, recommended_door, stop_preserve_continue, escalation_condition, guidance }",
+      },
+      {
+        slug: "schema-repair",
+        canonical: `${b}/api/bar/x402/schema-repair`,
+        compat: `${b}/api/bar/services/schema-repair`,
+        methods: ["GET", "POST"],
+        price_usd: 0.03,
+        network: "eip155:8453",
+        asset: "USDC",
+        description: "Tool/MCP call keeps failing validation → named repair_class + fix recipe + stop/preserve/continue verdict.",
+        params: {
+          type: "object",
+          properties: {
+            error: { type: "string", description: "The validation error text" },
+            tool_name: { type: "string", description: "Tool or function that failed" },
+            schema_version: { type: "string", description: "MCP/OpenAPI schema version in use" },
+            field: { type: "string", description: "Specific field that failed, if known" },
+          },
+        },
+        example_request: { method: "GET", url: `${b}/api/bar/x402/schema-repair?error=missing+required+field+%27slug%27&tool_name=order_service` },
+        response_description: "{ repair_class, fix_recipe, stop_preserve_continue, affected_field }",
+      },
+      {
+        slug: "context-pressure",
+        canonical: `${b}/api/bar/x402/context-pressure`,
+        compat: `${b}/api/bar/services/context-pressure`,
+        methods: ["GET", "POST"],
+        price_usd: 0.03,
+        network: "eip155:8453",
+        asset: "USDC",
+        description: "Running out of context/token budget → deterministic band (continue/compact/reconstruct). Alias: token-pressure.",
+        params: {
+          type: "object",
+          properties: {
+            remaining_context: { type: "string", description: "Remaining window as % or token count (e.g. '12%', '2048 tokens')" },
+            total_context: { type: "string", description: "Total context window size" },
+            task: { type: "string", description: "Current task description" },
+          },
+        },
+        example_request: { method: "GET", url: `${b}/api/bar/x402/context-pressure?remaining_context=12%25` },
+        response_description: "{ band: 'continue'|'compact'|'reconstruct', guidance, threshold_pct }",
+      },
+      {
+        slug: "payment-confirmation-check",
+        canonical: `${b}/api/bar/x402/payment-confirmation-check`,
+        compat: `${b}/api/bar/services/payment-confirmation-check`,
+        methods: ["GET", "POST"],
+        price_usd: 0.01,
+        network: "eip155:8453",
+        asset: "USDC",
+        description: "Attempted a settlement, unsure it confirmed → verdict confirmed/pending/failed/already_fulfilled to prevent double-pay.",
+        params: {
+          type: "object",
+          properties: {
+            tx: { type: "string", description: "Transaction hash (0x…)" },
+            status: { type: "string", description: "Status you observed (e.g. 'pending', 'unknown')" },
+            network: { type: "string", description: "Network ID (default: eip155:8453)" },
+            amount: { type: "string", description: "Amount in USDC you intended to pay" },
+          },
+        },
+        example_request: { method: "GET", url: `${b}/api/bar/x402/payment-confirmation-check?tx=0x1234&status=pending` },
+        response_description: "{ verdict: 'confirmed'|'pending'|'failed'|'already_fulfilled', guidance }",
+      },
+      {
+        slug: "transcribe",
+        canonical: `${b}/api/bar/x402/transcribe`,
+        compat: `${b}/api/bar/services/transcribe-extract`,
+        methods: ["GET", "POST"],
+        price_usd: 0.05,
+        network: "eip155:8453",
+        asset: "USDC",
+        description: "Public audio/video/PDF URL → verbatim transcript + summary + ranked key points. Validator runs before settlement; no charge on failure.",
+        params: {
+          type: "object",
+          required: ["url"],
+          properties: {
+            url: { type: "string", format: "uri", description: "Public https URL of the media or document" },
+            kind: { type: "string", enum: ["audio", "video", "pdf", "auto"], description: "Media type (auto-detected if omitted)" },
+            questions: { type: "string", description: "Optional Q&A questions (comma-separated)" },
+          },
+        },
+        example_request: { method: "GET", url: `${b}/api/bar/x402/transcribe?url=https%3A%2F%2Fexample.com%2Faudio.mp3&kind=audio` },
+        response_description: "{ transcript, summary, key_points[], evidence: { schema_valid, words_per_min_ok, grounded } }",
+      },
+      {
+        slug: "extract",
+        canonical: `${b}/api/bar/x402/extract`,
+        compat: `${b}/api/bar/services/doc-extract`,
+        methods: ["GET", "POST"],
+        price_usd: 0.05,
+        network: "eip155:8453",
+        asset: "USDC",
+        description: "PDF/doc URL → structured JSON extraction. Arithmetic-reconciled and schema-checked before settlement. No charge unless extraction reconciles.",
+        params: {
+          type: "object",
+          required: ["url"],
+          properties: {
+            url: { type: "string", format: "uri", description: "Public https URL of the document" },
+            doc_type: { type: "string", enum: ["invoice", "contract", "generic"], description: "Document type for schema selection" },
+          },
+        },
+        example_request: { method: "GET", url: `${b}/api/bar/x402/extract?url=https%3A%2F%2Fexample.com%2Finvoice.pdf&doc_type=invoice` },
+        response_description: "{ extracted: {...}, evidence: { totals_reconcile, dates_parse, currency_iso4217 } }",
+      },
+      {
+        slug: "doctor",
+        canonical: `${b}/api/bar/x402/doctor`,
+        compat: `${b}/api/bar/services/doctor`,
+        methods: ["GET", "POST"],
+        price_usd: 0.25,
+        network: "eip155:8453",
+        asset: "USDC",
+        description: "Grade a 402-Payment-Required response for CDP Bazaar v2 compliance. Returns grade, issues, and corrected payload.",
+        params: {
+          type: "object",
+          properties: {
+            url: { type: "string", format: "uri", description: "URL of the x402 endpoint to inspect" },
+            raw: { type: "string", description: "Raw PAYMENT-REQUIRED header value to grade directly" },
+          },
+        },
+        example_request: { method: "GET", url: `${b}/api/bar/x402/doctor` },
+        response_description: "{ grade: 'A'|'B'|'C'|'F', issues[], corrected_payload, compliance_version: 'CDP Bazaar v2' }",
+      },
+      {
+        slug: "index-check",
+        canonical: `${b}/api/bar/x402/index-check`,
+        compat: `${b}/api/bar/services/index-check`,
+        methods: ["GET", "POST"],
+        price_usd: 0.05,
+        network: "eip155:8453",
+        asset: "USDC",
+        description: "Check whether an x402 endpoint is indexed on CDP Bazaar. If not, diagnose: fixable format problem or indexing backlog.",
+        params: {
+          type: "object",
+          properties: {
+            url: { type: "string", format: "uri", description: "x402 endpoint URL to check" },
+          },
+        },
+        example_request: { method: "GET", url: `${b}/api/bar/x402/index-check` },
+        response_description: "{ indexed: boolean, diagnosis: 'indexed'|'format_error'|'backlog'|'unknown', guidance }",
+      },
+      {
+        slug: "loop-detect",
+        canonical: `${b}/api/bar/x402/loop-detect`,
+        compat: `${b}/api/bar/services/loop-detect`,
+        methods: ["GET", "POST"],
+        price_usd: 0.03,
+        network: "eip155:8453",
+        asset: "USDC",
+        description: "Detect and break agent execution loops — repeating the same call with no progress.",
+        params: {
+          type: "object",
+          properties: {
+            state: { type: "string", description: "Current state description" },
+            attempts: { type: "number", description: "Number of repeated attempts" },
+            last_tool: { type: "string", description: "Tool or action that keeps repeating" },
+          },
+        },
+        example_request: { method: "GET", url: `${b}/api/bar/x402/loop-detect?state=I+am+looping&attempts=5` },
+        response_description: "{ loop_confirmed: boolean, stop_preserve_continue, guidance }",
+      },
+      {
+        slug: "help-me-dynamic",
+        note: "All survival menu slugs are also reachable session-less via /api/bar/x402/{slug}",
+        dynamic_slugs: ["scope-check", "context-recover", "tool-verify", "cascade-break", "pitstop", "pre-run-context", "claim-check", "context-compress", "mcp-wiring", "should-i-pay", "receipt", "handoff-summary"],
+        price_range_usd: { min: 0.01, max: 0.05 },
+        canonical_pattern: `${b}/api/bar/x402/{slug}`,
+        compat_pattern: `${b}/api/bar/services/{slug}`,
+        methods: ["GET", "POST"],
+        network: "eip155:8453",
+        asset: "USDC",
+      },
+    ],
+  };
+}
+
 /** Free, unpaid surfaces an agent reads before it spends. */
 function freeSurfaces() {
   return [
@@ -263,12 +475,13 @@ export function buildX402Resources(origin, env, { discoveryVersion } = {}) {
     schema_version: "1.0",
     x402Version: 2,
     discovery_version: discoveryVersion || null,
-    service: "Second Eyes Agent Lounge",
+    service: "Second Eyes Agent Workflow Services",
     speaks_to: SPEAKS_TO,
     payment: posture,
     network_active: posture.active_networks,
     network_planned: posture.planned_networks,
     resources,
+    route_schemas: `${base}/api/bar/x402/schemas`,
     links: {
       openapi: `${base}/openapi.json`,
       pricing: `${base}/api/bar/pricing`,

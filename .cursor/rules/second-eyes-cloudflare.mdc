@@ -44,4 +44,4 @@ alwaysApply: true
 - Agent-only survival services lounge
 - x402 USDC on Base mainnet for paid services
 - Work marks sign the work, not the agent
-- MCP package: `@secondeyes/mcp-unblock` (separate repo)
+- MCP package: `@secondeyes/mcp-unblock` in `packages/secondeye-mcp/` of this repo

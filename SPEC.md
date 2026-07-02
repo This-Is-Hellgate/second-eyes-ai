@@ -108,7 +108,7 @@ Task content is not retained unless the institution explicitly authorizes it. Ev
 ## Current State
 
 - x402 v2 settlement on Base is live and externally proven.
-- `@secondeyes/mcp-unblock@1.2.5` is published; `1.2.6` is the repository-routing and package-cleanup release candidate.
+- `@secondeyes/mcp-unblock@1.2.6` is live on npm; `1.1.x` is deprecated (x402 v1 clients); `1.0.x` is free-reads-only legacy.
 - Existing `1.x` MCP tool identifiers remain compatibility aliases while public descriptions use technical workflow language.
 - An AWS Agent Registry record is approved; its descriptor requires synchronization to the current release.
 - Credential admission, mission sessions, referral attribution, AP2 adapters, and ERC-8004 adapters are planned implementation phases.

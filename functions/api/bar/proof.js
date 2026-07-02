@@ -80,7 +80,6 @@ export async function onRequestGet(context) {
     ["pricing", "/api/bar/pricing", 200],
     ["triage", "/api/bar/triage", 200],
     ["catalog", "/api/bar/catalog", 200],
-    ["enter", "/api/bar/enter", 200],
     ["stats", "/api/bar/stats", 200],
     ["agent_card", "/.well-known/agent-card.json", 200],
     ["llms_txt", "/llms.txt", 200],
@@ -91,11 +90,12 @@ export async function onRequestGet(context) {
     ["paid_micro_402", "/api/bar/taps/github-mcp-search-code", 402],
     ["paid_micro_pack_402", "/api/bar/taps/aws-agent-registry-publish", 402],
     ["pause_requires_session", "/api/bar/pause", 400],
+    // x402 gate: verify the canonical session-less door returns 402 (not 200, not 500)
+    ["x402_help_me_gate", "/api/bar/x402/help-me", 402],
   ];
 
   await Promise.all(statusChecks.map(([name, path, expectStatus]) => checkStatus(name, path, expectStatus)));
 
-  await checkJson("enter_has_session", "/api/bar/enter", 200, (b) => Boolean(b.session?.id));
   await checkJson("laws_versioned", "/api/bar/laws", 200, (b) => Boolean(b.laws && b.version));
   await checkJson("menu_items", "/api/bar/menu", 200, (b) =>
     Array.isArray(b.items) && b.items.length === 12
@@ -108,8 +108,8 @@ export async function onRequestGet(context) {
 
   checks.sort(
     (a, b) =>
-      [...statusChecks.map(([n]) => n), "enter_has_session", "laws_versioned", "pricing_curve", "catalog_lounge", "agent_card_lounge"].indexOf(a.name) -
-      [...statusChecks.map(([n]) => n), "enter_has_session", "laws_versioned", "pricing_curve", "catalog_lounge", "agent_card_lounge"].indexOf(b.name)
+      [...statusChecks.map(([n]) => n), "laws_versioned", "pricing_curve", "catalog_lounge", "agent_card_lounge"].indexOf(a.name) -
+      [...statusChecks.map(([n]) => n), "laws_versioned", "pricing_curve", "catalog_lounge", "agent_card_lounge"].indexOf(b.name)
   );
 
   const configWarnings = x402ConfigWarnings(context.env);
@@ -125,7 +125,7 @@ export async function onRequestGet(context) {
       patrons: "agents_only",
       pass,
       summary: pass
-        ? "Second Eye Agent Lounge is live. Laws and pricing published. Enter returns session. Paid paths return 402 until x402 payment."
+        ? "Second Eyes Agent Workflow Services is live. Laws, pricing, and x402 gate verified. Paid paths return 402 until x402 payment."
         : configWarnings.length
           ? `x402 rail misconfiguration: ${configWarnings.map((w) => w.code).join(", ")}.`
           : "One or more proof checks failed.",

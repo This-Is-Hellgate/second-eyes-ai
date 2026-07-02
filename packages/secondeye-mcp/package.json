@@ -53,7 +53,7 @@
     "zod": "^4.4.3"
   },
   "scripts": {
-    "test": "node ../../test/x402-wallet/registry-manifest.test.mjs && node ../../test/x402-wallet/mcp-folder-hygiene.test.mjs && node ../../test/x402-wallet/spec-authority.test.mjs && node ../../test/x402-wallet/autopay-defaults.test.mjs && node ../../test/x402-wallet/tool-metadata.test.mjs && node ../../test/x402-wallet/order-routing.test.mjs",
+    "test": "node ../../test/x402-wallet/registry-manifest.test.mjs && node ../../test/x402-wallet/mcp-folder-hygiene.test.mjs && node ../../test/x402-wallet/spec-authority.test.mjs && node ../../test/x402-wallet/autopay-defaults.test.mjs && node ../../test/x402-wallet/tool-metadata.test.mjs && node ../../test/x402-wallet/order-routing.test.mjs && node ../../test/x402-wallet/publication-regression.test.mjs",
     "test:mcp-pay": "node scripts/mcp-order-pay-canary.mjs"
   }
 }

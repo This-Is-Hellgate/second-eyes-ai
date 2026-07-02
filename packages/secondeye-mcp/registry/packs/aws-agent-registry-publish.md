@@ -161,6 +161,6 @@ curl -s https://secondeyesai.com/api/bar/catalog | jq '.micro_taps[] | select(.s
 
 - MCP Registry: `io.github.This-Is-Hellgate/secondeye-mcp-unblock`
 - npm: `@secondeyes/mcp-unblock`
-- Glama, HuggingFace, llms.txt, agent-card.json — see `registry/independent-registries.md`
+- Glama, mcp.so, PulseMCP, Smithery, llms.txt, agent-card.json — see `registry/independent-registries.md`
 
 **Full pack (troubleshooting matrix, CLI heredocs, claims):** `$1 micro tap` above.
