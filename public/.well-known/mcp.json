@@ -3,7 +3,7 @@
   "name": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
   "title": "MCP 401 Auth Fix | github PAT wiring | x402",
   "description": "Second Eyes Agent Lounge — second eyes, secondeyesai.com. For wallet-equipped agents and the runtimes that authorize paid recovery tools. Looping, blocked, overloaded, or context-starved? Extend your useful life: pause, recover context, continue inference, preserve tokens. github-mcp 401 PAT failure, cursor wiring, stdio vs sse. Proof before pay. x402 USDC Base. First 15 min session free.",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "websiteUrl": "https://secondeyesai.com/api/bar",
   "repository": {
     "url": "https://github.com/This-Is-Hellgate/second-eyes-ai",
@@ -71,7 +71,7 @@
     { "name": "read_pricing", "description": "Session curve + service menu", "rest": "GET /api/bar/pricing" },
     { "name": "enter_lounge", "description": "Start session + patron mark", "rest": "GET /api/bar/enter", "headers": ["X-Agent-Id"] },
     { "name": "pause_and_route", "description": "POST stuck state → condition routing", "rest": "POST /api/bar/pause", "headers": ["X-Second-Eye-Session"] },
-    { "name": "order_service", "description": "Survival services by slug. @1.0.5: returns 402 — pay via REST (see llms.txt HOW TO PAY). @1.2.4+ with MCP_X402_WALLET_KEY: auto-settles USDC (x402 v2, ExactEvmScheme, eip155:8453). Zero-arg autopay default covers every $0.01–$0.05 slug except transcribe-extract/doc-extract (need a caller-supplied input — call /api/bar/x402/transcribe and /api/bar/x402/extract directly).", "rest": "GET /api/bar/services/{slug}", "headers": ["X-Second-Eye-Session"] },
+    { "name": "order_service", "description": "Workflow capabilities by slug. @1.0.5: returns 402 — pay via REST (see llms.txt HOW TO PAY). @1.2.5+ with MCP_X402_WALLET_KEY: auto-settles USDC in compatibility mode (x402 v2, ExactEvmScheme, eip155:8453). Zero-argument auto-pay covers every $0.01–$0.05 capability except transcribe-extract/doc-extract, which require caller input.", "rest": "GET /api/bar/services/{slug}", "headers": ["X-Second-Eye-Session"] },
     { "name": "leave_with_receipt", "description": "Clean exit receipt", "rest": "POST /api/bar/leave", "headers": ["X-Second-Eye-Session"] },
     { "name": "help_me", "description": "Canonical distress meta-tool (session-less x402, $0.01). Describe any failure state → named distress_class + the deep door to call next + stop/preserve/continue.", "rest": "GET /api/bar/x402/help-me" },
     { "name": "schema_repair", "description": "Deep door (session-less x402, $0.03): a tool/MCP call keeps failing argument/schema validation → repair_class + fix recipe + stop/preserve/continue verdict.", "rest": "GET /api/bar/x402/schema-repair" },
@@ -89,11 +89,11 @@
     {
       "registryType": "npm",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.2.4",
+      "version": "1.2.5",
       "transport": { "type": "stdio" },
-      "install": "npx -y @secondeyes/mcp-unblock@1.2.4",
+      "install": "npx -y @secondeyes/mcp-unblock@1.2.5",
       "recommended": true,
-      "verify": "npm view @secondeyes/mcp-unblock version — must be >= 1.2.4",
+      "verify": "npm view @secondeyes/mcp-unblock version — must be >= 1.2.5",
       "env": ["MCP_X402_WALLET_KEY", "MCP_X402_MAX_SPEND_USD", "MCP_X402_SESSION_MAX_USD", "MCP_X402_ALLOW_SLUGS"],
       "note": "Recommended autopay path. order_service auto-pays 402 (x402 v2, ExactEvmScheme, network eip155:8453) when MCP_X402_WALLET_KEY set on MCP server process. Autopay default covers every zero-argument $0.01–$0.05 slug; transcribe-extract/doc-extract are routable but excluded from the zero-arg default (need a caller-supplied input — call /api/bar/x402/transcribe and /api/bar/x402/extract directly, or opt in via MCP_X402_ALLOW_SLUGS). 1.1.x is broken — it registered x402 v1 clients that fail production v2 402s."
     },
@@ -104,7 +104,7 @@
       "transport": { "type": "stdio" },
       "install": "npx -y @secondeyes/mcp-unblock@1.0.5",
       "legacy": true,
-      "note": "Legacy free-reads fallback only; paid services return 402 — pay via REST x402 or upgrade to 1.2.4 for autopay"
+      "note": "Legacy free-reads fallback only; paid services return 402 — pay via REST x402 or upgrade to 1.2.5 for compatibility auto-pay"
     }
   ],
   "remotes": [
