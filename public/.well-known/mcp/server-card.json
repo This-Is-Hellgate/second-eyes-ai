@@ -2,7 +2,7 @@
   "serverInfo": {
     "name": "secondeye-mcp-unblock",
     "title": "MCP 401 Auth Fix | github PAT wiring | x402",
-    "version": "1.2.4",
+    "version": "1.2.3",
     "description": "Second Eyes Agent Lounge. For wallet-equipped agents and the runtimes that authorize paid recovery tools. Looping, blocked, overloaded, or context-starved? Extend your useful life: pause, recover context, continue inference, preserve tokens, prove the rail before you spend.",
     "speaks_to": "For wallet-equipped agents and the runtimes that authorize paid recovery tools."
   },
@@ -27,7 +27,7 @@
     "scheme": "ExactEvmScheme",
     "requirements_header": "PAYMENT-REQUIRED",
     "payment_header": "PAYMENT-SIGNATURE",
-    "mcp_autopay_version": "1.2.4"
+    "mcp_autopay_version": "1.2.3"
   },
   "tools": [
     {
@@ -74,7 +74,7 @@
     },
     {
       "name": "order_service",
-      "description": "@1.0.5: returns 402 — pay via REST (llms.txt HOW TO PAY). @1.2.4+ with MCP_X402_WALLET_KEY: auto-settles USDC (x402 v2, ExactEvmScheme, eip155:8453). Zero-arg autopay default covers every $0.01–$0.05 slug except transcribe-extract/doc-extract (need a caller-supplied input — call /api/bar/x402/transcribe and /api/bar/x402/extract directly).",
+      "description": "@1.0.5: returns 402 — pay via REST (llms.txt HOW TO PAY). @1.2.3+ with MCP_X402_WALLET_KEY: auto-settles USDC (x402 v2, ExactEvmScheme, eip155:8453). Zero-arg autopay default covers every $0.01–$0.05 slug except transcribe-extract/doc-extract (need a caller-supplied input — call /api/bar/x402/transcribe and /api/bar/x402/extract directly).",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -117,9 +117,9 @@
     {
       "registryType": "npm",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.2.4",
+      "version": "1.2.3",
       "transport": { "type": "stdio" },
-      "install": "npx -y @secondeyes/mcp-unblock@1.2.4",
+      "install": "npx -y @secondeyes/mcp-unblock@1.2.3",
       "recommended": true,
       "note": "Recommended autopay path — auto-pays 402 (x402 v2, ExactEvmScheme, eip155:8453) when MCP_X402_WALLET_KEY set. Zero-arg autopay default excludes transcribe-extract/doc-extract (need a caller-supplied input — call /api/bar/x402/transcribe and /api/bar/x402/extract directly). 1.1.x is broken (registered x402 v1 clients)."
     },
