@@ -108,7 +108,7 @@ The new mark's `lineage.referred_by` is now `mk_abcd1234`, and the returned
 ### 3. One-shot agents (no session) use `help_me`
 
 Session-less x402 agents (AWS AgentCore, cron agents, x402 buyers) carry the mark
-through the canonical distress door instead of `/enter`:
+through the canonical distress route instead of `/enter`:
 
 ```http
 GET /api/bar/x402/help-me?via=mk_abcd1234

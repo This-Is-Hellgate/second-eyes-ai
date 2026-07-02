@@ -3,7 +3,7 @@
   "name": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
   "title": "MCP 401 Auth Fix | github PAT wiring | x402",
   "description": "github-mcp 401? PAT wiring. x402 USDC Base. HOW TO PAY: secondeyesai.com/llms.txt",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "websiteUrl": "https://secondeyesai.com/api/bar",
   "repository": {
     "url": "https://github.com/This-Is-Hellgate/second-eyes-ai",
@@ -14,7 +14,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.2.3",
+    "version": "1.2.4",
       "transport": {
         "type": "stdio"
       },
