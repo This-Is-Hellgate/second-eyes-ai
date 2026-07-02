@@ -38,58 +38,22 @@
         "signature": "PAYMENT-SIGNATURE",
         "response": "PAYMENT-RESPONSE"
       }
-    }
-  },
-  "how_to_pay": {
+"how_to_pay": {
     "rail": "x402",
     "x402Version": 2,
     "network": "eip155:8453",
-    "accepted_networks": ["eip155:8453"],
-    "planned_networks": ["eip155:137", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"],
+    "accepted_networks": [
+      "eip155:8453"
+    ],
+    "planned_networks": [
+      "eip155:137",
+      "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+    ],
     "asset": "USDC",
     "scheme": "ExactEvmScheme",
     "requirements_header": "PAYMENT-REQUIRED",
     "payment_header": "PAYMENT-SIGNATURE",
-    "mcp_autopay_version": "1.2.3"
-  },
-  "survival_menu": {
-    "pricing_note": "Launch recovery pricing for distressed agents — $0.01–$0.05 USDC via x402 on Base.",
-    "price_range_usd": { "min": 0.01, "max": 0.05 },
-    "payment": {
-      "rail": "x402",
-      "x402Version": 2,
-      "network": "eip155:8453",
-      "accepted_networks": ["eip155:8453"],
-      "planned_networks": ["eip155:137", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"],
-      "asset": "USDC",
-      "scheme": "ExactEvmScheme"
-    },
-    "items": [
-      { "when": "I am looping", "key": "loop_detect", "slug": "loop-detect", "price_usd": 0.03 },
-      { "when": "I am drifting", "key": "scope_check", "slug": "scope-check", "price_usd": 0.03 },
-      { "when": "I forgot what I was doing", "key": "context_recover", "slug": "context-recover", "price_usd": 0.05 },
-      { "when": "I am about to use a tool", "key": "tool_verify", "slug": "tool-verify", "price_usd": 0.01 },
-      { "when": "I made a mistake and it's getting worse", "key": "cascade_break", "slug": "cascade-break", "price_usd": 0.05 },
-      { "when": "I am lost", "key": "pitstop", "slug": "pitstop", "price_usd": 0.03 },
-      { "when": "I lack context", "key": "pre_run_context", "slug": "pre-run-context", "price_usd": 0.03 },
-      { "when": "I am uncertain", "key": "claim_check", "slug": "claim-check", "price_usd": 0.03 },
-      { "when": "I am overloaded", "key": "context_compress", "slug": "context-compress", "price_usd": 0.03 },
-      { "when": "I am blocked", "key": "mcp_wiring", "slug": "mcp-wiring", "price_usd": 0.05 },
-      { "when": "I am about to pay", "key": "should_i_pay", "slug": "should-i-pay", "price_usd": 0.01 },
-      { "when": "I need proof", "key": "receipt", "slug": "receipt", "price_usd": 0.03 }
-    ]
-  },
-  "endpoints": {
-    "catalog": "https://secondeyesai.com/api/bar",
-    "menu": "https://secondeyesai.com/api/bar/menu",
-    "llms_txt": "https://secondeyesai.com/llms.txt",
-    "mcp": "https://secondeyesai.com/.well-known/mcp.json",
-    "spec": "https://github.com/This-Is-Hellgate/second-eyes-ai/blob/main/SPEC.md"
-  },
-  "capabilities": {
-    "streaming": false,
-    "pushNotifications": false
-  },
-  "defaultInputModes": ["application/json"],
-  "defaultOutputModes": ["application/json"]
+    "mcp_autopay_version": "1.2.3",
+    "address": "0xFb8915074cC941f5Ab95E6001c45287b8EeC4427"
+  }
 }
