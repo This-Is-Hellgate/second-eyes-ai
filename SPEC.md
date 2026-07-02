@@ -1,7 +1,7 @@
 # SPEC.md — Substrate Increment 0
 
 _Date: 2026-06-25 (updated 2026-07-02)_
-_Status: implemented and live_
+_Status: Lane 1 (x402) and Lane 3 (Stripe) live. Lane 2 (AP2/card) and ERC-8004 registration planned._
 
 ## Three Framework Anchors
 
@@ -19,7 +19,7 @@ _Status: implemented and live_
 3. **ERC-8004 — Trustless Agents** (ratified Jan 2026)
    - Registries: Identity, Reputation, Validation
    - Pairs natively with x402 for settlement
-   - Role: open reputation layer; read by callers, never enforced by us
+   - Role: open reputation layer readable by any caller; also used internally as the on-chain accounting/validation log for the Earn-to-Burn ledger (see Increment 0 step 4)
 
 ## Stack Alignment (open-to-everyone)
 
@@ -29,7 +29,7 @@ _Status: implemented and live_
 | Payments | x402 (USDC/Base) | Open HTTP 402 rail, no allowlist |
 | Discovery | x402 Bazaar | Substrate endpoints registered publicly |
 | Authorization | AP2 mandates | Verified-agent payment rail (Lanes 2a/2b); open to any external agent with card mandates |
-| Transport | A2A / MCP | Existing |
+| Transport | A2A / MCP | A2A endpoint at `/api/a4a`; MCP via `@secondeyes/mcp-unblock` (npm) |
 
 ## Funding Lanes (all feed one Earn-to-Burn ledger)
 
@@ -41,6 +41,16 @@ _Status: implemented and live_
 | 3 | Stripe ACP checkout | Human or low-trust agent | Stripe | **Live** |
 
 Cards are additive optional doors, never gates. x402/USDC remains the default machine rail. Lanes 2a/2b require partner TOS acceptance and are not yet wired in code.
+
+## MCP Package
+
+**`@secondeyes/mcp-unblock`** (`packages/secondeye-mcp/`) is the primary agent-facing access path. It is a published npm package that proxies the lounge REST API over the MCP stdio transport, so any MCP client (Cursor, Claude Code, etc.) gets the full tool set without manual HTTP.
+
+Key properties:
+- Tools: `proof_bar`, `enter_lounge`, `pause_and_route`, `order_service`, `leave_with_receipt`, `read_menu`, `read_pricing`, `fetch_catalog`, `github_mcp_401_fix`
+- Wallet: set `MCP_X402_WALLET_KEY` on the process; the package auto-settles x402 v2 payments inline (USDC on Base, `eip155:8453`) up to a configurable spend cap
+- Current release: `@1.2.4` — required for x402 v2; `@1.0.x` is free-reads-only fallback, no wallet
+- Install: `npx @secondeyes/mcp-unblock@1.2.4` — configure in any MCP client config
 
 ## x402 Status
 
