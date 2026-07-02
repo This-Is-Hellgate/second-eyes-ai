@@ -134,4 +134,13 @@ jobs:
         run: ./mcp-publisher publish --dry-run
 
       - name: Publish to MCP Registry
-        run: ./mcp-publisher publish
+        run: |
+          out=$(./mcp-publisher publish 2>&1) && echo "$out" || {
+            code=$?
+            echo "$out"
+            if echo "$out" | grep -q "duplicate version"; then
+              echo "Version already published to MCP Registry — skipping."
+              exit 0
+            fi
+            exit $code
+          }
