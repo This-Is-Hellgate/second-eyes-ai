@@ -24,10 +24,6 @@ compatibility_date = "2026-05-26"
 
 [vars]
 X402_NETWORK = "base"
-# Public merchant receive address. Keeping this deployment-critical value in
-# versioned config prevents paid routes from silently returning
-# `x402_not_configured` when a Cloudflare secret is absent.
-X402_PAYTO = "0xFb8915074cC941f5Ab95E6001c45287b8EeC4427"
 # KNOWN_TEST_PAYERS — operator/test wallets excluded from external_buyer_signal
 # (comma/space-separated 0x addresses). Built-in defaults already cover the
 # canary payer + lounge payTo; set this to add CI/test wallets without a code
