@@ -96,6 +96,11 @@ function truthy(v) {
   return s === "1" || s === "true" || s === "yes" || s === "on";
 }
 
+/** Cloudflare secret first; versioned public receive address as deploy-safe fallback. */
+function canonicalBasePayTo(env) {
+  return env?.X402_PAYTO || env?.X402_PAYTO_PUBLIC || null;
+}
+
 /**
  * EVM payTo for a network.
  *
@@ -114,7 +119,7 @@ function truthy(v) {
 function evmPayTo(network, env) {
   if (truthy(env.X402_PAYTO_OVERRIDE) && env.X402_PAYTO) return env.X402_PAYTO;
   if (network.payto_env && env[network.payto_env]) return env[network.payto_env];
-  return env.X402_PAYTO || null;
+  return canonicalBasePayTo(env);
 }
 
 /** Solana payTo: dedicated env only — never guess, never reuse the EVM address. */
@@ -129,7 +134,7 @@ function solanaPayTo(env) {
 export function resolveActiveNetworks(env) {
   const active = [];
 
-  const basePayTo = env.X402_PAYTO;
+  const basePayTo = canonicalBasePayTo(env);
   if (basePayTo) active.push({ network: BASE_NETWORK, payTo: basePayTo });
 
   // INVARIANT: Base (the canonical rail) must anchor accepts[0]. If no Base payTo
@@ -193,7 +198,7 @@ export function railStates(env) {
   // alone — making proof/discovery report state=active/in_accepts=false (a rail that
   // says it is advertised while it is not). Gate the lifecycle on Base presence so the
   // state can NEVER claim active while not in accepts[].
-  const baseMissing = !e.X402_PAYTO;
+  const baseMissing = !canonicalBasePayTo(e);
   const polyState = polygonRailState({
     enabled: polyEnabled,
     hasPayTo: Boolean(evmPayTo(POLYGON_NETWORK, e)),
@@ -338,7 +343,7 @@ export function x402ConfigWarnings(env) {
   // state; this surfaces WHY so an operator does not see a silently empty accepts[].
   const optionalRailEnabled =
     truthy(env[POLYGON_NETWORK.enable_env]) || truthy(env[SOLANA_NETWORK.active_env]);
-  if (!env.X402_PAYTO && optionalRailEnabled) {
+  if (!canonicalBasePayTo(env) && optionalRailEnabled) {
     const enabledRails = [];
     if (truthy(env[POLYGON_NETWORK.enable_env])) enabledRails.push(POLYGON_NETWORK.id);
     if (truthy(env[SOLANA_NETWORK.active_env])) enabledRails.push(SOLANA_NETWORK.id);
