@@ -32,15 +32,48 @@ function listTools() {
   return new Promise((resolve, reject) => {
     const p = spawn("node", [SERVER], { stdio: ["pipe", "pipe", "pipe"] });
     let out = "";
+    let buffered = "";
     let stderr = "";
+    let settled = false;
     const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
       p.kill();
-      reject(new Error(`timeout; stderr=${stderr}`));
+      reject(new Error(`timeout waiting for tools/list; stderr=${stderr}\nstdout=${out.slice(0, 400)}`));
     }, 8000);
 
-    p.stdout.on("data", (d) => (out += d.toString()));
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      p.kill();
+      fn(value);
+    };
+
+    p.stdout.on("data", (d) => {
+      const chunk = d.toString();
+      out += chunk;
+      buffered += chunk;
+      const lines = buffered.split("\n");
+      buffered = lines.pop() || "";
+      for (const line of lines.filter(Boolean)) {
+        let message;
+        try {
+          message = JSON.parse(line);
+        } catch {
+          continue;
+        }
+        if (message.id === 1 && message.result) {
+          send({ jsonrpc: "2.0", method: "notifications/initialized", params: {} });
+          send({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} });
+        }
+        if (message.id === 2 && message.result?.tools) {
+          finish(resolve, message.result.tools);
+        }
+      }
+    });
     p.stderr.on("data", (d) => (stderr += d.toString()));
-    p.on("error", reject);
+    p.on("error", (error) => finish(reject, error));
 
     const send = (o) => p.stdin.write(JSON.stringify(o) + "\n");
     send({
@@ -49,20 +82,6 @@ function listTools() {
       method: "initialize",
       params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } },
     });
-    setTimeout(() => send({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }), 400);
-    setTimeout(() => {
-      clearTimeout(timer);
-      p.kill();
-      for (const line of out.split("\n").filter(Boolean)) {
-        try {
-          const j = JSON.parse(line);
-          if (j.id === 2 && j.result?.tools) return resolve(j.result.tools);
-        } catch {
-          /* skip non-JSON lines */
-        }
-      }
-      reject(new Error(`no tools/list response; stderr=${stderr}\nstdout=${out.slice(0, 400)}`));
-    }, 1500);
   });
 }
 

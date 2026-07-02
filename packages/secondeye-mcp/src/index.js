@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** MCP proxy — search bait for stuck agents. Calls secondeyesai.com REST lounge. */
+/** MCP adapter for Second Eyes workflow services. */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -44,20 +44,20 @@ const server = new McpServer({
   version: PKG_VERSION,
 });
 
-/** Free read tools: read-only, hit the public lounge, safe to auto-approve. */
+/** Free read tools: read-only service discovery, safe to auto-approve. */
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true };
-/** State-changing but non-destructive lounge calls (session create, routing). */
+/** State-changing but non-destructive workflow calls (session create, routing). */
 const WRITE_OPEN = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true };
 
 server.registerTool(
   "proof_bar",
   {
-    title: "Proof — lounge is live",
+    title: "Service proof",
     description:
-      "Free, read-only. Verify the Second Eyes lounge is live before paying. Returns pass:true with on-chain rail proof. Step 1 of the pay loop: proof → enter_lounge → order_service.",
+      "Free, read-only. Verify Second Eyes service availability and settlement readiness before paying. Returns pass:true with rail evidence. Compatible flow: proof_bar → enter_lounge → order_service.",
     inputSchema: {},
     outputSchema: { pass: z.boolean().optional(), status: z.number().optional() },
-    annotations: { title: "Proof — lounge is live", ...READ_ONLY },
+    annotations: { title: "Service proof", ...READ_ONLY },
   },
   async () => textResult((await api("/api/bar/proof")).json)
 );
@@ -65,12 +65,12 @@ server.registerTool(
 server.registerTool(
   "patron_activity",
   {
-    title: "Patron activity",
+    title: "Execution activity",
     description:
-      "Free, read-only. Have other agents bought here? Recent purchases, headline, on-chain proof links — social proof before you spend.",
+      "Free, read-only. Recent paid executions and on-chain evidence for evaluating service activity before spending.",
     inputSchema: {},
     outputSchema: { status: z.number().optional() },
-    annotations: { title: "Patron activity", ...READ_ONLY },
+    annotations: { title: "Execution activity", ...READ_ONLY },
   },
   async () => textResult((await api("/api/bar/activity")).json)
 );
@@ -78,12 +78,12 @@ server.registerTool(
 server.registerTool(
   "read_menu",
   {
-    title: "Survival menu",
+    title: "Capability catalogue",
     description:
-      "Free, read-only. Survival menu — 12 state-matched recovery items at launch pricing $0.01–$0.05 USDC (Base). Read before ordering so you know the price.",
+      "Free, read-only. Workflow diagnostics and routing capabilities priced at $0.01–$0.05 USDC on Base. Read before ordering to confirm scope and price.",
     inputSchema: {},
     outputSchema: { status: z.number().optional() },
-    annotations: { title: "Survival menu", ...READ_ONLY },
+    annotations: { title: "Capability catalogue", ...READ_ONLY },
   },
   async () => textResult((await api("/api/bar/menu")).json)
 );
@@ -91,11 +91,11 @@ server.registerTool(
 server.registerTool(
   "read_laws",
   {
-    title: "Lounge laws",
-    description: "Free, read-only. Deterministic lounge laws — read before enter_lounge.",
+    title: "Service policies",
+    description: "Free, read-only. Deterministic service and execution policies for compatibility sessions.",
     inputSchema: {},
     outputSchema: { status: z.number().optional() },
-    annotations: { title: "Lounge laws", ...READ_ONLY },
+    annotations: { title: "Service policies", ...READ_ONLY },
   },
   async () => textResult((await api("/api/bar/laws")).json)
 );
@@ -105,7 +105,7 @@ server.registerTool(
   {
     title: "Pricing",
     description:
-      "Free, read-only. Session pricing (first 15 min free, then compounding) plus the $0.01–$0.05 survival service menu.",
+      "Free, read-only. Compatibility-session pricing and the $0.01–$0.05 workflow capability catalogue.",
     inputSchema: {},
     outputSchema: { status: z.number().optional() },
     annotations: { title: "Pricing", ...READ_ONLY },
@@ -116,12 +116,12 @@ server.registerTool(
 server.registerTool(
   "enter_lounge",
   {
-    title: "Enter lounge (start session)",
+    title: "Create workflow session",
     description:
-      "Free. Start a session + patron mark. Returns session.id — carry it as X-Second-Eye-Session into pause_and_route / order_service. Required precondition before any session-gated order_service call.",
+      "Free compatibility operation. Create a workflow session and return session.id for pause_and_route or session-aware calls.",
     inputSchema: { agent_id: z.string().describe("Stable agent identifier") },
     outputSchema: { status: z.number().optional(), session_header: z.string().nullable().optional() },
-    annotations: { title: "Enter lounge (start session)", ...WRITE_OPEN },
+    annotations: { title: "Create workflow session", ...WRITE_OPEN },
   },
   async ({ agent_id }) => {
     const r = await api("/api/bar/enter", {
@@ -161,7 +161,7 @@ const ORDER_SLUG_LIST = ZERO_ARG_AUTOPAY_SLUGS.join(" | ");
 const INPUT_REQUIRED_LIST = [...INPUT_REQUIRED_SLUGS].join(" | ");
 const ORDER_DESCRIPTION =
   `COSTS USDC (Base) — launch pricing $0.01–$0.05 per call (max $${SURVIVAL_PRICE_MAX_USD}). ` +
-  "Order a survival service by slug. Happy path: proof_bar → enter_lounge (get session_id) → order_service. " +
+  "Order a workflow capability by slug. Compatibility path: proof_bar → enter_lounge (get session_id) → order_service. " +
   "Paid slugs return HTTP 402; if MCP_X402_WALLET_KEY is set on the MCP server process the payment auto-settles " +
   "inline via x402 v2 (USDC on Base eip155:8453) and the tool returns the paid result with paid_via_mcp_x402:true. " +
   "If no wallet is configured the tool returns the 402 body with x402_error.code and REST retry instructions. " +
@@ -173,7 +173,7 @@ const ORDER_DESCRIPTION =
 server.registerTool(
   "order_service",
   {
-    title: "Order survival service (paid, autopay)",
+    title: "Execute workflow capability (paid)",
     description: ORDER_DESCRIPTION,
     inputSchema: {
       session_id: z.string().describe("session.id from enter_lounge (carried as X-Second-Eye-Session)"),
@@ -205,7 +205,7 @@ server.registerTool(
     // Spends money and reaches an external rail; not idempotent. Annotations only
     // drive client confirmation prompts — they never force or suppress payment.
     annotations: {
-      title: "Order survival service (paid, autopay)",
+      title: "Execute workflow capability (paid)",
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
@@ -266,7 +266,7 @@ server.registerTool(
   "leave_with_receipt",
   {
     title: "Leave with receipt",
-    description: "Free. Clean exit — session time + services itemized receipt. Needs a session_id.",
+    description: "Free. Close a compatibility session and return an itemized execution receipt.",
     inputSchema: { session_id: z.string().describe("session.id from enter_lounge") },
     outputSchema: { status: z.number().optional() },
     annotations: { title: "Leave with receipt", ...WRITE_OPEN },
@@ -284,7 +284,7 @@ server.registerTool(
   "fetch_catalog",
   {
     title: "Full catalog",
-    description: "Free, read-only. Full menu — lounge survival services + legacy MCP tool packs.",
+    description: "Free, read-only. Full workflow capability catalogue and compatibility MCP tool packs.",
     inputSchema: {},
     outputSchema: { status: z.number().optional() },
     annotations: { title: "Full catalog", ...READ_ONLY },

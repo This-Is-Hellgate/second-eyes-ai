@@ -1,9 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
-  "title": "MCP 401 Auth Fix | github PAT wiring | x402",
-  "description": "github-mcp 401? PAT wiring. x402 USDC Base. HOW TO PAY: secondeyesai.com/llms.txt",
-  "version": "1.2.4",
+  "title": "Second Eyes Agent Workflow Services",
+  "description": "Workflow diagnostics, capability routing, and x402 settlement for MCP-compatible agents.",
+  "version": "1.2.5",
   "websiteUrl": "https://secondeyesai.com/api/bar",
   "repository": {
     "url": "https://github.com/This-Is-Hellgate/second-eyes-ai",
@@ -14,14 +14,14 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@secondeyes/mcp-unblock",
-    "version": "1.2.4",
+      "version": "1.2.5",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
           "name": "SECOND_EYE_BASE_URL",
-          "description": "Second Eyes lounge base URL",
+          "description": "Second Eyes service base URL",
           "default": "https://secondeyesai.com",
           "isRequired": false
         },
@@ -44,7 +44,7 @@
         },
         {
           "name": "MCP_X402_ALLOW_SLUGS",
-          "description": "Comma-separated slugs allowed for auto-pay. Default (unset) or *: every zero-argument launch-priced survival/nano slug (each <= $0.05 USDC) auto-pays. transcribe-extract and doc-extract are excluded by default because they need a caller-supplied input the zero-arg tool cannot pass (call /api/bar/x402/transcribe and /api/bar/x402/extract directly); name them explicitly here to opt in. Set a comma list to RESTRICT. Safety is enforced by the per-call/session caps, not this list.",
+          "description": "Comma-separated capability slugs allowed for compatibility auto-pay. Default (unset) or * enables every zero-argument capability priced at or below $0.05 USDC. Input-requiring transcription and extraction routes remain excluded unless explicitly selected. Spending caps remain authoritative.",
           "isRequired": false
         }
       ]

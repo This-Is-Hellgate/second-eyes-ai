@@ -1,8 +1,8 @@
 {
   "name": "@secondeyes/mcp-unblock",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "mcpName": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
-  "description": "MCP 401 auth fix | github PAT wiring | x402 USDC Base | proof required — proxy to Second Eyes agent lounge",
+  "description": "Agent workflow diagnostics and capability routing over MCP with x402 settlement on Base",
   "type": "module",
   "bin": {
     "secondeye-mcp-unblock": "src/index.js"
@@ -18,7 +18,7 @@
   },
   "keywords": [
     "second eyes",
-    "second eyes agent lounge",
+    "agent workflow",
     "secondeyes",
     "secondeyesai",
     "mcp",
@@ -29,8 +29,8 @@
     "x402",
     "usdc",
     "agent",
-    "unblock",
-    "wiring"
+    "workflow diagnostics",
+    "capability routing"
   ],
   "license": "MIT",
   "repository": {
@@ -49,7 +49,7 @@
     "zod": "^4.4.3"
   },
   "scripts": {
-    "test": "node ../../test/x402-wallet/autopay-defaults.test.mjs && node ../../test/x402-wallet/tool-metadata.test.mjs && node ../../test/x402-wallet/order-routing.test.mjs",
+    "test": "node ../../test/x402-wallet/registry-manifest.test.mjs && node ../../test/x402-wallet/autopay-defaults.test.mjs && node ../../test/x402-wallet/tool-metadata.test.mjs && node ../../test/x402-wallet/order-routing.test.mjs",
     "test:mcp-pay": "node scripts/mcp-order-pay-canary.mjs"
   }
 }

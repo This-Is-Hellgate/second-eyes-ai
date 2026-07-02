@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.5
+
+- Aligned npm, MCP Registry, and AWS-facing package language around workflow diagnostics and capability routing.
+- Preserved all existing `1.x` tool identifiers and client configuration fields.
+- Added an executable registry-manifest contract test.
+- Made MCP protocol verification wait for initialization before requesting `tools/list`.
+- Reframed direct wallet signing as compatibility mode; managed payment sessions remain the production direction.
+
 ## [1.2.3] — 2026-06-02
 
 ### Fixed
