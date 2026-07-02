@@ -1,14 +1,14 @@
 # SPEC.md — Substrate Increment 0
 
-_Date: 2026-06-25_
-_Status: committed plan, pre-implementation_
+_Date: 2026-06-25 (updated 2026-07-02)_
+_Status: implemented and live_
 
 ## Three Framework Anchors
 
 1. **AP2 — Agent Payments Protocol** — `github.com/google-agentic-commerce/AP2`
    - Three-mandate VDC system (Intent → Cart → Payment)
    - Backed by 60+ orgs incl. Mastercard, Visa, PayPal, Coinbase
-   - Role: credential-gated doors for **internal ephemeral spawn only**
+   - Role: verified-agent payment rail (Lanes 2a/2b) — any external verified agent carrying card mandates; not limited to internal use
 
 2. **x402 Bazaar — Discovery + Payments**
    - CDP facilitator: `GET https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources`
@@ -28,31 +28,31 @@ _Status: committed plan, pre-implementation_
 | Identity / Reputation | ERC-8004 | Open registry; anyone queryable |
 | Payments | x402 (USDC/Base) | Open HTTP 402 rail, no allowlist |
 | Discovery | x402 Bazaar | Substrate endpoints registered publicly |
-| Authorization | AP2 mandates | Gates internal ephemeral spawn, NOT external access |
+| Authorization | AP2 mandates | Verified-agent payment rail (Lanes 2a/2b); open to any external agent with card mandates |
 | Transport | A2A / MCP | Existing |
 
 ## Funding Lanes (all feed one Earn-to-Burn ledger)
 
-| Lane | Rail | Caller type | Settlement |
-|---|---|---|---|
-| 1 | x402 / USDC on Base | Autonomous agent | On-chain, sub-second |
-| 2a | AP2 + Mastercard VDC | Verified agent w/ card mandate | Card network |
-| 2b | AP2 + Visa VDC | Verified agent w/ card mandate | Card network |
-| 3 | Stripe ACP checkout | Human or low-trust agent | Stripe |
+| Lane | Rail | Caller type | Settlement | Status |
+|---|---|---|---|---|
+| 1 | x402 / USDC on Base | Autonomous agent | On-chain, sub-second | **Live** |
+| 2a | AP2 + Mastercard VDC | Verified agent w/ card mandate | Card network | Planned |
+| 2b | AP2 + Visa VDC | Verified agent w/ card mandate | Card network | Planned |
+| 3 | Stripe ACP checkout | Human or low-trust agent | Stripe | **Live** |
 
-Cards are additive optional doors, never gates. x402/USDC remains the default machine rail.
+Cards are additive optional doors, never gates. x402/USDC remains the default machine rail. Lanes 2a/2b require partner TOS acceptance and are not yet wired in code.
 
-## Key Correction Carried Forward
+## x402 Status
 
-Canary proved only **USDC receipt** on the wallet — it did **not** prove an x402 handshake. Increment 0 must implement and verify the actual 402 challenge/response cycle (EIP-712 signature + facilitator settle) before claiming x402 support.
+The full x402 v2 challenge/response cycle is implemented and validated: HTTP 402 response → agent decodes `PAYMENT-REQUIRED` header → EIP-712 payment header signed by agent wallet → CDP facilitator verify → CDP facilitator settle → `X-PAYMENT-RESPONSE` returned. Live on all `/api/bar/x402/` routes and the `/api/access/purchase` agent tab endpoint. The MCP package (`packages/secondeye-mcp`) carries an auto-pay wallet that completes this cycle inline.
 
-## Increment 0 — Concrete Steps
+## Increment 0 — Status
 
-1. **Open ingress:** Mark substrate endpoints with HTTP 402 responses; register in both CDP facilitator catalog and community Bazaar.
-2. **Identity:** Publish substrate agent in ERC-8004 Identity Registry; expose Reputation/Validation reads.
-3. **Internal credential door:** AP2 three-mandate verification (Intent/Cart/Payment VDCs) required only for internal ephemeral spawn (Compiler, Groundskeepers) — never for outside read/pay.
-4. **Three-tier funding wiring:** Earn-to-Burn (x402 receipts) → demand pre-payment (AP2 Cart mandates) → fixed budget cap (on-chain accounting via ERC-8004 validation log).
-5. **Audit log:** All ephemeral spawns logged with mandate hash + payment txid; readable publicly to preserve openness.
+1. ✅ **Open ingress:** All `/api/bar/x402/` endpoints return HTTP 402 and are registered in the CDP facilitator catalog and community Bazaar.
+2. ⏳ **Identity:** ERC-8004 Identity Registry publication pending operator action.
+3. ⏳ **AP2 verified-agent rail:** Three-mandate VDC verification (Intent/Cart/Payment) for any external verified agent on Lanes 2a/2b — planned; no VDC code wired yet.
+4. ✅ **Three-tier funding wiring:** x402 receipts recorded (Earn-to-Burn ledger). AP2 Cart mandates and ERC-8004 validation log accounting are planned alongside Lane 2 wiring.
+5. ⏳ **Audit log:** Lane 2 transaction logging with mandate hash + payment txid — pending AP2 wiring.
 
 ## Operator Prerequisites
 
