@@ -23,8 +23,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
-  LOUNGE_SERVICE_PRICES_USD,
-  SURVIVAL_PRICE_MAX_USD,
+  CAPABILITY_PRICES_USD,
+  CAPABILITY_PRICE_MAX_USD,
   INPUT_REQUIRED_SLUGS,
   ZERO_ARG_AUTOPAY_SLUGS,
   parseAllowSlugs,
@@ -67,7 +67,7 @@ function withAllowEnv(value, fn) {
 }
 
 console.log("\n[1] Default allowlist = zero-arg catalog, input-requiring doors excluded (C-025)");
-const ALL_SLUGS = Object.keys(LOUNGE_SERVICE_PRICES_USD);
+const ALL_SLUGS = Object.keys(CAPABILITY_PRICES_USD);
 const AUTOPAY_DEFAULT_SLUGS = [
   "should-i-pay",
   "claim-check",
@@ -103,13 +103,13 @@ withAllowEnv(undefined, () => {
     ALL_SLUGS.every((s) => ZERO_ARG_AUTOPAY_SLUGS.includes(s) || INPUT_REQUIRED_SLUGS.has(s))
   );
   for (const slug of AUTOPAY_DEFAULT_SLUGS) {
-    const g = guardPayment(slug, LOUNGE_SERVICE_PRICES_USD[slug]);
+    const g = guardPayment(slug, CAPABILITY_PRICES_USD[slug]);
     check(`autopay default permits "${slug}"`, g.ok === true, JSON.stringify(g));
   }
   // A blind zero-arg autopay of an input-requiring door is blocked by the
   // allow-list (slug_not_allowed), never silently routed to a no_input dead-end.
   for (const slug of INPUT_REQUIRED_SLUGS) {
-    const g = guardPayment(slug, LOUNGE_SERVICE_PRICES_USD[slug]);
+    const g = guardPayment(slug, CAPABILITY_PRICES_USD[slug]);
     check(
       `default blocks input-requiring "${slug}" as slug_not_allowed`,
       g.ok === false && g.code === "slug_not_allowed",
@@ -130,7 +130,7 @@ withAllowEnv("*", () => {
 withAllowEnv("claim-check,mcp-wiring", () => {
   const allow = parseAllowSlugs();
   check("explicit list RESTRICTS to listed slugs", allow.size === 2 && allow.has("claim-check"));
-  const blocked = guardPayment("loop-detect", LOUNGE_SERVICE_PRICES_USD["loop-detect"]);
+  const blocked = guardPayment("loop-detect", CAPABILITY_PRICES_USD["loop-detect"]);
   check(
     "slug outside explicit list is rejected slug_not_allowed",
     blocked.ok === false && blocked.code === "slug_not_allowed"
@@ -142,7 +142,7 @@ withAllowEnv("claim-check,mcp-wiring", () => {
 withAllowEnv("transcribe-extract", () => {
   const allow = parseAllowSlugs();
   check("explicit opt-in re-enables transcribe-extract", allow.has("transcribe-extract"));
-  const g = guardPayment("transcribe-extract", LOUNGE_SERVICE_PRICES_USD["transcribe-extract"]);
+  const g = guardPayment("transcribe-extract", CAPABILITY_PRICES_USD["transcribe-extract"]);
   check(
     "opted-in input-requiring slug passes the price guard (no price_mismatch)",
     g.ok === true,
@@ -155,18 +155,18 @@ console.log("\n[2] Price match — catalog == canonical, no false price_mismatch
 for (const { slug, price_usd } of SURVIVAL_MENU) {
   check(
     `catalog price for "${slug}" == canonical $${price_usd}`,
-    LOUNGE_SERVICE_PRICES_USD[slug] === price_usd,
-    `catalog=${LOUNGE_SERVICE_PRICES_USD[slug]}`
+    CAPABILITY_PRICES_USD[slug] === price_usd,
+    `catalog=${CAPABILITY_PRICES_USD[slug]}`
   );
 }
 // 2b. Every catalog price is within the advertised launch band.
-for (const [slug, price] of Object.entries(LOUNGE_SERVICE_PRICES_USD)) {
+for (const [slug, price] of Object.entries(CAPABILITY_PRICES_USD)) {
   check(
     `"${slug}" price $${price} within launch band $${SURVIVAL_PRICE_MIN_USD}–$${CANON_MAX}`,
     price >= SURVIVAL_PRICE_MIN_USD - 1e-9 && price <= CANON_MAX + 1e-9
   );
 }
-check("SURVIVAL_PRICE_MAX_USD ceiling == canonical max", SURVIVAL_PRICE_MAX_USD === CANON_MAX);
+check("CAPABILITY_PRICE_MAX_USD ceiling == canonical max", CAPABILITY_PRICE_MAX_USD === CANON_MAX);
 
 // 2c. The four task-named nano slugs are present at their canonical prices, and
 // a live-402 quote at the advertised price passes guardPayment (no false reject).
@@ -181,7 +181,7 @@ const NANO_EXPECTED = {
 };
 withAllowEnv(Object.keys(NANO_EXPECTED).join(","), () => {
   for (const [slug, price] of Object.entries(NANO_EXPECTED)) {
-    check(`nano "${slug}" catalog == $${price}`, LOUNGE_SERVICE_PRICES_USD[slug] === price);
+    check(`nano "${slug}" catalog == $${price}`, CAPABILITY_PRICES_USD[slug] === price);
 
     // Simulate an x402 v2 402 body quoting the advertised price in USDC micros.
     const body = { accepts: [{ amount: String(Math.round(price * 1_000_000)) }] };
@@ -195,12 +195,12 @@ withAllowEnv(Object.keys(NANO_EXPECTED).join(","), () => {
 
 console.log("\n[3] guardPayment safety retained");
 withAllowEnv(undefined, () => {
-  const over = guardPayment("mcp-wiring", LOUNGE_SERVICE_PRICES_USD["mcp-wiring"] + 0.01);
+  const over = guardPayment("mcp-wiring", CAPABILITY_PRICES_USD["mcp-wiring"] + 0.01);
   check("over-catalog quote rejected price_mismatch", over.ok === false && over.code === "price_mismatch");
   const unknown = guardPayment("should-i-pay", null);
   check("null price rejected unknown_price", unknown.ok === false && unknown.code === "unknown_price");
   const status = walletStatus();
-  check("walletStatus exposes catalog_max_usd ceiling", status.catalog_max_usd === SURVIVAL_PRICE_MAX_USD);
+  check("walletStatus exposes catalog_max_usd ceiling", status.catalog_max_usd === CAPABILITY_PRICE_MAX_USD);
   check("walletStatus caps still present", status.max_call_usd > 0 && status.session_max_usd > 0);
 });
 

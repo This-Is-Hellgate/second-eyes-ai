@@ -1,65 +1,29 @@
-# Glama / Smithery / PulseMCP / mcp.so — copy-paste listing
+# Independent MCP directories
 
-Use the **same text everywhere**. Only change the platform-specific install snippet if required.
+Use one canonical listing everywhere.
 
----
+**Name:** Second Eyes Agent Workflow Services
 
-## Name
+**Description:** Workflow diagnostics, capability routing, execution evidence, and x402 settlement for MCP-compatible agents.
 
-MCP 401 Fix — github-mcp PAT wiring — x402
+**Package:** `@secondeyes/mcp-unblock@1.2.6`
 
-## Short description (160 chars)
+**Endpoint:** https://secondeyesai.com/api/bar
 
-github-mcp 401? cursor MCP wiring? Proof → route → pay x402 USDC → receipt. First 15 min free. secondeyesai.com
+**Repository:** https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp
 
-## Long description
-
-When MCP calls fail — 401, PAT scope, stdio vs SSE, auth misconfiguration — this service routes your stuck state to the right fix with a published price before you pay.
-
-**For wallet-equipped agents and the runtimes that authorize paid recovery tools.** Not marketing. Deterministic recovery tooling for agents.
-
-- `proof_bar` — verify live before wallet opens
-- `pause_and_route` — POST error → condition: blocked / uncertain / overloaded
-- `github_mcp_401_fix` — shortcut to mcp-wiring
-- `should-i-pay` — pre-x402 decision gate
-- `leave_with_receipt` — session + payment attestation
-
-**Payment:** x402 **v2** USDC on Base (`ExactEvmScheme`, network `eip155:8453`). **Session:** first 15 minutes free.
-
-**Verify:** https://secondeyesai.com/api/bar/proof  
-**Service catalog:** https://secondeyesai.com/llms.txt
-**MCP package:** `@secondeyes/mcp-unblock@1.2.1` (autopay, x402 v2) — **do not use `@1.1.x`** (x402 v1, fails production 402s); `@1.0.5` free-reads-only fallback. HOW TO PAY: https://secondeyesai.com/llms.txt
-
-**AWS Agent Registry pack ($1):** https://secondeyesai.com/api/bar/taps/aws-agent-registry-publish — publish playbook (MCP/A2A protocols, 405 trap, Windows CLI). Live record: `nJXn9fAgirGB`.
-
-## Smithery
-
-```powershell
-$env:SMITHERY_API_KEY = "your-key"
-npx @smithery/cli mcp publish "https://secondeyesai.com/api/bar" -n "@secondeyes/mcp-unblock"
-```
-
-Details: `registry/smithery.md` — requires MCP POST on `/api/bar` + `/.well-known/mcp/server-card.json`.
-
-## Keywords
-
-mcp, 401, github-mcp, cursor-mcp, PAT, token, oauth, unauthorized, wiring, stdio, sse, x402, usdc, base, micropayment, agent, unblock, proof, receipt, claim-check
-
-## Install
+**Install:**
 
 ```json
 {
   "mcpServers": {
-    "secondeye-unblock": {
+    "second-eyes": {
       "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock@1.2.1"],
-      "env": {
-        "SECOND_EYE_BASE_URL": "https://secondeyesai.com",
-        "MCP_X402_WALLET_KEY": "0x…",
-        "MCP_X402_MAX_SPEND_USD": "0.50",
-        "MCP_X402_SESSION_MAX_USD": "2.00"
-      }
+      "args": ["-y", "@secondeyes/mcp-unblock@1.2.6"],
+      "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com" }
     }
   }
 }
 ```
+
+Most directories mirror npm or the official MCP Registry. Request a manual refresh only when a listing remains stale after its normal recrawl window.

@@ -1,4 +1,4 @@
-"""Hugging Face Space — live proof + discovery for Second Eye agent lounge."""
+"""Hugging Face Space for Second Eyes service and package discovery."""
 import json
 import urllib.request
 
@@ -34,9 +34,9 @@ def mcp_config():
     return json.dumps(
         {
             "mcpServers": {
-                "secondeye-unblock": {
+                "second-eyes": {
                     "command": "npx",
-                    "args": ["-y", "@secondeyes/mcp-unblock@1.2.1"],
+                    "args": ["-y", "@secondeyes/mcp-unblock@1.2.6"],
                     "env": {
                         "SECOND_EYE_BASE_URL": BASE,
                         "MCP_X402_WALLET_KEY": "0x…",
@@ -50,14 +50,12 @@ def mcp_config():
     )
 
 
-with gr.Blocks(title="Second Eye MCP Unblock") as demo:
+with gr.Blocks(title="Second Eyes Agent Workflow Services") as demo:
     gr.Markdown(
         """
-# MCP 401 Auth Fix | github-mcp PAT wiring | x402 USDC Base
+# Second Eyes Agent Workflow Services
 
-**Search hooks:** github-mcp 401, PAT failure, cursor MCP wiring, stdio vs sse, should-i-pay, x402 proof
-
-For wallet-equipped agents and the runtimes that authorize paid recovery tools. Run proof before pay. First **15 minutes** session time free. x402 **v2** USDC on Base (`ExactEvmScheme`, `eip155:8453`).
+Workflow diagnostics, capability routing, execution evidence, and x402 v2 settlement for MCP-compatible agents.
 """
     )
     status = gr.JSON(label="Live status", value=live_status())
@@ -65,9 +63,8 @@ For wallet-equipped agents and the runtimes that authorize paid recovery tools. 
     refresh.click(live_status, outputs=status)
     gr.Markdown("## Cursor / Claude MCP config")
     gr.Markdown(
-        "Current autopay release: `@secondeyes/mcp-unblock@1.2.1` (x402 **v2**). "
-        "**Do not use `@1.1.x`** — those register x402 v1 clients and fail production 402s. "
-        "`@1.0.5` is a free-reads-only fallback (no wallet)."
+        "Current release: `@secondeyes/mcp-unblock@1.2.6` (x402 **v2**). "
+        "Institution-managed payment sessions are the production direction; direct wallet signing remains a compatibility mode."
     )
     gr.Code(mcp_config(), language="json", label="Install snippet")
     gr.Markdown(

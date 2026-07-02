@@ -1,5 +1,5 @@
 /**
- * x402 wallet bridge for MCP order_service — signs USDC on Base when lounge returns 402.
+ * x402 compatibility wallet bridge for MCP order_service.
  *
  * Env (see README threat model):
  *   MCP_X402_WALLET_KEY — 0x-prefixed EVM private key (preferred)
@@ -7,7 +7,7 @@
  *   MCP_X402_MAX_SPEND_USD — per-call cap (default 0.50)
  *   MCP_X402_SESSION_MAX_USD — process lifetime cap (default 2.00)
  *   MCP_X402_ALLOW_SLUGS — comma-separated slugs (or "*"). Default (unset) =
- *     every launch-priced survival/nano slug in LOUNGE_SERVICE_PRICES_USD that
+ *     every zero-argument capability slug in CAPABILITY_PRICES_USD that
  *     the zero-argument order_service tool can actually convert — i.e. the
  *     catalog minus INPUT_REQUIRED_SLUGS (transcribe-extract, doc-extract). Those
  *     two doors need a caller-supplied URL the zero-arg tool cannot pass, so the
@@ -15,7 +15,7 @@
  *     they stay priced + routable but are excluded from the default-allow set.
  *     A wallet-configured agent autopays the safe zero-arg menu without extra
  *     config. Safety is enforced by the per-call/session caps and the catalog
- *     price ceiling (every default slug is ≤ SURVIVAL_PRICE_MAX_USD = $0.05),
+ *     price ceiling (every default slug is ≤ CAPABILITY_PRICE_MAX_USD = $0.05),
  *     never by the allowlist. Set this env var to a comma-separated list to
  *     restrict, or to explicitly opt a door like transcribe-extract back in once
  *     the caller can supply its required input out-of-band.
@@ -27,15 +27,15 @@ import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
 
 /**
- * Lounge launch price catalog, USD — single source of truth mirrored from
- * functions/_lib/lounge/constants.js (SURVIVAL_MENU) plus the session-less
+ * Compatibility price catalogue, USD — mirrored from the legacy service
+ * constants plus the sessionless
  * x402 nano twins in functions/api/bar/x402/*.js. Launch recovery pricing is
  * $0.01–$0.05: tap services that are one cheap inference are $0.01, core
  * recovery packs $0.03, deepest recovery work $0.05. Kept in sync so the live
  * 402 quote, the advertised menu, and guardPayment all agree.
  */
-export const LOUNGE_SERVICE_PRICES_USD = {
-  // Survival menu (session-gated /api/bar/services/{slug})
+export const CAPABILITY_PRICES_USD = {
+  // Compatibility capabilities (session-gated /api/bar/services/{slug})
   "loop-detect": 0.03,
   "scope-check": 0.03,
   "context-recover": 0.05,
@@ -56,7 +56,7 @@ export const LOUNGE_SERVICE_PRICES_USD = {
 };
 
 /** Highest launch price in the catalog — the ceiling autopay should ever sign. */
-export const SURVIVAL_PRICE_MAX_USD = Math.max(...Object.values(LOUNGE_SERVICE_PRICES_USD));
+export const CAPABILITY_PRICE_MAX_USD = Math.max(...Object.values(CAPABILITY_PRICES_USD));
 
 /**
  * Slugs whose x402 door requires a caller-supplied input (a URL, doc_type, …)
@@ -75,7 +75,7 @@ export const INPUT_REQUIRED_SLUGS = new Set(["transcribe-extract", "doc-extract"
  * order_service call can actually convert to a paid 200, and therefore the
  * default autopay allow-set.
  */
-export const ZERO_ARG_AUTOPAY_SLUGS = Object.keys(LOUNGE_SERVICE_PRICES_USD).filter(
+export const ZERO_ARG_AUTOPAY_SLUGS = Object.keys(CAPABILITY_PRICES_USD).filter(
   (slug) => !INPUT_REQUIRED_SLUGS.has(slug)
 );
 
@@ -83,7 +83,7 @@ export const ZERO_ARG_AUTOPAY_SLUGS = Object.keys(LOUNGE_SERVICE_PRICES_USD).fil
  * Session-less x402 route for each autopay catalog slug. order_service must hit
  * /api/bar/x402/{path} — the canonical /api/bar/services/{slug} route is
  * session-gated and returns 4xx (never a 402) to a wallet agent that holds no
- * real lounge session, so payAndRetryService never fires and the agent dead-ends
+ * compatibility session, so payAndRetryService never fires and the request stops
  * on unknown_service / missing_session instead of autopaying.
  *
  * Most slugs map to /api/bar/x402/{slug} 1:1 (the dynamic [slug].js twin). Two
@@ -100,7 +100,7 @@ const X402_ROUTE_OVERRIDES = {
 
 /** Session-less x402 path segment for a catalog slug (null when not in the catalog). */
 export function x402RouteSlug(slug) {
-  if (!(slug in LOUNGE_SERVICE_PRICES_USD)) return null;
+  if (!(slug in CAPABILITY_PRICES_USD)) return null;
   return X402_ROUTE_OVERRIDES[slug] || slug;
 }
 
@@ -176,7 +176,7 @@ export function walletStatus() {
     session_spend_usd: sessionSpendUsd,
     max_call_usd: envNum("MCP_X402_MAX_SPEND_USD", DEFAULT_MAX_CALL_USD),
     session_max_usd: envNum("MCP_X402_SESSION_MAX_USD", DEFAULT_SESSION_MAX_USD),
-    catalog_max_usd: SURVIVAL_PRICE_MAX_USD,
+    catalog_max_usd: CAPABILITY_PRICE_MAX_USD,
     allow_slugs: [...parseAllowSlugs()],
     allow_slugs_env: process.env.MCP_X402_ALLOW_SLUGS?.trim() || null,
     allow_slugs_default: !process.env.MCP_X402_ALLOW_SLUGS?.trim(),
@@ -188,7 +188,7 @@ export function walletStatus() {
 export function priceFrom402(json, slug) {
   const fromProduct = json?.product?.priceUsd;
   if (typeof fromProduct === "number" && fromProduct > 0) return fromProduct;
-  const catalog = LOUNGE_SERVICE_PRICES_USD[slug];
+  const catalog = CAPABILITY_PRICES_USD[slug];
   if (typeof catalog === "number") return catalog;
   const accept = json?.accepts?.[0];
   if (accept?.amount) return Number(accept.amount) / 1_000_000;
@@ -227,7 +227,7 @@ export function guardPayment(slug, priceUsd) {
     };
   }
 
-  const catalogMax = LOUNGE_SERVICE_PRICES_USD[slug];
+  const catalogMax = CAPABILITY_PRICES_USD[slug];
   if (catalogMax !== undefined && priceUsd > catalogMax + 0.001) {
     return {
       ok: false,
@@ -240,7 +240,7 @@ export function guardPayment(slug, priceUsd) {
 }
 
 /**
- * Retry a lounge service URL with x402 payment after an initial 402.
+ * Retry a capability URL with x402 payment after an initial 402.
  * @returns {{ status, json, headers, payment?: object, x402_error?: object }}
  */
 export async function payAndRetryService(url, { session_id, slug, initial402 }) {

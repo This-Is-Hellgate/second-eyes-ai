@@ -129,7 +129,7 @@ Config shape:
 | Record ID | `nJXn9fAgirGB` |
 | Status | **APPROVED** |
 | MCP name | `io.github.This-Is-Hellgate/secondeye-mcp-unblock` |
-| npm | `@secondeyes/mcp-unblock@1.2.1` (autopay, x402 v2; do not use `@1.1.x`; `@1.0.5` free-reads fallback) |
+| npm | `@secondeyes/mcp-unblock@1.2.6` (x402 v2; direct wallet signing is compatibility mode) |
 | HOW TO PAY | https://secondeyesai.com/llms.txt |
 | Publish script | `node scripts/publish-aws-registry.mjs` |
 

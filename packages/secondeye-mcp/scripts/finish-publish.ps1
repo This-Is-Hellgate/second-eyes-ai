@@ -1,13 +1,15 @@
-# Finish npm publish — run after copying token from npm "Generate token" screen
-Write-Host "Paste your NEW npm token (input hidden), then Enter:"
-$token = Read-Host -AsSecureString
-$bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($token)
-$plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+param(
+  [Parameter(Mandatory = $true)]
+  [string]$Version
+)
 
-$plain | gh secret set NPM_TOKEN -R This-Is-Hellgate/secondeye-mcp
-Write-Host "Secret updated. Triggering publish..."
-gh workflow run publish.yml -R This-Is-Hellgate/secondeye-mcp
-Start-Sleep -Seconds 25
-gh run list -R This-Is-Hellgate/secondeye-mcp --limit 1
-npm view @secondeyes/mcp-unblock version 2>&1
+$ErrorActionPreference = "Stop"
+$Repository = "This-Is-Hellgate/second-eyes-ai"
+
+Write-Host "Publishing MCP package $Version through GitHub OIDC..."
+gh workflow run publish-mcp.yml -R $Repository -f "version=$Version"
+
+Start-Sleep -Seconds 5
+gh run list -R $Repository --workflow publish-mcp.yml --limit 1
+
+Write-Host "The workflow publishes npm first, then the official MCP Registry."

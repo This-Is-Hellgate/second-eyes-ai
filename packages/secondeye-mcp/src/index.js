@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { payAndRetryService, walletStatus, LOUNGE_SERVICE_PRICES_USD, SURVIVAL_PRICE_MAX_USD, x402ServicePath, ZERO_ARG_AUTOPAY_SLUGS, INPUT_REQUIRED_SLUGS } from "./x402-wallet.js";
+import { payAndRetryService, walletStatus, CAPABILITY_PRICES_USD, CAPABILITY_PRICE_MAX_USD, x402ServicePath, ZERO_ARG_AUTOPAY_SLUGS, INPUT_REQUIRED_SLUGS } from "./x402-wallet.js";
 
 // Single source of truth for the advertised version: the published package.
 const { version: PKG_VERSION } = JSON.parse(
@@ -160,7 +160,7 @@ server.registerTool(
 const ORDER_SLUG_LIST = ZERO_ARG_AUTOPAY_SLUGS.join(" | ");
 const INPUT_REQUIRED_LIST = [...INPUT_REQUIRED_SLUGS].join(" | ");
 const ORDER_DESCRIPTION =
-  `COSTS USDC (Base) — launch pricing $0.01–$0.05 per call (max $${SURVIVAL_PRICE_MAX_USD}). ` +
+  `COSTS USDC (Base) — launch pricing $0.01–$0.05 per call (max $${CAPABILITY_PRICE_MAX_USD}). ` +
   "Order a workflow capability by slug. Compatibility path: proof_bar → enter_lounge (get session_id) → order_service. " +
   "Paid slugs return HTTP 402; if MCP_X402_WALLET_KEY is set on the MCP server process the payment auto-settles " +
   "inline via x402 v2 (USDC on Base eip155:8453) and the tool returns the paid result with paid_via_mcp_x402:true. " +
@@ -214,7 +214,7 @@ server.registerTool(
   },
   async ({ session_id, slug }) => {
     // Route to the session-less x402 twin, not the session-gated
-    // /api/bar/services/{slug}: a wallet agent holds no real lounge session, so
+    // /api/bar/services/{slug}: a wallet agent holds no compatibility session, so
     // the gated route would 4xx (never 402) and autopay would never fire.
     const path = x402ServicePath(slug);
     if (!path) {
@@ -222,7 +222,7 @@ server.registerTool(
         status: 404,
         error: "unknown_service",
         slug,
-        allowed_slugs: Object.keys(LOUNGE_SERVICE_PRICES_USD),
+        allowed_slugs: Object.keys(CAPABILITY_PRICES_USD),
         note: "Not an autopay catalog slug. Pick from allowed_slugs.",
       });
     }

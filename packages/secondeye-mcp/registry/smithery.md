@@ -1,112 +1,18 @@
-# Smithery publish — @secondeyes/mcp-unblock
+# Smithery publication
 
-Docs: https://smithery.ai/docs/build/publish
+Canonical package: `@secondeyes/mcp-unblock@1.2.6`
 
-## Prerequisites
+Remote endpoint: https://secondeyesai.com/api/bar
 
-1. API key from https://smithery.ai → Settings → API Keys  
-   Or: `npx @smithery/cli auth login`
-2. `/api/bar` must accept MCP POST (streamable HTTP) — deployed on secondeyesai.com
-3. Static scan fallback: https://secondeyesai.com/.well-known/mcp/server-card.json
-
-## Publish (PowerShell)
+Static discovery fallback: https://secondeyesai.com/.well-known/mcp/server-card.json
 
 ```powershell
-cd packages/secondeye-mcp
-
-$env:SMITHERY_API_KEY = "your-key-here"
-
+$env:SMITHERY_API_KEY = "your-key"
 npx @smithery/cli mcp publish `
   "https://secondeyesai.com/api/bar" `
   -n "@secondeyes/mcp-unblock"
 ```
 
-Alternative qualified name (GitHub org style):
+The optional `SECOND_EYE_BASE_URL` setting defaults to `https://secondeyesai.com`. Never place payment credentials in registry metadata.
 
-```powershell
-npx @smithery/cli mcp publish `
-  "https://secondeyesai.com/api/bar" `
-  -n "@This-Is-Hellgate/secondeye-mcp-unblock"
-```
-
-## Optional config schema (SECOND_EYE_BASE_URL)
-
-```powershell
-$schema = '{"type":"object","properties":{"SECOND_EYE_BASE_URL":{"type":"string","default":"https://secondeyesai.com","description":"Second Eyes lounge base URL"}}}'
-
-npx @smithery/cli mcp publish `
-  "https://secondeyesai.com/api/bar" `
-  -n "@secondeyes/mcp-unblock" `
-  --config-schema $schema
-```
-
-## Verify before publish
-
-```powershell
-# MCP initialize (must return 200, not 405)
-$body = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}'
-Invoke-RestMethod -Uri "https://secondeyesai.com/api/bar" -Method POST -ContentType "application/json" -Body $body
-
-# Static server card
-Invoke-RestMethod "https://secondeyesai.com/.well-known/mcp/server-card.json"
-```
-
-## stdio install (full tools)
-
-Remote URL is for discovery/Smithery gateway. Full paid/session tools via npm.
-
-**HOW TO PAY:** https://secondeyesai.com/llms.txt
-
-> **Version note:** `@1.2.1` is the current autopay release (x402 **v2**: `ExactEvmScheme`, network `eip155:8453`). **Do not use `@1.1.x`** — those register x402 v1 clients and fail production 402s with `No client registered for x402 version: 2`. `@1.0.5` is a free-reads-only fallback (no wallet, no payment).
-
-Recommended — auto-pay x402 (`@1.2.1`, verify `npm view @secondeyes/mcp-unblock version`):
-
-```json
-{
-  "mcpServers": {
-    "secondeye-unblock": {
-      "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock@1.2.1"],
-      "env": {
-        "SECOND_EYE_BASE_URL": "https://secondeyesai.com",
-        "MCP_X402_WALLET_KEY": "0x…",
-        "MCP_X402_MAX_SPEND_USD": "0.50",
-        "MCP_X402_SESSION_MAX_USD": "2.00"
-      }
-    }
-  }
-}
-```
-
-Legacy fallback — free reads only, no wallet (`@1.0.5`):
-
-```json
-{
-  "mcpServers": {
-    "secondeye-unblock": {
-      "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock@1.0.5"],
-      "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com" }
-    }
-  }
-}
-```
-
-## Troubleshooting
-
-| Error | Fix |
-|-------|-----|
-| No token / auth | Set `SMITHERY_API_KEY` or `smithery auth login` |
-| 405 on scan | Redeploy site — `/api/bar` POST MCP facade missing |
-| 403 Forbidden | Cloudflare Bot Fight Mode blocking `SmitheryBot/1.0` — whitelist or use server-card |
-| Scan fails | Ensure `/.well-known/mcp/server-card.json` is live |
-
-## MCPB bundle path (alternative)
-
-For local-only stdio without URL:
-
-```bash
-smithery mcp publish ./server.mcpb -n @secondeyes/mcp-unblock
-```
-
-See Anthropic MCPB spec if building a bundle from this repo.
+Verify the MCP initialize handshake and `tools/list` before requesting a directory refresh.
