@@ -80,6 +80,33 @@ const accepts = (env) =>
   if (!a.extra || a.extra.version !== "2") fail("base-only", "missing EIP-712 extra");
 }
 
+// --- 2b. Public deployment fallback works, but the Cloudflare secret wins ---
+{
+  const fallback = { X402_PAYTO_PUBLIC: "0xPublicWallet" };
+  eq("public fallback accepts", accepts(fallback), [BASE]);
+  const fallbackReq = buildProductPaymentRequirements(
+    product,
+    URL_UNDER_TEST,
+    fallback
+  );
+  if (!fallbackReq) {
+    fail("public fallback", "expected payment requirements from X402_PAYTO_PUBLIC");
+  } else {
+    eq("public fallback payTo", fallbackReq.accepts[0].payTo, "0xPublicWallet");
+  }
+
+  const secretWins = {
+    X402_PAYTO: "0xSecretWallet",
+    X402_PAYTO_PUBLIC: "0xPublicWallet",
+  };
+  const preferredAccept = buildProductPaymentRequirements(
+    product,
+    URL_UNDER_TEST,
+    secretWins
+  ).accepts[0];
+  eq("secret payTo takes precedence", preferredAccept.payTo, "0xSecretWallet");
+}
+
 // --- 3. Polygon appends only when enabled AND proven; Base stays accepts[0] ---
 {
   // Flag alone (no activation record) must NOT advertise Polygon — the canary fix.

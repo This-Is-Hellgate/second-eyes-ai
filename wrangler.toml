@@ -24,6 +24,10 @@ compatibility_date = "2026-05-26"
 
 [vars]
 X402_NETWORK = "base"
+# Public merchant receive address fallback. Runtime prefers the Cloudflare
+# X402_PAYTO secret when present; this distinct binding prevents payment outages
+# without colliding with that secret during Pages deployment.
+X402_PAYTO_PUBLIC = "0xFb8915074cC941f5Ab95E6001c45287b8EeC4427"
 # KNOWN_TEST_PAYERS — operator/test wallets excluded from external_buyer_signal
 # (comma/space-separated 0x addresses). Built-in defaults already cover the
 # canary payer + lounge payTo; set this to add CI/test wallets without a code
