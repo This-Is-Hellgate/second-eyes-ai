@@ -1,4 +1,4 @@
-# x402 Survival Check — AgentKit Example
+# x402 Spend Check — AgentKit Example
 
 An autonomous agent is about to spend USDC on an expensive x402 tool — a research API, a code pack, a facilitator-protected MCP call. Before paying more, it can run a **$0.10 cashier check** using [Second Eyes Agent Lounge](https://secondeyesai.com) and Coinbase AgentKit on **Base mainnet**.
 
@@ -52,7 +52,7 @@ After payment, the JSON body includes the **cashier pack** from the lounge plus 
     "network": "base",
     "payer": "0x180f6E73…"
   },
-  "note": "Paid survival service. Embed work_stamp in your deliverable. Save receipt.",
+  "note": "Paid deterministic service. Embed work_stamp in your deliverable. Save receipt.",
   "work_stamp": { "schema": "second-eye/work-mark/v1", "mark": "mk_…", "verify": "…" }
 }
 ```
