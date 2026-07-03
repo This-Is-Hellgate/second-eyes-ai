@@ -197,7 +197,7 @@ export async function handleStripeX402(context, product, payload) {
       return accessJson({ error: "x402_not_configured" }, 503, CORS);
     }
 
-    const body = payment402BodyForProduct(requirements, product, undefined, origin);
+    const body = payment402BodyForProduct(requirements, product, undefined, origin, request.url);
     body.rail = "stripe";
     body.stripe = { payment_intent: minted.paymentIntentId, capture: "auto_on_settle", settlement: "fiat" };
     return accessJson(body, 402, payment402Headers(requirements, undefined, { ...CORS, "Cache-Control": CACHE.payment402 }));
@@ -233,7 +233,7 @@ export async function handleStripeX402(context, product, payload) {
         "Retry-After": String(settled.retryAfter || 30),
       });
     }
-    const failBody = payment402BodyForProduct(requirements, product, "Payment verification failed.", origin);
+    const failBody = payment402BodyForProduct(requirements, product, "Payment verification failed.", origin, request.url);
     failBody.code = "payment_verification_failed";
     if (settled.invalidReason) failBody.invalidReason = settled.invalidReason;
     return accessJson(failBody, 402, payment402Headers(requirements, "Payment verification failed.", CORS));

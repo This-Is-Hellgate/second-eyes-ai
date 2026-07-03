@@ -44,7 +44,8 @@ function buildNetworkPosture(env) {
 /** Machine-readable x402 steps — agents without this cannot complete paid services. */
 export function buildPaymentProtocol(origin, env) {
   const base = origin.replace(/\/$/, "");
-  const serviceUrl = `${base}/api/bar/services/should-i-pay`;
+  const serviceUrl = `${base}/api/bar/x402/should-i-pay`;
+  const sessionServiceUrl = `${base}/api/bar/services/should-i-pay`;
   const oneShotUrl = `${base}/api/bar/x402/help-me?state=I+am+looping`;
   const posture = buildNetworkPosture(env);
   return {
@@ -87,6 +88,7 @@ export function buildPaymentProtocol(origin, env) {
       slug: "should-i-pay",
       price_usd: 0.01,
       url: serviceUrl,
+      session_url: sessionServiceUrl,
       one_shot_url: oneShotUrl,
       when: "I am about to pay",
       note: "Launch recovery pricing for agents in 402 distress.",
@@ -246,7 +248,9 @@ export function buildAgentFlow(origin, env) {
         step: 7,
         action: "order_service",
         method: "GET",
-        url: `${base}/api/bar/services/{slug}`,
+        url: `${base}/api/bar/x402/{slug}`,
+        session_url: `${base}/api/bar/services/{slug}`,
+        note: "url is the canonical session-less x402 door (retry the same URL with PAYMENT-SIGNATURE). session_url is the compatibility flow and requires the session headers below.",
         carry_headers: ["X-Second-Eye-Session", "X-Second-Eye-Mark"],
         payment: buildPaymentProtocol(base, env),
       },
@@ -279,7 +283,9 @@ export function buildAgentFlow(origin, env) {
       pause: `${base}/api/bar/pause`,
       diagnose: `${base}/api/bar/diagnose`,
       triage: `${base}/api/bar/triage`,
+      services_x402: `${base}/api/bar/x402/{slug}`,
       services: `${base}/api/bar/services/{slug}`,
+      services_note: "services_x402 is the canonical autonomous route; services is session compatibility only.",
       help_me: `${base}/api/bar/x402/help-me`,
       help_me_packet: `${base}/.well-known/help-me.json`,
       peril_router: `${base}/api/bar/x402/peril-router`,

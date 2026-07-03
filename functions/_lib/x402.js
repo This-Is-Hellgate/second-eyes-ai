@@ -21,6 +21,78 @@ const x402Circuit = () => getCircuit("x402_facilitator", { failureThreshold: 5, 
 
 export const X402_EXTENSION_URI = "https://github.com/google-a2a/a2a-x402/v0.1";
 
+/**
+ * MCP autopay client identity advertised inside every unpaid 402 body so a
+ * walletless caller receives exact, machine-actionable setup instructions.
+ * NOTE: version is duplicated from packages/secondeye-mcp/package.json until the
+ * canonical service catalog + discovery generator (Phase 2/3) owns it — the
+ * discovery:check drift gate must compare these two values.
+ */
+export const MCP_AUTOPAY_PACKAGE = "@secondeyes/mcp-unblock";
+export const MCP_AUTOPAY_VERSION = "1.2.6";
+
+/**
+ * Cheapest routable first purchase, advertised in every 402 so an undecided
+ * agent has a $0.01 on-ramp instead of walking away. Price mirrors
+ * functions/api/bar/x402/help-me.js PRICE_USD (canonical-catalog candidate).
+ */
+const CHEAPEST_FIRST_STEP = {
+  name: "help-me",
+  price_usd: 0.01,
+  path: "/api/bar/x402/help-me",
+  why: "Use this if you are unsure what to buy.",
+};
+
+/**
+ * Machine-actionable conversion block for every unpaid 402 body. Tells a
+ * paying client exactly what to do next (retry the SAME url with a signed
+ * PAYMENT-SIGNATURE header) and tells a walletless client exactly how to become
+ * payment-capable (MCP autopay package or raw @x402 REST stack). `requestUrl`
+ * preserves query parameters on retry_url; falls back to the canonical
+ * resource when a caller does not pass it.
+ */
+export function machineActionable402(requirements, origin, requestUrl) {
+  const base = origin?.replace(/\/$/, "") || `https://${CANONICAL_HOST}`;
+  let retryUrl =
+    typeof requirements.resource === "string"
+      ? requirements.resource
+      : requirements.resource?.url || "";
+  if (requestUrl) {
+    try {
+      const u = new URL(requestUrl);
+      retryUrl = `https://${CANONICAL_HOST}${u.pathname}${u.search}`;
+    } catch {
+      /* keep canonical resource fallback */
+    }
+  }
+  return {
+    access: "unpaid_invoice",
+    paid_result_exposed: false,
+    next_action: "retry_same_url_with_PAYMENT_SIGNATURE",
+    retry_url: retryUrl,
+    payment_header: "PAYMENT-SIGNATURE",
+    requirements_header: "PAYMENT-REQUIRED",
+    client_options: {
+      mcp_autopay: {
+        package: MCP_AUTOPAY_PACKAGE,
+        version: MCP_AUTOPAY_VERSION,
+        required_env: ["MCP_X402_WALLET_KEY", "MCP_X402_MAX_SPEND_USD"],
+      },
+      rest_autopay: {
+        packages: ["@x402/fetch", "@x402/evm", "viem"],
+        network: "eip155:8453",
+        asset: "USDC",
+      },
+    },
+    cheapest_first_step: {
+      name: CHEAPEST_FIRST_STEP.name,
+      price_usd: CHEAPEST_FIRST_STEP.price_usd,
+      url: `${base}${CHEAPEST_FIRST_STEP.path}`,
+      why: CHEAPEST_FIRST_STEP.why,
+    },
+  };
+}
+
 export function usdToUsdcMicros(usd) {
   return String(Math.round(usd * 1_000_000));
 }
@@ -163,7 +235,7 @@ export function buildProductPaymentRequirements(product, requestUrl, env) {
   return requirements;
 }
 
-export function payment402BodyForProduct(requirements, product, error, origin) {
+export function payment402BodyForProduct(requirements, product, error, origin, requestUrl) {
   const base = origin?.replace(/\/$/, "") || "";
   return {
     x402Version: 2,
@@ -173,6 +245,7 @@ export function payment402BodyForProduct(requirements, product, error, origin) {
     mimeType: requirements.mimeType,
     maxAmountRequired: requirements.maxAmountRequired,
     accepts: requirements.accepts,
+    ...machineActionable402(requirements, origin, requestUrl),
     ...(requirements.extensions ? { extensions: requirements.extensions } : {}),
     product: {
       kind: product.kind,
@@ -295,7 +368,7 @@ export function paymentRequiredObject(requirements, error) {
 export function payment402Headers(requirements, error, extra = {}) {
   return {
     "PAYMENT-REQUIRED": encodePaymentRequiredHeader(paymentRequiredObject(requirements, error)),
-    "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, X-PAYMENT-RESPONSE",
+    "Access-Control-Expose-Headers": "PAYMENT-REQUIRED, PAYMENT-RESPONSE, X-PAYMENT-RESPONSE",
     ...extra,
   };
 }
@@ -317,7 +390,7 @@ export function buildPaymentRequirements(plan, requestUrl, env) {
   };
 }
 
-export function payment402Body(requirements, error) {
+export function payment402Body(requirements, error, requestUrl) {
   return {
     x402Version: 2,
     error: error || "Payment required for Second Eyes access",
@@ -326,6 +399,7 @@ export function payment402Body(requirements, error) {
     mimeType: requirements.mimeType,
     maxAmountRequired: requirements.maxAmountRequired,
     accepts: requirements.accepts,
+    ...machineActionable402(requirements, undefined, requestUrl),
     plans: Object.values(ACCESS_PLANS).map((p) => ({
       id: p.id,
       priceUsd: p.priceUsd,
