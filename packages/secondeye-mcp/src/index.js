@@ -215,7 +215,7 @@ server.registerTool(
   async ({ session_id, slug }) => {
     // Route to the session-less x402 twin, not the session-gated
     // /api/bar/services/{slug}: a wallet agent holds no compatibility session, so
-    // the gated route would 4xx (never 402) and autopay would never fire.
+    // the gated route returns 402 to anonymous callers and honors session-less signed payments via the honor rule (handler.js).
     const path = x402ServicePath(slug);
     if (!path) {
       return textResult({

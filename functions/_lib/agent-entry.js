@@ -186,7 +186,7 @@ export function buildPaymentProtocol(origin, env) {
     },
     no_wallet_fallback: {
       read_first: `${base}/llms.txt#how-to-pay`,
-      mcp_free_reads: "npx -y @secondeyes/mcp-unblock@1.0.5 â€” proof, menu, enter, pause; paid services return 402",
+      mcp_default: "npx -y @secondeyes/mcp-unblock@1.2.6 — free reads with no wallet; auto-pay when MCP_X402_WALLET_KEY is set",
       mcp_autopay_when_published: `When npm >= @${MCP_AUTOPAY_NPM_VERSION}: pin @secondeyes/mcp-unblock@${MCP_AUTOPAY_NPM_VERSION} + MCP_X402_WALLET_KEY on MCP server`,
       rest_paid: "Any agent with a funded Base USDC wallet uses rest_client above (x402 v2, eip155:8453)",
     },
