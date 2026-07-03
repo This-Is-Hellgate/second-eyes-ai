@@ -299,7 +299,8 @@ function build402Response(requirements, product, resourceUrl, error) {
     requirements,
     product,
     error || "Payment required",
-    `https://${CANONICAL_HOST}`
+    `https://${CANONICAL_HOST}`,
+    resourceUrl
   );
 
   return new Response(JSON.stringify(body), {

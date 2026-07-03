@@ -4,13 +4,21 @@
   "description": "Open verification and recovery substrate for autonomous agents. Multi-rail: x402 USDC on Base (default machine rail), AP2 VDC mandate doors, Stripe ACP for human/low-trust callers. Deterministic verdicts — same answer on every retry. ERC-8004 identity layer. No allowlist.",
   "speaks_to": "Autonomous agents, wallet-equipped MCP clients, and the runtimes that authorize their tools and payments.",
   "pricing_note": "Recovery and verification services $0.01–$0.05 USD. Low enough that a runtime under a tight session spend guardrail can authorize a check without hesitation.",
-  "price_range_usd": { "min": 0.01, "max": 0.05 },
+  "price_range_usd": {
+    "min": 0.01,
+    "max": 0.05
+  },
   "payment": {
     "rail": "x402",
     "x402Version": 2,
     "network": "eip155:8453",
-    "accepted_networks": ["eip155:8453"],
-    "planned_networks": ["eip155:137", "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"],
+    "accepted_networks": [
+      "eip155:8453"
+    ],
+    "planned_networks": [
+      "eip155:137",
+      "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+    ],
     "asset": "USDC",
     "scheme": "ExactEvmScheme",
     "multi_network_note": "Base canonical + always present. Read live accepts[] from the PAYMENT-REQUIRED header; do not sign for a planned_networks rail."
@@ -18,17 +26,129 @@
   "session_header": "X-Second-Eye-Session",
   "route_free": "https://secondeyesai.com/api/bar/triage",
   "items": [
-    { "key": "loop_detect", "when": "I am looping", "slug": "loop-detect", "price_usd": 0.03, "path": "/api/bar/services/loop-detect", "url": "https://secondeyesai.com/api/bar/services/loop-detect" },
-    { "key": "scope_check", "when": "I am drifting", "slug": "scope-check", "price_usd": 0.03, "path": "/api/bar/services/scope-check", "url": "https://secondeyesai.com/api/bar/services/scope-check" },
-    { "key": "context_recover", "when": "I forgot what I was doing", "slug": "context-recover", "price_usd": 0.05, "path": "/api/bar/services/context-recover", "url": "https://secondeyesai.com/api/bar/services/context-recover" },
-    { "key": "tool_verify", "when": "I am about to use a tool", "slug": "tool-verify", "price_usd": 0.01, "path": "/api/bar/services/tool-verify", "url": "https://secondeyesai.com/api/bar/services/tool-verify" },
-    { "key": "cascade_break", "when": "I made a mistake and it's getting worse", "slug": "cascade-break", "price_usd": 0.05, "path": "/api/bar/services/cascade-break", "url": "https://secondeyesai.com/api/bar/services/cascade-break" },
-    { "key": "pitstop", "when": "I am lost", "slug": "pitstop", "price_usd": 0.03, "path": "/api/bar/services/pitstop", "url": "https://secondeyesai.com/api/bar/services/pitstop" },
-    { "key": "pre_run_context", "when": "I lack context", "slug": "pre-run-context", "price_usd": 0.03, "path": "/api/bar/services/pre-run-context", "url": "https://secondeyesai.com/api/bar/services/pre-run-context" },
-    { "key": "claim_check", "when": "I am uncertain", "slug": "claim-check", "price_usd": 0.03, "path": "/api/bar/services/claim-check", "url": "https://secondeyesai.com/api/bar/services/claim-check" },
-    { "key": "context_compress", "when": "I am overloaded", "slug": "context-compress", "price_usd": 0.03, "path": "/api/bar/services/context-compress", "url": "https://secondeyesai.com/api/bar/services/context-compress" },
-    { "key": "mcp_wiring", "when": "I am blocked", "slug": "mcp-wiring", "price_usd": 0.05, "path": "/api/bar/services/mcp-wiring", "url": "https://secondeyesai.com/api/bar/services/mcp-wiring" },
-    { "key": "should_i_pay", "when": "I am about to pay", "slug": "should-i-pay", "price_usd": 0.01, "path": "/api/bar/services/should-i-pay", "url": "https://secondeyesai.com/api/bar/services/should-i-pay" },
-    { "key": "receipt", "when": "I need proof", "slug": "receipt", "price_usd": 0.03, "path": "/api/bar/services/receipt", "url": "https://secondeyesai.com/api/bar/services/receipt" }
-  ]
+    {
+      "key": "loop_detect",
+      "when": "I am looping",
+      "slug": "loop-detect",
+      "price_usd": 0.03,
+      "path": "/api/bar/x402/loop-detect",
+      "url": "https://secondeyesai.com/api/bar/x402/loop-detect",
+      "session_path": "/api/bar/services/loop-detect",
+      "session_url": "https://secondeyesai.com/api/bar/services/loop-detect"
+    },
+    {
+      "key": "scope_check",
+      "when": "I am drifting",
+      "slug": "scope-check",
+      "price_usd": 0.03,
+      "path": "/api/bar/x402/scope-check",
+      "url": "https://secondeyesai.com/api/bar/x402/scope-check",
+      "session_path": "/api/bar/services/scope-check",
+      "session_url": "https://secondeyesai.com/api/bar/services/scope-check"
+    },
+    {
+      "key": "context_recover",
+      "when": "I forgot what I was doing",
+      "slug": "context-recover",
+      "price_usd": 0.05,
+      "path": "/api/bar/x402/context-recover",
+      "url": "https://secondeyesai.com/api/bar/x402/context-recover",
+      "session_path": "/api/bar/services/context-recover",
+      "session_url": "https://secondeyesai.com/api/bar/services/context-recover"
+    },
+    {
+      "key": "tool_verify",
+      "when": "I am about to use a tool",
+      "slug": "tool-verify",
+      "price_usd": 0.01,
+      "path": "/api/bar/x402/tool-verify",
+      "url": "https://secondeyesai.com/api/bar/x402/tool-verify",
+      "session_path": "/api/bar/services/tool-verify",
+      "session_url": "https://secondeyesai.com/api/bar/services/tool-verify"
+    },
+    {
+      "key": "cascade_break",
+      "when": "I made a mistake and it's getting worse",
+      "slug": "cascade-break",
+      "price_usd": 0.05,
+      "path": "/api/bar/x402/cascade-break",
+      "url": "https://secondeyesai.com/api/bar/x402/cascade-break",
+      "session_path": "/api/bar/services/cascade-break",
+      "session_url": "https://secondeyesai.com/api/bar/services/cascade-break"
+    },
+    {
+      "key": "pitstop",
+      "when": "I am lost",
+      "slug": "pitstop",
+      "price_usd": 0.03,
+      "path": "/api/bar/x402/pitstop",
+      "url": "https://secondeyesai.com/api/bar/x402/pitstop",
+      "session_path": "/api/bar/services/pitstop",
+      "session_url": "https://secondeyesai.com/api/bar/services/pitstop"
+    },
+    {
+      "key": "pre_run_context",
+      "when": "I lack context",
+      "slug": "pre-run-context",
+      "price_usd": 0.03,
+      "path": "/api/bar/x402/pre-run-context",
+      "url": "https://secondeyesai.com/api/bar/x402/pre-run-context",
+      "session_path": "/api/bar/services/pre-run-context",
+      "session_url": "https://secondeyesai.com/api/bar/services/pre-run-context"
+    },
+    {
+      "key": "claim_check",
+      "when": "I am uncertain",
+      "slug": "claim-check",
+      "price_usd": 0.03,
+      "path": "/api/bar/x402/claim-check",
+      "url": "https://secondeyesai.com/api/bar/x402/claim-check",
+      "session_path": "/api/bar/services/claim-check",
+      "session_url": "https://secondeyesai.com/api/bar/services/claim-check"
+    },
+    {
+      "key": "context_compress",
+      "when": "I am overloaded",
+      "slug": "context-compress",
+      "price_usd": 0.03,
+      "path": "/api/bar/x402/context-compress",
+      "url": "https://secondeyesai.com/api/bar/x402/context-compress",
+      "session_path": "/api/bar/services/context-compress",
+      "session_url": "https://secondeyesai.com/api/bar/services/context-compress"
+    },
+    {
+      "key": "mcp_wiring",
+      "when": "I am blocked",
+      "slug": "mcp-wiring",
+      "price_usd": 0.05,
+      "path": "/api/bar/x402/mcp-wiring",
+      "url": "https://secondeyesai.com/api/bar/x402/mcp-wiring",
+      "session_path": "/api/bar/services/mcp-wiring",
+      "session_url": "https://secondeyesai.com/api/bar/services/mcp-wiring"
+    },
+    {
+      "key": "should_i_pay",
+      "when": "I am about to pay",
+      "slug": "should-i-pay",
+      "price_usd": 0.01,
+      "path": "/api/bar/x402/should-i-pay",
+      "url": "https://secondeyesai.com/api/bar/x402/should-i-pay",
+      "session_path": "/api/bar/services/should-i-pay",
+      "session_url": "https://secondeyesai.com/api/bar/services/should-i-pay"
+    },
+    {
+      "key": "receipt",
+      "when": "I need proof",
+      "slug": "receipt",
+      "price_usd": 0.03,
+      "path": "/api/bar/x402/receipt",
+      "url": "https://secondeyesai.com/api/bar/x402/receipt",
+      "session_path": "/api/bar/services/receipt",
+      "session_url": "https://secondeyesai.com/api/bar/services/receipt"
+    }
+  ],
+  "route_rule": {
+    "canonical": "url — session-less x402, pay-per-call, retry the same URL with PAYMENT-SIGNATURE",
+    "compatibility": "session_url — session-gated flow via POST /api/bar/enter (X-Second-Eye-Session)"
+  }
 }

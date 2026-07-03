@@ -1,5 +1,13 @@
 import { accessJson } from "../access.js";
-import { corsOptions, discoveryPaywall402, handlePaidFetch } from "../bar-pay.js";
+import {
+  corsOptions,
+  discoveryPaywall402,
+  handlePaidFetch,
+  hasBarTabAccess,
+  hasToolAccess,
+  consumeMicroAccess,
+} from "../bar-pay.js";
+import { readPaymentHeader } from "../x402.js";
 import { formatMark, readAgentId, readMarkId, getMarkById } from "../marks.js";
 import { enrichWithWorkStamp, workMarkLaw } from "../work-mark.js";
 import { SERVICE_PRICES, MENU, LOUNGE_VERSION, LAWS, FREE_SESSION_MINUTES, SURVIVAL_MENU, x402TwinRoute } from "./constants.js";
@@ -222,10 +230,71 @@ export async function handleServiceSlug(context, slug) {
   const priceMeta = SERVICE_PRICES[slug] || { price_usd: 0 };
   const product = buildLoungeServiceProduct(slug, priceMeta);
 
-  const discovery402 = discoveryPaywall402(context, product, origin);
-  if (discovery402) return discovery402;
+  // Invoice-honor invariant: only quote a session-less discovery 402 for slugs
+  // this route can actually deliver session-less (a deterministic pack exists).
+  // Priced session-only slugs must never advertise an invoice to anonymous
+  // crawlers that a signed retry cannot settle.
+  const sessionlessPack = buildServicePayload(slug, origin);
+  if (sessionlessPack) {
+    const discovery402 = discoveryPaywall402(context, product, origin);
+    if (discovery402) return discovery402;
+  }
 
   const sessionCheck = await requireActiveSession(context.env, context.request);
+
+  if (
+    !sessionlessPack &&
+    priceMeta.price_usd > 0 &&
+    !sessionCheck.ok &&
+    sessionCheck.error === "missing_session"
+  ) {
+    return loungeJson(
+      {
+        error: "session_required",
+        slug,
+        note: "This service is session-priced and has no session-less x402 twin. Enter first, or route your state through help_me for a session-less door.",
+        enter: `${origin}/api/bar/enter`,
+        help_me: `${origin}/api/bar/x402/help-me`,
+      },
+      401
+    );
+  }
+
+  // HONOR RULE — never issue an invoice this route will not honor. The
+  // discovery 402 above quotes session-less callers a real x402 invoice, and a
+  // standard x402 client (wrapFetchWithPayment) signs and retries the IDENTICAL
+  // URL — it cannot parse a redirect hint out of an error body. Before this
+  // branch existed, that signed retry died at the session gate with
+  // 400 missing_session, BEFORE verification and BEFORE the D1 payment-attempt
+  // record: the exact invisible-walkaway conversion failure. A session-less
+  // signed payment now settles through the same paid flow as the
+  // /api/bar/x402/{slug} twin and delivers the same deterministic pack.
+  // Penned agents stay excluded; session holders are unaffected (they pass the
+  // session gate below exactly as before).
+  if (
+    sessionlessPack &&
+    !sessionCheck.ok &&
+    sessionCheck.error !== "agent_penned" &&
+    priceMeta.price_usd > 0 &&
+    readPaymentHeader(context.request)
+  ) {
+    const payload = async () => ({
+      ...sessionlessPack,
+      slug,
+      price_usd: priceMeta.price_usd,
+      session_required: false,
+      route_class: "compatibility",
+      canonical_route: x402TwinRoute(slug, origin) || `${origin}/api/bar/services/${slug}`,
+    });
+    return handlePaidFetch(context, product, payload, async (token) => {
+      const tab = await hasBarTabAccess(token, context.env);
+      if (tab) return { ok: true, claims: tab };
+      const toolClaims = await hasToolAccess(token, "lounge-survival", context.env);
+      if (toolClaims) return { ok: true, claims: toolClaims };
+      return consumeMicroAccess(token, slug, "lounge-survival", context.env);
+    });
+  }
+
   if (!sessionCheck.ok) {
     const status = sessionCheck.error === "agent_penned" ? 403 : sessionCheck.error === "missing_session" ? 400 : 440;
     const body = { ...sessionCheck };

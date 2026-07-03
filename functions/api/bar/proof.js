@@ -147,7 +147,7 @@ export async function onRequestGet(context) {
         micro: `${origin}/api/bar/taps/cursor-mcp-minimal-config`,
       },
       paid_examples: {
-        survival_should_i_pay: `${origin}/api/bar/services/should-i-pay`,
+        survival_should_i_pay: `${origin}/api/bar/x402/should-i-pay`,
         nano_usd_0_25: `${origin}/api/bar/taps/mcp-stdio-vs-sse`,
         micro_usd_1: `${origin}/api/bar/taps/github-mcp-search-code`,
         tool_usd_5: `${origin}/api/bar/tools/github-mcp`,

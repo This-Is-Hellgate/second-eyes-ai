@@ -75,7 +75,7 @@ export async function onRequestGet(context) {
   const paymentHeader = readPaymentHeader(request);
   if (!paymentHeader) {
     return accessJson(
-      payment402Body(requirements),
+      payment402Body(requirements, undefined, request.url),
       402,
       payment402Headers(requirements, undefined, { "Access-Control-Allow-Origin": "*" })
     );
@@ -98,7 +98,7 @@ export async function onRequestGet(context) {
       );
     }
     return accessJson(
-      payment402Body(requirements, settled.error),
+      payment402Body(requirements, settled.error, request.url),
       402,
       payment402Headers(requirements, settled.error, { "Access-Control-Allow-Origin": "*" })
     );

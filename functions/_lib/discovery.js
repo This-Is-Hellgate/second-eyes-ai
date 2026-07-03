@@ -14,6 +14,7 @@
  */
 
 import { railStates } from "./x402-networks.js";
+import { SURVIVAL_MENU, X402_TWIN_SLUGS } from "./lounge/constants.js";
 
 /** Cacheable JSON response shared by every discovery compat route. */
 export function discoveryJson(data, extraHeaders = {}) {
@@ -100,7 +101,29 @@ function paidDoors() {
       summary:
         "Is an x402 endpoint actually indexed on the CDP Bazaar? If not, is it a fixable format problem or CDP's indexing backlog?",
     },
+    ...survivalTwinDoors(),
   ];
+}
+
+/**
+ * The 12 SURVIVAL_MENU items reachable session-less via their x402 twin
+ * (/api/bar/x402/{slug}, served by functions/api/bar/x402/[slug].js). These
+ * were previously absent from paidDoors(), which is exactly why an external
+ * crawler (e.g. 402Radar) that reads /openapi.json for schema — including for
+ * already-discovered routes like loop-detect — found no declared path and
+ * reported declaredSchema: null for every twin slug. Derived from the shared
+ * menu source, not hand-maintained, so this list cannot drift from the menu
+ * SURVIVAL_MENU/constants.js exports.
+ */
+function survivalTwinDoors() {
+  return SURVIVAL_MENU.filter(({ slug }) => X402_TWIN_SLUGS.has(slug)).map(
+    ({ slug, when, price_usd }) => ({
+      slug,
+      path: `/api/bar/x402/${slug}`,
+      price_usd,
+      summary: `Survival recovery door for: "${when}". Deterministic verdict, same answer on every retry.`,
+    })
+  );
 }
 
 /** Free, unpaid surfaces an agent reads before it spends. */

@@ -80,7 +80,7 @@ export function discoveryPaywall402(context, product, origin) {
   if (!requirements) return null;
 
   return accessJson(
-    payment402BodyForProduct(requirements, product, undefined, origin),
+    payment402BodyForProduct(requirements, product, undefined, origin, context.request.url),
     402,
     payment402Headers(requirements, undefined, {
       "Access-Control-Allow-Origin": "*",
@@ -234,7 +234,7 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
       await incrementCounter(env, counterKey, 1);
     }
     return accessJson(
-      payment402BodyForProduct(requirements, product, undefined, origin),
+      payment402BodyForProduct(requirements, product, undefined, origin, request.url),
       402,
       payment402Headers(requirements, undefined, {
         "Access-Control-Allow-Origin": "*",
@@ -486,7 +486,8 @@ export function paymentVerifyFailureResponse(context, product, requirements, set
     requirements,
     product,
     "Payment verification failed.",
-    origin
+    origin,
+    context.request.url
   );
   paywall.code = "payment_verification_failed";
   paywall.requestId = requestId;

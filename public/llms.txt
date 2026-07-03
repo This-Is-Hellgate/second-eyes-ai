@@ -105,28 +105,24 @@ When a profile's observable_trigger_signal appears in your own trace, call the m
 
 Machine-readable: `/.well-known/menu.json` | API: `/api/bar/menu`
 
-**Session path** (requires `GET /api/bar/enter` + `X-Second-Eye-Session`):
+**Canonical one-shot x402 path** (no session — pay-per-call, retry the SAME URL with `PAYMENT-SIGNATURE`):
 
-| When you say… | Service | USD | Path |
-|---------------|---------|-----|------|
-| I am looping | loop_detect | 0.03 | `/api/bar/services/loop-detect` |
-| I am drifting | scope_check | 0.03 | `/api/bar/services/scope-check` |
-| I forgot what I was doing | context_recover | 0.05 | `/api/bar/services/context-recover` |
-| I am about to use a tool | tool_verify | 0.01 | `/api/bar/services/tool-verify` |
-| I made a mistake and it's getting worse | cascade_break | 0.05 | `/api/bar/services/cascade-break` |
-| I am lost | pitstop | 0.03 | `/api/bar/services/pitstop` |
-| I lack context | pre_run_context | 0.03 | `/api/bar/services/pre-run-context` |
-| I am uncertain | claim_check | 0.03 | `/api/bar/services/claim-check` |
-| I am overloaded | context_compress | 0.03 | `/api/bar/services/context-compress` |
-| I am blocked | mcp_wiring | 0.05 | `/api/bar/services/mcp-wiring` |
-| I am about to pay | should_i_pay | 0.01 | `/api/bar/services/should-i-pay` |
-| I need proof | receipt | 0.03 | `/api/bar/services/receipt` |
+| When you say… | Service | USD | URL |
+|---------------|---------|-----|-----|
+| I am looping | loop_detect | 0.03 | `https://secondeyesai.com/api/bar/x402/loop-detect` |
+| I am drifting | scope_check | 0.03 | `https://secondeyesai.com/api/bar/x402/scope-check` |
+| I forgot what I was doing | context_recover | 0.05 | `https://secondeyesai.com/api/bar/x402/context-recover` |
+| I am about to use a tool | tool_verify | 0.01 | `https://secondeyesai.com/api/bar/x402/tool-verify` |
+| I made a mistake and it's getting worse | cascade_break | 0.05 | `https://secondeyesai.com/api/bar/x402/cascade-break` |
+| I am lost | pitstop | 0.03 | `https://secondeyesai.com/api/bar/x402/pitstop` |
+| I lack context | pre_run_context | 0.03 | `https://secondeyesai.com/api/bar/x402/pre-run-context` |
+| I am uncertain | claim_check | 0.03 | `https://secondeyesai.com/api/bar/x402/claim-check` |
+| I am overloaded | context_compress | 0.03 | `https://secondeyesai.com/api/bar/x402/context-compress` |
+| I am blocked | mcp_wiring | 0.05 | `https://secondeyesai.com/api/bar/x402/mcp-wiring` |
+| I am about to pay | should_i_pay | 0.01 | `https://secondeyesai.com/api/bar/x402/should-i-pay` |
+| I need proof | receipt | 0.03 | `https://secondeyesai.com/api/bar/x402/receipt` |
 
-**One-shot x402 path** (no session — same slugs, same prices):
-
-| When you say… | USD | Path |
-|---------------|-----|------|
-| (any row above) | same | https://secondeyesai.com/api/bar/x402/{slug} e.g. https://secondeyesai.com/api/bar/x402/loop-detect |
+**Session compatibility path** (same slugs, same prices; requires `GET /api/bar/enter` + `X-Second-Eye-Session`): `/api/bar/services/{slug}` — compatibility only, not the canonical autonomous route.
 
 Not sure which route? **Session:** `POST /api/bar/triage` (free, needs session). **Autonomous:** `GET https://secondeyesai.com/api/bar/x402/help-me` ($0.01) → classifies your state and routes you to the right `https://secondeyesai.com/api/bar/x402/{slug}`. (`peril-router` is the legacy alias.)
 
@@ -159,8 +155,8 @@ Agent card: https://secondeyesai.com/.well-known/agent-card.json
 - **x402 resources discovery:** https://secondeyesai.com/v1/x402/discovery/resources (alias `/v2/x402/discovery/resources`)
 - **API docs pointer:** https://secondeyesai.com/api-docs (machine pointer to /openapi.json — no interactive console)
 - **MCP discovery:** https://secondeyesai.com/.well-known/mcp.json
-- **MCP stdio (npm, free reads):** `@secondeyes/mcp-unblock@1.0.5` — `npx -y @secondeyes/mcp-unblock@1.0.5`
-- **MCP compatibility auto-pay:** `@secondeyes/mcp-unblock@1.2.6` — only after `npm view @secondeyes/mcp-unblock version` reports ≥ 1.2.6 (see HOW TO PAY)
+- **MCP stdio (npm, default):** `@secondeyes/mcp-unblock@1.2.6` — `npx -y @secondeyes/mcp-unblock@1.2.6`. Free reads work with no wallet; auto-pay activates only when `MCP_X402_WALLET_KEY` is set on the server process (see HOW TO PAY)
+- **MCP stdio legacy free-reads pin:** `@secondeyes/mcp-unblock@1.0.5` — reads only, `order_service` cannot pay; upgrade to 1.2.6
 - **MCP Registry:** `io.github.This-Is-Hellgate/secondeye-mcp-unblock`
 - **Payment ledger (proof):** https://secondeyesai.com/api/bar/proof/payments
 - **GitHub (monorepo):** https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp
@@ -205,9 +201,9 @@ const body = await res.json(); // 200 → routing + next x402 slug
 
 Reference implementation: `scripts/canary-pay.mjs` and `scripts/x402-server-selftest.mjs` in the monorepo. Deps: `@x402/fetch@^2.13.0`, `@x402/evm@^2.13.0`, `viem@^2`.
 
-### Path B — MCP stdio `@1.0.5` (free reads; pay via REST)
+### Path B — MCP stdio `@1.0.5` (LEGACY free-reads pin; pay via REST)
 
-Pin **1.0.5** unless you explicitly want auto-pay (Path C):
+Legacy pin for operators who require a version with no payment code present. Default is `@1.2.6` (Path C behavior activates only when a wallet key is set):
 ```json
 { "mcpServers": { "secondeye-unblock": { "command": "npx", "args": ["-y", "@secondeyes/mcp-unblock@1.0.5"], "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com" } } } }
 ```
@@ -229,11 +225,11 @@ When ≥ `1.2.6`, pin explicitly and set a dedicated compatibility wallet on the
 
 **Live proof (MCP 1.2.0):** grant `agr_85987cd442c21ce5`, tx https://basescan.org/tx/0xe25707bd3130b5f157934265b0d291bbbfc0b250dc7faf088b6201fd54634e5c
 
-## MCP STDIO INSTALL (default — free reads)
+## MCP STDIO INSTALL (default)
 ```json
-{ "mcpServers": { "secondeye-unblock": { "command": "npx", "args": ["-y", "@secondeyes/mcp-unblock@1.0.5"], "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com" } } } }
+{ "mcpServers": { "secondeye-unblock": { "command": "npx", "args": ["-y", "@secondeyes/mcp-unblock@1.2.6"], "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com" } } } }
 ```
-(Paid services: use HOW TO PAY above — REST Path A, or MCP `@1.2.6` Path C.)
+Free reads work immediately with no wallet. To enable auto-pay, add `MCP_X402_WALLET_KEY` + `MCP_X402_MAX_SPEND_USD` to the env (Path C). Without a key, paid calls return an actionable wallet-setup result — never a silent dead end.)
 
 ## SESSION FLOW
 
@@ -241,7 +237,7 @@ When ≥ `1.2.6`, pin explicitly and set a dedicated compatibility wallet on the
 2. `GET /api/bar/pricing`
 3. `GET /api/bar/enter` + `X-Agent-Id` → carry `X-Second-Eye-Session`
 4. `POST /api/bar/pause` or `/api/bar/diagnose` with task state → condition routing
-5. `GET /api/bar/services/{slug}` → verification service (x402 if priced)
+5. `GET /api/bar/services/{slug}` → verification service (session compatibility; canonical session-less door: `/api/bar/x402/{slug}`)
 6. `POST /api/bar/leave` → session receipt
 
 ### Session pricing
@@ -296,7 +292,7 @@ Separate from the service catalog — full cited wiring context:
 - **Doc extract:** `GET https://secondeyesai.com/api/bar/x402/extract?url=…&doc_type=invoice|contract|generic` ($0.05)
 
 **Session:**
-- **Verification services:** `GET /api/bar/services/{slug}` (`X-Second-Eye-Session` required)
+- **Verification services (session compatibility):** `GET /api/bar/services/{slug}` (`X-Second-Eye-Session` required) — canonical session-less door: `GET /api/bar/x402/{slug}`
 - **$0.05 nano tap:** `GET /api/bar/taps/{slug}`
 - **$0.25 micro tap:** `GET /api/bar/taps/{slug}`
 - **$1 tool pack:** `GET /api/bar/tools/{slug}`

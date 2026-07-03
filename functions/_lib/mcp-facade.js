@@ -1,6 +1,6 @@
 /** Minimal streamable-HTTP MCP facade for registry scanners (Smithery, etc.). Full tools via stdio npm package. */
 
-import { SERVICE_PRICES } from "./lounge/constants.js";
+import { SERVICE_PRICES, X402_TWIN_SLUGS } from "./lounge/constants.js";
 import { buildServicePayload } from "./lounge/services.js";
 import {
   buildProductPaymentRequirements,
@@ -227,7 +227,11 @@ async function handleMcpPaidTool(name, params, id, origin, env) {
     return { status: 200, payload: rpcError(id, -32602, `Unknown service slug: ${slug}`) };
   }
 
-  const resourceUrl = `${origin}/api/bar/services/${slug}`;
+  // Canonical paid resource: the session-less x402 twin — an MCP caller holds no
+  // lounge session, and a signed retry must target a door that settles session-less.
+  const resourceUrl = X402_TWIN_SLUGS.has(slug)
+    ? `${origin}/api/bar/x402/${slug}`
+    : `${origin}/api/bar/services/${slug}`;
   const requirements = buildProductPaymentRequirements(product, resourceUrl, env);
   if (!requirements) {
     return {

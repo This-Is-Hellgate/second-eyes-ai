@@ -61,7 +61,8 @@ export function triageResponse(payload, origin) {
     menu: SURVIVAL_MENU.map(({ key, slug, when, price_usd }) => ({
       key,
       when,
-      path: `${base}/api/bar/services/${slug}`,
+      path: `${base}/api/bar/x402/${slug}`,
+      session_path: `${base}/api/bar/services/${slug}`,
       price_usd,
     })),
   };

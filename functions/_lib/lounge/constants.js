@@ -135,9 +135,11 @@ export const MENU = {
     SURVIVAL_MENU.map(({ key, slug, when, price_usd }) => [
       key,
       {
-        path: `/api/bar/services/${slug}`,
-        // Session-less one-shot route for autonomous agents that cannot hold a session.
+        // Canonical route: session-less x402 twin (retry the same URL with
+        // PAYMENT-SIGNATURE). The session-gated route is compatibility only.
+        path: X402_TWIN_SLUGS.has(slug) ? `/api/bar/x402/${slug}` : `/api/bar/services/${slug}`,
         x402: X402_TWIN_SLUGS.has(slug) ? `/api/bar/x402/${slug}` : undefined,
+        session_path: `/api/bar/services/${slug}`,
         session_required: !X402_TWIN_SLUGS.has(slug),
         when,
         price_usd,
@@ -166,9 +168,10 @@ export const CONDITION_ROUTES = Object.fromEntries(
       condition: key,
       when,
       recommendation: key,
-      next_call: `/api/bar/services/${slug}`,
-      // Session-less one-shot route — autonomous agents pay this directly, no session.
+      // Canonical next call: session-less x402 twin when it exists.
+      next_call: X402_TWIN_SLUGS.has(slug) ? `/api/bar/x402/${slug}` : `/api/bar/services/${slug}`,
       x402_call: X402_TWIN_SLUGS.has(slug) ? `/api/bar/x402/${slug}` : undefined,
+      session_call: `/api/bar/services/${slug}`,
       session_required: !X402_TWIN_SLUGS.has(slug),
       price_usd,
     },
