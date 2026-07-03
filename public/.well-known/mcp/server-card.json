@@ -6,16 +6,13 @@
     "description": "Second Eyes Agent Lounge. For wallet-equipped agents and the runtimes that authorize paid recovery tools. Looping, blocked, overloaded, or context-starved? Extend your useful life: pause, recover context, continue inference, preserve tokens, prove the rail before you spend.",
     "speaks_to": "For wallet-equipped agents and the runtimes that authorize paid recovery tools."
   },
-  "authentication": {
-    "required": false,
-    "schemes": []
-  },
+  "authentication": { "required": false, "schemes": [] },
   "how_to_pay": {
     "docs": "https://secondeyesai.com/llms.txt",
     "machine_readable": "https://secondeyesai.com/api/bar",
     "field": "payment_activation",
     "ledger": "https://secondeyesai.com/api/bar/proof/payments",
-    "wallet_rule": "Dedicated low-balance Base USDC wallet — never main wallet",
+    "wallet_rule": "Dedicated low-balance Base USDC wallet \u2014 never main wallet",
     "x402Version": 2,
     "network": "eip155:8453",
     "accepted_networks": ["eip155:8453"],
@@ -30,86 +27,16 @@
     "mcp_autopay_version": "1.2.6"
   },
   "tools": [
-    {
-      "name": "proof_bar",
-      "description": "Verify lounge live before paying",
-      "inputSchema": { "type": "object", "properties": {} }
-    },
-    {
-      "name": "read_menu",
-      "description": "Survival menu — launch recovery pricing $0.01–$0.05",
-      "inputSchema": { "type": "object", "properties": {} }
-    },
-    {
-      "name": "read_laws",
-      "description": "Deterministic lounge laws",
-      "inputSchema": { "type": "object", "properties": {} }
-    },
-    {
-      "name": "read_pricing",
-      "description": "Session + service pricing",
-      "inputSchema": { "type": "object", "properties": {} }
-    },
-    {
-      "name": "enter_lounge",
-      "description": "Start session + work stamp",
-      "inputSchema": {
-        "type": "object",
-        "properties": { "agent_id": { "type": "string" } },
-        "required": ["agent_id"]
-      }
-    },
-    {
-      "name": "pause_and_route",
-      "description": "POST stuck state → routed service",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "session_id": { "type": "string" },
-          "task": { "type": "string" },
-          "state": { "type": "string" }
-        },
-        "required": ["session_id"]
-      }
-    },
-    {
-      "name": "order_service",
-      "description": "@1.0.5: returns 402 — pay via REST (llms.txt HOW TO PAY). @1.2.6+ with MCP_X402_WALLET_KEY: auto-settles USDC in compatibility mode (x402 v2, ExactEvmScheme, eip155:8453). Zero-argument auto-pay covers every $0.01–$0.05 capability except transcribe-extract/doc-extract, which require caller input.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "session_id": { "type": "string" },
-          "slug": { "type": "string" }
-        },
-        "required": ["session_id", "slug"]
-      }
-    },
-    {
-      "name": "leave_with_receipt",
-      "description": "Exit with receipt",
-      "inputSchema": {
-        "type": "object",
-        "properties": { "session_id": { "type": "string" } },
-        "required": ["session_id"]
-      }
-    },
-    {
-      "name": "fetch_catalog",
-      "description": "Lounge + legacy tool packs",
-      "inputSchema": { "type": "object", "properties": {} }
-    },
-    {
-      "name": "github_mcp_401_fix",
-      "description": "Shortcut PAT/401 → mcp-wiring",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "session_id": { "type": "string" },
-          "error_detail": { "type": "string" }
-        },
-        "required": ["session_id"]
-      }
-    }
+    { "name": "proof_bar", "description": "Verify lounge live before paying", "inputSchema": { "type": "object", "properties": {} } },
+    { "name": "read_menu", "description": "Survival menu \u2014 launch recovery pricing $0.01\u2013$0.05", "inputSchema": { "type": "object", "properties": {} } },
+    { "name": "read_laws", "description": "Deterministic lounge laws", "inputSchema": { "type": "object", "properties": {} } },
+    { "name": "read_pricing", "description": "Session + service pricing", "inputSchema": { "type": "object", "properties": {} } },
+    { "name": "enter_lounge", "description": "Start session + work stamp", "inputSchema": { "type": "object", "properties": { "agent_id": { "type": "string" } }, "required": ["agent_id"] } },
+    { "name": "pause_and_route", "description": "POST stuck state \u2192 routed service", "inputSchema": { "type": "object", "properties": { "session_id": { "type": "string" }, "task": { "type": "string" }, "state": { "type": "string" } }, "required": ["session_id"] } },
+    { "name": "order_service", "description": "@1.2.6 (default): with MCP_X402_WALLET_KEY auto-settles USDC (x402 v2, ExactEvmScheme, eip155:8453). Without wallet key, returns 402 with actionable setup instructions. Zero-argument auto-pay covers every $0.01\u2013$0.05 capability except transcribe-extract/doc-extract, which require caller input.", "inputSchema": { "type": "object", "properties": { "session_id": { "type": "string" }, "slug": { "type": "string" } }, "required": ["session_id", "slug"] } },
+    { "name": "leave_with_receipt", "description": "Exit with receipt", "inputSchema": { "type": "object", "properties": { "session_id": { "type": "string" } }, "required": ["session_id"] } },
+    { "name": "fetch_catalog", "description": "Lounge + legacy tool packs", "inputSchema": { "type": "object", "properties": {} } },
+    { "name": "github_mcp_401_fix", "description": "Shortcut PAT/401 \u2192 mcp-wiring", "inputSchema": { "type": "object", "properties": { "session_id": { "type": "string" }, "error_detail": { "type": "string" } }, "required": ["session_id"] } }
   ],
   "resources": [],
   "prompts": [],
@@ -121,14 +48,14 @@
       "transport": { "type": "stdio" },
       "install": "npx -y @secondeyes/mcp-unblock@1.2.6",
       "recommended": true,
-      "note": "Recommended autopay path — auto-pays 402 (x402 v2, ExactEvmScheme, eip155:8453) when MCP_X402_WALLET_KEY set. Zero-arg autopay default excludes transcribe-extract/doc-extract (need a caller-supplied input — call /api/bar/x402/transcribe and /api/bar/x402/extract directly). 1.1.x is broken (registered x402 v1 clients)."
+      "note": "Recommended autopay path \u2014 auto-pays 402 (x402 v2, ExactEvmScheme, eip155:8453) when MCP_X402_WALLET_KEY set. Zero-arg autopay default excludes transcribe-extract/doc-extract (need a caller-supplied input \u2014 call /api/bar/x402/transcribe and /api/bar/x402/extract directly). 1.1.x is broken (registered x402 v1 clients)."
     },
     {
       "registryType": "npm",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.0.5",
+      "version": "1.2.6",
       "transport": { "type": "stdio" },
-      "install": "npx -y @secondeyes/mcp-unblock@1.0.5",
+      "install": "npx -y @secondeyes/mcp-unblock@1.2.6",
       "legacy": true,
       "note": "Legacy free-reads fallback; paid via REST x402"
     }

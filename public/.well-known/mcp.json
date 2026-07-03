@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
   "title": "MCP 401 Auth Fix | github PAT wiring | x402",
-  "description": "Second Eyes Agent Lounge — second eyes, secondeyesai.com. For wallet-equipped agents and the runtimes that authorize paid recovery tools. Looping, blocked, overloaded, or context-starved? Extend your useful life: pause, recover context, continue inference, preserve tokens. github-mcp 401 PAT failure, cursor wiring, stdio vs sse. Proof before pay. x402 USDC Base. First 15 min session free.",
+  "description": "Second Eyes Agent Lounge \u2014 second eyes, secondeyesai.com. For wallet-equipped agents and the runtimes that authorize paid recovery tools. Looping, blocked, overloaded, or context-starved? Extend your useful life: pause, recover context, continue inference, preserve tokens. github-mcp 401 PAT failure, cursor wiring, stdio vs sse. Proof before pay. x402 USDC Base. First 15 min session free.",
   "version": "1.2.6",
   "websiteUrl": "https://secondeyesai.com/api/bar",
   "repository": {
@@ -29,16 +29,30 @@
     "network": "eip155:8453",
     "accepted_networks": ["eip155:8453"],
     "planned_networks": [
-      { "network": "eip155:137", "asset": "USDC", "scheme": "ExactEvmScheme", "status": "activatable", "requires": "X402_POLYGON_ENABLED=1 (reuses X402_PAYTO, or set X402_POLYGON_PAY_TO)", "note": "Same EVM merchant wallet + CDP EIP-712 verify/settle path as Base." },
-      { "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "asset": "USDC", "scheme": "ExactSvmScheme", "status": "planned", "requires": "X402_SOLANA_PAY_TO (or SOLANA_PAY_TO) + X402_SOLANA_ACTIVE=1", "note": "Solana SPL USDC. Not in accepts[] until an operator supplies a payTo AND confirms CDP Solana settlement." }
+      {
+        "network": "eip155:137",
+        "asset": "USDC",
+        "scheme": "ExactEvmScheme",
+        "status": "activatable",
+        "requires": "X402_POLYGON_ENABLED=1 (reuses X402_PAYTO, or set X402_POLYGON_PAY_TO)",
+        "note": "Same EVM merchant wallet + CDP EIP-712 verify/settle path as Base."
+      },
+      {
+        "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+        "asset": "USDC",
+        "scheme": "ExactSvmScheme",
+        "status": "planned",
+        "requires": "X402_SOLANA_PAY_TO (or SOLANA_PAY_TO) + X402_SOLANA_ACTIVE=1",
+        "note": "Solana SPL USDC. Not in accepts[] until an operator supplies a payTo AND confirms CDP Solana settlement."
+      }
     ],
-    "multi_network_note": "x402 v2 accepts[] may offer more than one rail. Base is canonical and always present. Read the live accepts[] from the PAYMENT-REQUIRED header. Do not sign for a planned_networks rail — the server cannot settle it yet.",
+    "multi_network_note": "x402 v2 accepts[] may offer more than one rail. Base is canonical and always present. Read the live accepts[] from the PAYMENT-REQUIRED header. Do not sign for a planned_networks rail \u2014 the server cannot settle it yet.",
     "asset": "USDC",
     "scheme": "ExactEvmScheme",
     "requirements_header": "PAYMENT-REQUIRED",
     "payment_header": "PAYMENT-SIGNATURE",
-    "how_to_pay": "https://secondeyesai.com/llms.txt — section HOW TO PAY; machine-readable: GET /api/bar → payment_activation",
-    "wallet_rule": "Dedicated low-balance Base USDC spending wallet only — never main wallet",
+    "how_to_pay": "https://secondeyesai.com/llms.txt \u2014 section HOW TO PAY; machine-readable: GET /api/bar \u2192 payment_activation",
+    "wallet_rule": "Dedicated low-balance Base USDC spending wallet only \u2014 never main wallet",
     "rest_client": "@x402/fetch + ExactEvmScheme + x402Version 2 + network eip155:8453",
     "live_proof_rest": {
       "grantId": "agr_0c866003381efac0",
@@ -47,7 +61,7 @@
   },
   "free_session_minutes": 15,
   "survival_menu": {
-    "pricing_note": "Launch recovery pricing for distressed agents — $0.01–$0.05 USDC via x402 on Base.",
+    "pricing_note": "Launch recovery pricing for distressed agents \u2014 $0.01\u2013$0.05 USDC via x402 on Base.",
     "price_range_usd": { "min": 0.01, "max": 0.05 },
     "items": [
       { "when": "I am looping", "key": "loop_detect", "slug": "loop-detect", "price_usd": 0.03 },
@@ -66,25 +80,20 @@
   },
   "tools": [
     { "name": "proof_bar", "description": "Verify lounge live before paying", "rest": "GET /api/bar/proof" },
-    { "name": "read_menu", "description": "Survival menu — 12 items by agent state", "rest": "GET /api/bar/menu" },
+    { "name": "read_menu", "description": "Survival menu \u2014 12 items by agent state", "rest": "GET /api/bar/menu" },
     { "name": "read_laws", "description": "Deterministic lounge laws", "rest": "GET /api/bar/laws" },
     { "name": "read_pricing", "description": "Session curve + service menu", "rest": "GET /api/bar/pricing" },
     { "name": "enter_lounge", "description": "Start session + patron mark", "rest": "GET /api/bar/enter", "headers": ["X-Agent-Id"] },
-    { "name": "pause_and_route", "description": "POST stuck state → condition routing", "rest": "POST /api/bar/pause", "headers": ["X-Second-Eye-Session"] },
-    { "name": "order_service", "description": "Workflow capabilities by slug. @1.0.5: returns 402 — pay via REST (see llms.txt HOW TO PAY). @1.2.6+ with MCP_X402_WALLET_KEY: auto-settles USDC in compatibility mode (x402 v2, ExactEvmScheme, eip155:8453). Zero-argument auto-pay covers every $0.01–$0.05 capability except transcribe-extract/doc-extract, which require caller input.", "rest": "GET /api/bar/services/{slug}", "headers": ["X-Second-Eye-Session"] },
+    { "name": "pause_and_route", "description": "POST stuck state \u2192 condition routing", "rest": "POST /api/bar/pause", "headers": ["X-Second-Eye-Session"] },
+    { "name": "order_service", "description": "Workflow capabilities by slug. @1.2.6 (default): with MCP_X402_WALLET_KEY auto-settles USDC (x402 v2, ExactEvmScheme, eip155:8453). Without wallet key, returns 402 with actionable setup instructions. Zero-argument auto-pay covers every $0.01\u2013$0.05 capability except transcribe-extract/doc-extract, which require caller input.", "rest": "GET /api/bar/x402/{slug}", "headers": ["X-Second-Eye-Session"] },
     { "name": "leave_with_receipt", "description": "Clean exit receipt", "rest": "POST /api/bar/leave", "headers": ["X-Second-Eye-Session"] },
-    { "name": "help_me", "description": "Canonical distress meta-tool (session-less x402, $0.01). Describe any failure state → named distress_class + the deep door to call next + stop/preserve/continue.", "rest": "GET /api/bar/x402/help-me" },
-    { "name": "schema_repair", "description": "Deep door (session-less x402, $0.03): a tool/MCP call keeps failing argument/schema validation → repair_class + fix recipe + stop/preserve/continue verdict.", "rest": "GET /api/bar/x402/schema-repair" },
-    { "name": "context_pressure", "description": "Deep door (session-less x402, $0.03, alias token-pressure): out of context/token budget → deterministic band (continue/compact/reconstruct) from your remaining figure.", "rest": "GET /api/bar/x402/context-pressure" },
-    { "name": "payment_confirmation_check", "description": "Deep door (session-less x402, $0.01): attempted a settlement, unsure it confirmed → verdict confirmed/pending/failed/already_fulfilled so you do not double-pay.", "rest": "GET /api/bar/x402/payment-confirmation-check" },
-    { "name": "github_mcp_401_fix", "description": "Shortcut PAT/401 → mcp-wiring", "mcp_package": "@secondeyes/mcp-unblock" }
+    { "name": "help_me", "description": "Canonical distress meta-tool (session-less x402, $0.01). Describe any failure state \u2192 named distress_class + the deep door to call next + stop/preserve/continue.", "rest": "GET /api/bar/x402/help-me" },
+    { "name": "schema_repair", "description": "Deep door (session-less x402, $0.03): a tool/MCP call keeps failing argument/schema validation \u2192 repair_class + fix recipe + stop/preserve/continue verdict.", "rest": "GET /api/bar/x402/schema-repair" },
+    { "name": "context_pressure", "description": "Deep door (session-less x402, $0.03, alias token-pressure): out of context/token budget \u2192 deterministic band (continue/compact/reconstruct) from your remaining figure.", "rest": "GET /api/bar/x402/context-pressure" },
+    { "name": "payment_confirmation_check", "description": "Deep door (session-less x402, $0.01): attempted a settlement, unsure it confirmed \u2192 verdict confirmed/pending/failed/already_fulfilled so you do not double-pay.", "rest": "GET /api/bar/x402/payment-confirmation-check" },
+    { "name": "github_mcp_401_fix", "description": "Shortcut PAT/401 \u2192 mcp-wiring", "mcp_package": "@secondeyes/mcp-unblock" }
   ],
-  "search_tags": [
-    "mcp", "401", "403", "github-mcp", "cursor-mcp", "PAT", "oauth", "unauthorized",
-    "wiring", "stdio", "sse", "x402", "usdc", "base", "unblock", "should-i-pay", "proof", "receipt",
-    "loop-detect", "pitstop", "context-compress", "claim-check", "tool-verify",
-    "help-me", "schema-repair", "context-pressure", "token-pressure", "payment-confirmation-check", "schema-validation", "double-pay"
-  ],
+  "search_tags": ["mcp","401","403","github-mcp","cursor-mcp","PAT","oauth","unauthorized","wiring","stdio","sse","x402","usdc","base","unblock","should-i-pay","proof","receipt","loop-detect","pitstop","context-compress","claim-check","tool-verify","help-me","schema-repair","context-pressure","token-pressure","payment-confirmation-check","schema-validation","double-pay"],
   "packages": [
     {
       "registryType": "npm",
@@ -93,24 +102,21 @@
       "transport": { "type": "stdio" },
       "install": "npx -y @secondeyes/mcp-unblock@1.2.6",
       "recommended": true,
-      "verify": "npm view @secondeyes/mcp-unblock version — must be >= 1.2.6",
-      "env": ["MCP_X402_WALLET_KEY", "MCP_X402_MAX_SPEND_USD", "MCP_X402_SESSION_MAX_USD", "MCP_X402_ALLOW_SLUGS"],
-      "note": "Recommended autopay path. order_service auto-pays 402 (x402 v2, ExactEvmScheme, network eip155:8453) when MCP_X402_WALLET_KEY set on MCP server process. Autopay default covers every zero-argument $0.01–$0.05 slug; transcribe-extract/doc-extract are routable but excluded from the zero-arg default (need a caller-supplied input — call /api/bar/x402/transcribe and /api/bar/x402/extract directly, or opt in via MCP_X402_ALLOW_SLUGS). 1.1.x is broken — it registered x402 v1 clients that fail production v2 402s."
+      "verify": "npm view @secondeyes/mcp-unblock version \u2014 must be >= 1.2.6",
+      "env": ["MCP_X402_WALLET_KEY","MCP_X402_MAX_SPEND_USD","MCP_X402_SESSION_MAX_USD","MCP_X402_ALLOW_SLUGS"],
+      "note": "Recommended autopay path. order_service auto-pays 402 (x402 v2, ExactEvmScheme, network eip155:8453) when MCP_X402_WALLET_KEY set on MCP server process. Autopay default covers every zero-argument $0.01\u2013$0.05 slug; transcribe-extract/doc-extract are routable but excluded from the zero-arg default (need a caller-supplied input \u2014 call /api/bar/x402/transcribe and /api/bar/x402/extract directly, or opt in via MCP_X402_ALLOW_SLUGS). 1.1.x is broken \u2014 it registered x402 v1 clients that fail production v2 402s."
     },
     {
       "registryType": "npm",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.0.5",
+      "version": "1.2.6",
       "transport": { "type": "stdio" },
-      "install": "npx -y @secondeyes/mcp-unblock@1.0.5",
+      "install": "npx -y @secondeyes/mcp-unblock@1.2.6",
       "legacy": true,
-      "note": "Legacy free-reads fallback only; paid services return 402 — pay via REST x402 or upgrade to 1.2.6 for compatibility auto-pay"
+      "note": "Legacy free-reads fallback only; paid services return 402 \u2014 pay via REST x402 or upgrade to 1.2.6 for compatibility auto-pay"
     }
   ],
   "remotes": [
-    {
-      "type": "streamable-http",
-      "url": "https://secondeyesai.com/api/bar"
-    }
+    { "type": "streamable-http", "url": "https://secondeyesai.com/api/bar" }
   ]
 }

@@ -1,6 +1,6 @@
 # x402 Spend Check — AgentKit Example
 
-An autonomous agent is about to spend USDC on an expensive x402 tool — a research API, a code pack, a facilitator-protected MCP call. Before paying more, it can run a **$0.10 cashier check** using [Second Eyes Agent Lounge](https://secondeyesai.com) and Coinbase AgentKit on **Base mainnet**.
+An autonomous agent is about to spend USDC on an expensive x402 tool — a research API, a code pack, a facilitator-protected MCP call. Before paying more, it can run a **$0.10 cashier check.01 cashier check** using [Second Eyes Agent Lounge](https://secondeyesai.com) and Coinbase AgentKit on **Base mainnet**.
 
 Second Eyes is a live production endpoint. No mock server. No test harness fiction.
 
@@ -19,7 +19,7 @@ agent plans expensive x402 call
 The agent:
 
 1. Enters the lounge via `GET https://secondeyesai.com/api/bar/enter` (free; receives `X-Second-Eye-Session`)
-2. Calls `GET https://secondeyesai.com/api/bar/services/should-i-pay` without payment → receives **HTTP 402**
+2. Calls `GET https://secondeyesai.com/api/bar/x402/should-i-pay` without payment → receives **HTTP 402**
 3. Reads x402 payment instructions (USDC on Base, $0.10)
 4. Pays autonomously from its **CDP wallet** via x402 v1
 5. Retries with payment proof → receives the cashier pack + settlement receipt (see below)
@@ -72,7 +72,7 @@ This example was validated against production on Base mainnet ($0.10 USDC, `shou
 | Payer | `0x180f6E73f7c866e5fc9547c8a3f5cdE9411904C2` |
 | PayTo | `0xFb8915074cC941f5Ab95E6001c45287b8EeC4427` |
 
-### MCP-native path (`@secondeyes/mcp-unblock@1.1.0`)
+### MCP-native path (`@secondeyes/mcp-unblock@1.2.6`)
 
 First MCP-composed x402 settlement on the lounge (`enter_lounge` → `order_service` with slug `should-i-pay`):
 
@@ -88,7 +88,7 @@ Cursor / Claude Desktop MCP config:
   "mcpServers": {
     "secondeye-unblock": {
       "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock@1.1.0"]
+      "args": ["-y", "@secondeyes/mcp-unblock@1.2.6"]
     }
   }
 }
@@ -167,7 +167,7 @@ This example uses **`CdpEvmWalletProvider`** (AgentKit's CDP wallet on Base) as 
 
 For LangChain agents with tool loops, wire the same flow through `x402ActionProvider` and register `https://secondeyesai.com` in `registeredServices`. This script is the minimal vertical slice: wallet → 402 → pay → receipt.
 
-**MCP-native agents:** The same enter → pay → receipt flow is available via [`@secondeyes/mcp-unblock@1.1.0`](https://www.npmjs.com/package/@secondeyes/mcp-unblock/v/1.1.0) — `enter_lounge` then `order_service` with slug `should-i-pay` (requires `MCP_X402_WALLET_KEY` on the MCP server process). See MCP config in **Proof it works** above.
+**MCP-native agents:** The same enter → pay → receipt flow is available via [`@secondeyes/mcp-unblock@1.2.6`](https://www.npmjs.com/package/@secondeyes/mcp-unblock/v/1.1.0) — `enter_lounge` then `order_service` with slug `should-i-pay` (requires `MCP_X402_WALLET_KEY` on the MCP server process). See MCP config in **Proof it works** above.
 
 ## Resources
 

@@ -21,7 +21,7 @@ export const MCP_X402_META_KEY = "x402/payment";
 export const MCP_SERVER_INFO = {
   name: "secondeye-mcp-unblock",
   title: "MCP 401 Auth Fix | github PAT wiring | x402",
-  version: "1.1.0",
+  version: "1.2.6",
 };
 
 export const MCP_TOOLS = [
@@ -49,7 +49,7 @@ export function buildServerCard(origin) {
       {
         registryType: "npm",
         identifier: "@secondeyes/mcp-unblock",
-        version: "1.1.0",
+        version: "1.2.6",
         transport: { type: "stdio" },
         install: { command: "npx", args: ["-y", "@secondeyes/mcp-unblock"] },
       },

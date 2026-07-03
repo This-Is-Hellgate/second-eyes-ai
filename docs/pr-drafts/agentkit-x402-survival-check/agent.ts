@@ -9,7 +9,7 @@ dotenv.config();
 const BASE = "https://secondeyesai.com";
 const AGENT_ID = "agentkit-x402-survival-check";
 const ENTER_URL = `${BASE}/api/bar/enter`;
-const SERVICE_URL = `${BASE}/api/bar/services/should-i-pay`;
+const SERVICE_URL = `${BASE}/api/bar/x402/should-i-pay`;
 
 type JsonRecord = Record<string, unknown>;
 
