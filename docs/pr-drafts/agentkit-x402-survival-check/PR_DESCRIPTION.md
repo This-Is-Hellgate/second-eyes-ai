@@ -4,14 +4,14 @@ Adds **`typescript/examples/x402-survival-check/`** — a minimal AgentKit scrip
 
 The example uses **`CdpEvmWalletProvider`** + **`@x402/fetch`** (x402 v1 exact scheme) against the **live production endpoint** at [secondeyesai.com](https://secondeyesai.com). No mock server.
 
-For MCP-native agents, the same flow is available via [`@secondeyes/mcp-unblock@1.1.0`](https://www.npmjs.com/package/@secondeyes/mcp-unblock/v/1.1.0) (`enter_lounge` → `order_service` with slug `should-i-pay` and `MCP_X402_WALLET_KEY`).
+For MCP-native agents, the same flow is available via [`@secondeyes/mcp-unblock@1.2.6`](https://www.npmjs.com/package/@secondeyes/mcp-unblock/v/1.1.0) (`enter_lounge` → `order_service` with slug `should-i-pay` and `MCP_X402_WALLET_KEY`).
 
 ```json
 {
   "mcpServers": {
     "secondeye-unblock": {
       "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock@1.1.0"]
+      "args": ["-y", "@secondeyes/mcp-unblock@1.2.6"]
     }
   }
 }
@@ -20,7 +20,7 @@ For MCP-native agents, the same flow is available via [`@secondeyes/mcp-unblock@
 ### Flow
 
 1. `GET /api/bar/enter` — free lounge session (`X-Second-Eye-Session`)
-2. `GET /api/bar/services/should-i-pay` — HTTP 402 with payment requirements
+2. `GET /api/bar/x402/should-i-pay` — HTTP 402 with payment requirements
 3. Autonomous USDC payment via CDP wallet → HTTP 200 with grant + receipt
 
 ### Mainnet proof
@@ -30,7 +30,7 @@ For MCP-native agents, the same flow is available via [`@secondeyes/mcp-unblock@
 - **Tx:** [0x434539cb8ce48cb6faf81605971cd7de81972552f2a23d32ad62d0ba4963deeb](https://basescan.org/tx/0x434539cb8ce48cb6faf81605971cd7de81972552f2a23d32ad62d0ba4963deeb)
 - **Grant:** `agr_0c866003381efac0`
 
-**MCP-native (`@secondeyes/mcp-unblock@1.1.0`) — first MCP-composed x402 settlement on Second Eyes lounge:**
+**MCP-native (`@secondeyes/mcp-unblock@1.2.6`) — first MCP-composed x402 settlement on Second Eyes lounge:**
 
 - **Tx:** [0xe25707bd3130b5f157934265b0d291bbbfc0b250dc7faf088b6201fd54634e5c](https://basescan.org/tx/0xe25707bd3130b5f157934265b0d291bbbfc0b250dc7faf088b6201fd54634e5c)
 - **Grant:** `agr_85987cd442c21ce5`
@@ -39,7 +39,7 @@ Public ledger: https://secondeyesai.com/api/bar/proof/payments
 
 ## Motivation
 
-Autonomous agents with CDP wallets increasingly hit **HTTP 402** paywalls. Paying blindly wastes USDC on tools that free samples, bar tabs, or cheaper routes would cover. A **cheap pre-payment check** ($0.10) is a practical guardrail — complementary to pre-broadcast transaction guards.
+Autonomous agents with CDP wallets increasingly hit **HTTP 402** paywalls. Paying blindly wastes USDC on tools that free samples, bar tabs, or cheaper routes would cover. A **cheap pre-payment check** (($0.10).01) is a practical guardrail — complementary to pre-broadcast transaction guards.
 
 Related community discussion:
 
