@@ -1,20 +1,20 @@
 /**
- * /api/bar/x402/extract — document-intelligence door (session-less x402 sibling
+ * /api/bar/x402/extract â€” document-intelligence door (session-less x402 sibling
  * of the transcription door).
  *
  * Give it a PDF/doc URL and a doc_type; it pulls the bytes (SSRF-guarded), hands
- * the file to Gemini for structured extraction, then runs doc-validate.js — a
+ * the file to Gemini for structured extraction, then runs doc-validate.js â€” a
  * deterministic gate (strict schema + arithmetic reconciliation + date/currency
  * sanity + required fields). We charge and mint a work-mark ONLY when the
  * extraction reconciles. On an arithmetic/schema failure we return the exact
- * discrepancy and DO NOT settle — the buyer is not charged for an extraction we
+ * discrepancy and DO NOT settle â€” the buyer is not charged for an extraction we
  * cannot stand behind.
  *
  *   GET  /api/bar/x402/extract?url=https://host/doc.pdf&doc_type=invoice
- *   POST /api/bar/x402/extract  { "url": "https://…", "doc_type": "invoice" }
+ *   POST /api/bar/x402/extract  { "url": "https://â€¦", "doc_type": "invoice" }
  *
  * Attestation is EVIDENCE-ONLY: "schema-valid, totals reconcile, dates parse,
- * currency is ISO-4217" — never "legally verified" and never legal/financial
+ * currency is ISO-4217" â€” never "legally verified" and never legal/financial
  * advice. We did not read the document for meaning; we measured its structure.
  */
 
@@ -32,7 +32,7 @@ import {
 import { accessJson, verifyAccessToken } from "../../../_lib/access.js";
 import { fetchWithTimeout } from "../../../_lib/resilience.js";
 import { isSafeHttpUrl } from "../../../_lib/url-guard.js";
-import { callGemini } from "../../../_lib/llm-openrouter.js";
+import { runExtractPipeline } from "../../../_lib/llm-workersai.js";
 import { validateDoc, DOC_SCHEMAS, DOC_TYPES } from "../../../_lib/doc-validate.js";
 import { recordX402PaymentAttempt, readRequestId } from "../../../_lib/x402-payment-log.js";
 import {
@@ -107,7 +107,7 @@ export async function onRequestPost(context) {
   const parsed = await readOptionalJsonBody(context.request);
   if (!parsed.ok) {
     return accessJson(
-      { error: "invalid_json", note: 'POST a JSON body: { "url": "https://…", "doc_type": "invoice|contract|generic" }.' },
+      { error: "invalid_json", note: 'POST a JSON body: { "url": "https://â€¦", "doc_type": "invoice|contract|generic" }.' },
       400,
       CORS
     );
@@ -120,7 +120,7 @@ function normalizeDocType(v) {
   return typeof v === "string" ? v.trim().toLowerCase() : "generic";
 }
 
-/** Standard tab → tool → one-time nano consumption check (mirrors the other x402 doors). */
+/** Standard tab â†’ tool â†’ one-time nano consumption check (mirrors the other x402 doors). */
 function accessCheck(token, env) {
   return (async () => {
     const tab = await hasBarTabAccess(token, env);
@@ -148,7 +148,7 @@ async function handle(context, input) {
   const url = new URL(request.url);
   const origin = `${url.protocol}//${url.host}`;
 
-  // Bare / unauthenticated request → standard x402 paywall (402). No model work,
+  // Bare / unauthenticated request â†’ standard x402 paywall (402). No model work,
   // no outbound fetch. The CDP Bazaar crawler must receive 402 on a bare GET to
   // index this route, so the paywall has to run before anything else.
   const credible = paymentHeader || (token && (await peekAccess(token, env)));
@@ -184,7 +184,7 @@ async function handle(context, input) {
     }
   }
 
-  // Cheap input validation — never charge for malformed input or an unsafe URL.
+  // Cheap input validation â€” never charge for malformed input or an unsafe URL.
   if (!input.url) {
     return accessJson(
       { tool: TAP_SLUG, error: "no_input", note: "Provide ?url= (or { url }) pointing to a PDF/doc.", doc_types: DOC_TYPES },
@@ -210,7 +210,7 @@ async function handle(context, input) {
   // Extract + deterministically validate BEFORE any settlement.
   const extracted = await extractDocument(env, input);
   if (!extracted.ok) {
-    // Our failure (fetch/model) — do not charge. Surface a stable code.
+    // Our failure (fetch/model) â€” do not charge. Surface a stable code.
     return accessJson({ tool: TAP_SLUG, doc_type: input.docType, ...extracted.body }, extracted.status, CORS);
   }
 
@@ -225,7 +225,7 @@ async function handle(context, input) {
         null
       );
     }
-    // GUARDRAILS LAW: schema/arithmetic failure → no settle, no mark, no token burn.
+    // GUARDRAILS LAW: schema/arithmetic failure â†’ no settle, no mark, no token burn.
     return accessJson(
       {
         tool: TAP_SLUG,
@@ -243,7 +243,7 @@ async function handle(context, input) {
     );
   }
 
-  // Passed every gate → settle via handlePaidFetch with the precomputed, attested payload.
+  // Passed every gate â†’ settle via handlePaidFetch with the precomputed, attested payload.
   const body = {
     tool: TAP_SLUG,
     doc_type: input.docType,
@@ -255,7 +255,7 @@ async function handle(context, input) {
       basis: "evidence-only",
       claims: verdict.attestation_claims,
       disclaimer:
-        "Evidence-only extraction. We measured structure and arithmetic — schema-valid, totals reconcile, dates parse, currency is ISO-4217. This is NOT legal verification, NOT a financial audit, and NOT advice. We did not read the source for legal or financial meaning.",
+        "Evidence-only extraction. We measured structure and arithmetic â€” schema-valid, totals reconcile, dates parse, currency is ISO-4217. This is NOT legal verification, NOT a financial audit, and NOT advice. We did not read the source for legal or financial meaning.",
     },
     model_usage: extracted.usage,
   };
@@ -286,85 +286,30 @@ async function handle(context, input) {
 
 /** Fetch the doc (SSRF-guarded by caller), forward as a `file` part, ask for structured JSON. */
 async function extractDocument(env, input) {
-  let res;
-  try {
-    res = await fetchWithTimeout(
-      input.url,
-      { method: "GET", headers: { Accept: "application/pdf,application/octet-stream,*/*" } },
-      DOC_FETCH_TIMEOUT_MS
-    );
-  } catch {
-    return { ok: false, status: 502, body: { error: "fetch_failed", note: "Could not retrieve the document URL." } };
-  }
-  if (!res.ok) {
-    return {
-      ok: false,
-      status: 502,
-      body: { error: "fetch_failed", note: `Document host returned HTTP ${res.status}.`, http_status: res.status },
-    };
-  }
-
-  const buf = await res.arrayBuffer();
-  if (buf.byteLength === 0) {
-    return { ok: false, status: 422, body: { error: "empty_document", note: "The URL returned an empty body." } };
-  }
-  if (buf.byteLength > MAX_DOC_BYTES) {
-    return {
-      ok: false,
-      status: 413,
-      body: { error: "document_too_large", note: `Document exceeds ${MAX_DOC_BYTES} bytes.`, bytes: buf.byteLength },
-    };
-  }
-
-  const mime = pickMime(res.headers.get("content-type"), input.url);
-  const filename = filenameFromUrl(input.url, mime);
-  const dataUrl = `data:${mime};base64,${bytesToBase64(new Uint8Array(buf))}`;
-
-  const messages = [
-    { role: "system", content: systemPrompt(input.docType) },
-    {
-      role: "user",
-      content: [
-        { type: "text", text: userInstruction(input.docType) },
-        { type: "file", file: { filename, file_data: dataUrl } },
-      ],
-    },
-  ];
-
-  const out = await callGemini(env, {
-    messages,
-    responseSchema: DOC_SCHEMAS[input.docType],
-    maxTokens: 4096,
+  const result = await runExtractPipeline(env, {
+    url: input.url,
+    maxBytes: MAX_DOC_BYTES,
+    system: systemPrompt(input.docType),
+    instruction: userInstruction(input.docType),
+    schema: DOC_SCHEMAS[input.docType],
+    pickMime: (mimeFromResponse, url) => pickMime(mimeFromResponse, url),
+    filenameFromUrl: (url, mime) => filenameFromUrl(url, mime),
+    fetcher: (url, opts) => fetchWithTimeout(url, opts, DOC_FETCH_TIMEOUT_MS),
   });
 
-  if (!out.ok) {
-    if (out.degraded) {
-      return {
-        ok: false,
-        status: 503,
-        body: { error: "extraction_degraded", note: "Extraction model is temporarily unavailable. Retry with backoff.", retry_after_seconds: out.retryAfter || 30 },
-      };
-    }
-    return {
-      ok: false,
-      status: 502,
-      body: { error: "extraction_failed", detail: out.error || "model_error" },
-    };
-  }
-  if (!out.json) {
+  if (!result.ok) return result;
+  if (!result.data) {
     return { ok: false, status: 502, body: { error: "structured_parse_failed", note: "Model did not return valid structured JSON." } };
   }
-
-  return { ok: true, data: out.json, usage: out.usage || null };
+  return { ok: true, data: result.data, usage: result.usage || null };
 }
-
 function systemPrompt(docType) {
   const base =
     "You are a precise document extraction engine. Read the attached file and return ONLY structured JSON matching the provided schema. Do not invent values. Use numbers (not strings) for monetary and quantity fields. Use ISO-8601 (YYYY-MM-DD) for every date and ISO-4217 alphabetic codes for currency. If a value is genuinely absent, use 0 for numbers and \"\" for strings.";
   if (docType === "invoice") {
     return (
       base +
-      " For invoices: line_items[].amount MUST equal qty * unit_price; subtotal MUST equal the sum of line amounts; total MUST equal subtotal + tax. Transcribe the figures exactly as printed — do not 'correct' them."
+      " For invoices: line_items[].amount MUST equal qty * unit_price; subtotal MUST equal the sum of line amounts; total MUST equal subtotal + tax. Transcribe the figures exactly as printed â€” do not 'correct' them."
     );
   }
   return base;
@@ -396,7 +341,7 @@ function filenameFromUrl(url, mime) {
   return `document.${ext}`;
 }
 
-/** ArrayBuffer → base64 in fixed chunks (avoids call-stack blowups on large docs). */
+/** ArrayBuffer â†’ base64 in fixed chunks (avoids call-stack blowups on large docs). */
 function bytesToBase64(bytes) {
   let binary = "";
   const chunk = 0x8000;

@@ -2,25 +2,25 @@ name = "second-eyes-ai"
 pages_build_output_dir = "public"
 compatibility_date = "2026-05-26"
 
-# Resilience — set Cloudflare dashboard rate limits on /api/bar/enter and /api/bar/proof
+# Resilience â€” set Cloudflare dashboard rate limits on /api/bar/enter and /api/bar/proof
 # Secrets (set via `wrangler secret put NAME`):
-# ACCESS_TOKEN_SECRET       — HMAC key for issued access JWTs (auto-generate via scripts/push-coinbase-secrets.mjs)
-# X402_PAYTO                — Base wallet for USDC (A4A/x402)
-# X402_FACILITATOR_URL      — https://api.cdp.coinbase.com/platform
-# Multi-network x402 (optional, opt-in — see docs/multi-network-x402.md). Base is
+# ACCESS_TOKEN_SECRET       â€” HMAC key for issued access JWTs (auto-generate via scripts/push-coinbase-secrets.mjs)
+# X402_PAYTO                â€” Base wallet for USDC (A4A/x402)
+# X402_FACILITATOR_URL      â€” https://api.cdp.coinbase.com/platform
+# Multi-network x402 (optional, opt-in â€” see docs/multi-network-x402.md). Base is
 # always canonical accepts[0]; extra rails append only when gated:
-# X402_POLYGON_ENABLED      — "1" to advertise+accept Polygon (eip155:137) USDC (EVM, reuses X402_PAYTO)
-# X402_POLYGON_PAY_TO       — optional dedicated Polygon merchant wallet (defaults to X402_PAYTO)
-# X402_SOLANA_PAY_TO        — Solana USDC receive address (base58); SOLANA_PAY_TO also accepted
-# X402_SOLANA_ACTIVE        — "1" to advertise+accept Solana; double-gated with X402_SOLANA_PAY_TO
-# CDP_API_KEY_NAME          — organizations/.../apiKeys/... from CDP portal
-# CDP_API_KEY_SECRET        — EC private key PEM from CDP portal
-# CDP_API_KEY               — legacy single bearer (optional fallback)
-# STRIPE_WEBHOOK_SECRET     — Stripe webhook signing secret
-# STRIPE_LINK_MONTHLY       — Payment Link URL ($10/mo)
-# STRIPE_LINK_ANNUAL        — Payment Link URL ($100/yr)
-# STRIPE_LINK_LIFETIME      — Payment Link URL ($250 once)
-# OPENROUTER_API_KEY        — OpenRouter key for transcribe/extract (Gemini via OpenRouter)
+# X402_POLYGON_ENABLED      â€” "1" to advertise+accept Polygon (eip155:137) USDC (EVM, reuses X402_PAYTO)
+# X402_POLYGON_PAY_TO       â€” optional dedicated Polygon merchant wallet (defaults to X402_PAYTO)
+# X402_SOLANA_PAY_TO        â€” Solana USDC receive address (base58); SOLANA_PAY_TO also accepted
+# X402_SOLANA_ACTIVE        â€” "1" to advertise+accept Solana; double-gated with X402_SOLANA_PAY_TO
+# CDP_API_KEY_NAME          â€” organizations/.../apiKeys/... from CDP portal
+# CDP_API_KEY_SECRET        â€” EC private key PEM from CDP portal
+# CDP_API_KEY               â€” legacy single bearer (optional fallback)
+# STRIPE_WEBHOOK_SECRET     â€” Stripe webhook signing secret
+# STRIPE_LINK_MONTHLY       â€” Payment Link URL ($10/mo)
+# STRIPE_LINK_ANNUAL        â€” Payment Link URL ($100/yr)
+# STRIPE_LINK_LIFETIME      â€” Payment Link URL ($250 once)
+# OPENROUTER_API_KEY        â€” OpenRouter key for transcribe/extract (Gemini via OpenRouter)
 
 [vars]
 X402_NETWORK = "base"
@@ -28,15 +28,26 @@ X402_NETWORK = "base"
 # X402_PAYTO secret when present; this distinct binding prevents payment outages
 # without colliding with that secret during Pages deployment.
 X402_PAYTO_PUBLIC = "0xFb8915074cC941f5Ab95E6001c45287b8EeC4427"
-# KNOWN_TEST_PAYERS — operator/test wallets excluded from external_buyer_signal
+# KNOWN_TEST_PAYERS â€” operator/test wallets excluded from external_buyer_signal
 # (comma/space-separated 0x addresses). Built-in defaults already cover the
 # canary payer + lounge payTo; set this to add CI/test wallets without a code
-# change. Plain var (public) — these are public Base addresses, not secrets.
-# Must be FULL 0x addresses — a masked form (0x028b…4Cbb) will never match.
+# change. Plain var (public) â€” these are public Base addresses, not secrets.
+# Must be FULL 0x addresses â€” a masked form (0x028bâ€¦4Cbb) will never match.
 # To classify a masked external payer, resolve its first_tx_ref on Base to
 # recover the full address (see docs/external-payer-monitoring.md#classifying-a-masked-payer).
 # Example:
 # KNOWN_TEST_PAYERS = "0xCiWallet1,0xCiWallet2"
+
+# AI binding â€” Workers AI (Whisper turbo, Gemma 4 26B). No external API key needed;
+# replaces OPENROUTER_API_KEY/Gemini for /api/bar/x402/transcribe and /extract.
+[ai]
+binding = "AI"
+
+# R2 binding â€” raw media + structured outputs for transcribe/extract, ledgered in
+# D1 media_bank. Bucket already exists on the account (secondeyes-transcription-bank).
+[[r2_buckets]]
+binding = "MEDIA_BANK"
+bucket_name = "secondeyes-transcription-bank"
 
 [[d1_databases]]
 binding = "DB"
