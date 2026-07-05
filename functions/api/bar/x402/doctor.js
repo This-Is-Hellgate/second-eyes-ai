@@ -1,14 +1,14 @@
 /**
- * /api/bar/x402/doctor — x402 / Coinbase survival bar, flagship tap.
+ * /api/bar/x402/doctor ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â x402 / Coinbase survival bar, flagship tap.
  *
  * Grades any x402 "402 Payment Required" response for CDP Bazaar v2 indexing
- * compliance and returns the exact corrected payload. No session required — a
- * clean discover → pay → use tap so it settles and indexes on the Bazaar.
+ * compliance and returns the exact corrected payload. No session required ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â a
+ * clean discover ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ pay ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ use tap so it settles and indexes on the Bazaar.
  *
  * Input (after payment):
- *   GET  /api/bar/x402/doctor?url=https://target/endpoint   → we fetch its 402
- *   POST /api/bar/x402/doctor  { "url": "https://…" }        → we fetch its 402
- *   POST /api/bar/x402/doctor  { "body": { …402 json… } }    → grade a pasted body
+ *   GET  /api/bar/x402/doctor?url=https://target/endpoint   ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ we fetch its 402
+ *   POST /api/bar/x402/doctor  { "url": "https://ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦" }        ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ we fetch its 402
+ *   POST /api/bar/x402/doctor  { "body": { ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦402 jsonÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ } }    ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ grade a pasted body
  */
 
 import { diagnose402 } from "../../../_lib/x402-doctor.js";
@@ -18,10 +18,15 @@ import {
   hasBarTabAccess,
   hasToolAccess,
   consumeMicroAccess,
+  bearerToken,
+  completePaidNanoDelivery,
+  paymentVerifyFailureResponse,
 } from "../../../_lib/bar-pay.js";
 import { accessJson } from "../../../_lib/access.js";
 import { fetchWithTimeout, DEFAULT_FETCH_TIMEOUT_MS } from "../../../_lib/resilience.js";
 import { isSafeHttpUrl } from "../../../_lib/url-guard.js";
+import { recordX402PaymentAttempt, readRequestId } from "../../../_lib/x402-payment-log.js";
+import { buildProductPaymentRequirements, readPaymentHeader, settleBuiltPayment, verifyPaymentHeader } from "../../../_lib/x402.js";
 
 const TOOL_SLUG = "x402-survival";
 const TAP_SLUG = "x402-doctor";
@@ -50,7 +55,7 @@ const PRODUCT = {
       grade: "F",
       indexable: false,
       criticalCount: 3,
-      summary: "This is x402 v1 — it will not index on the Bazaar. Apply the corrected payload, redeploy, then settle one payment.",
+      summary: "This is x402 v1 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â it will not index on the Bazaar. Apply the corrected payload, redeploy, then settle one payment.",
       corrected: { x402Version: 2, accepts: [{ scheme: "exact", network: "eip155:8453" }] },
     },
   },
@@ -100,17 +105,78 @@ async function parsePostInput(request) {
   return { url: data?.url || null, body: data?.body ?? null };
 }
 
-function handle(context, input) {
-  const payload = async () => runDiagnosis(input);
-  return handlePaidFetch(context, PRODUCT, payload, async (token) => {
-    const tab = await hasBarTabAccess(token, context.env);
-    if (tab) return { ok: true, claims: tab };
-    const toolClaims = await hasToolAccess(token, TOOL_SLUG, context.env);
-    if (toolClaims) return { ok: true, claims: toolClaims };
-    return consumeMicroAccess(token, TAP_SLUG, TOOL_SLUG, context.env);
-  });
+async function peekAccess(token, env) {
+  const tab = await hasBarTabAccess(token, env);
+  if (tab) return { ok: true, claims: tab };
+  return hasToolAccess(token, TOOL_SLUG, env);
 }
 
+async function handle(context, input) {
+  const { request, env } = context;
+  const origin = new URL(request.url).origin;
+  const paymentHeader = readPaymentHeader(request);
+  const token = bearerToken(request);
+
+  const credible = paymentHeader || (token && (await peekAccess(token, env)));
+  if (!credible) {
+    return handlePaidFetch(context, PRODUCT, async () => ({}), async (t) => {
+      const tab = await hasBarTabAccess(t, env);
+      if (tab) return { ok: true, claims: tab };
+      const toolClaims = await hasToolAccess(t, TOOL_SLUG, env);
+      if (toolClaims) return { ok: true, claims: toolClaims };
+      return consumeMicroAccess(t, TAP_SLUG, TOOL_SLUG, env);
+    });
+  }
+
+  let verifiedPayment = null;
+  if (paymentHeader) {
+    const requirements = buildProductPaymentRequirements(PRODUCT, request.url, env);
+    if (!requirements) {
+      return accessJson(
+        { error: "x402_not_configured", product: PRODUCT.id, priceUsd: PRODUCT.priceUsd, hint: "Set X402_PAYTO and X402_FACILITATOR_URL" },
+        503,
+        { "Access-Control-Allow-Origin": "*" }
+      );
+    }
+    verifiedPayment = await verifyPaymentHeader(paymentHeader, requirements, env);
+    if (!verifiedPayment.ok) {
+      await recordX402PaymentAttempt(env, paymentHeader, { route: new URL(request.url).pathname, requestId: readRequestId(request) }, verifiedPayment, null);
+      return paymentVerifyFailureResponse(context, PRODUCT, requirements, verifiedPayment, origin);
+    }
+  }
+
+  // Run the diagnosis BEFORE settling. diagnose402's real output never sets `error`;
+  // only input-side problems (no_input, unsafe_url, fetch_failed, target_not_json) do.
+  // If we cannot deliver a real diagnosis, we do not charge for it.
+  const report = await runDiagnosis(input);
+  if (report.error) {
+    if (verifiedPayment && paymentHeader) {
+      await recordX402PaymentAttempt(env, paymentHeader, { route: new URL(request.url).pathname, failure_reason: report.error, requestId: readRequestId(request) }, verifiedPayment, null);
+    }
+    return accessJson(
+      { ...report, settled: false, charged: false, note: (report.note || "") + " Not charged: no diagnosis was produced." },
+      422,
+      { "Access-Control-Allow-Origin": "*" }
+    );
+  }
+
+  if (verifiedPayment) {
+    const settled = await settleBuiltPayment(verifiedPayment.built, verifiedPayment.accept, env);
+    await recordX402PaymentAttempt(env, paymentHeader, { route: new URL(request.url).pathname, requestId: readRequestId(request) }, verifiedPayment, settled);
+    if (!settled.ok) {
+      return paymentVerifyFailureResponse(context, PRODUCT, verifiedPayment.requirement, settled, origin);
+    }
+    return completePaidNanoDelivery(context, PRODUCT, report, settled);
+  }
+
+  return handlePaidFetch(context, PRODUCT, async () => report, async (t) => {
+    const tab = await hasBarTabAccess(t, env);
+    if (tab) return { ok: true, claims: tab };
+    const toolClaims = await hasToolAccess(t, TOOL_SLUG, env);
+    if (toolClaims) return { ok: true, claims: toolClaims };
+    return consumeMicroAccess(t, TAP_SLUG, TOOL_SLUG, env);
+  });
+}
 async function runDiagnosis(input) {
   if (!input.url && !input.body) {
     return {
@@ -119,7 +185,7 @@ async function runDiagnosis(input) {
       note: "Provide a target to diagnose.",
       usage: {
         fetch_live: "GET /api/bar/x402/doctor?url=https://your-host/your/endpoint",
-        paste_body: 'POST /api/bar/x402/doctor  { "body": { …your 402 json… } }',
+        paste_body: 'POST /api/bar/x402/doctor  { "body": { ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦your 402 jsonÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ } }',
       },
     };
   }

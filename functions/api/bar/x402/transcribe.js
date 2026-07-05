@@ -1,24 +1,24 @@
 /**
- * /api/bar/x402/transcribe — multimodal transcription & meaning extraction door.
+ * /api/bar/x402/transcribe â€” multimodal transcription & meaning extraction door.
  *
- * Give it any public media or document URL — a podcast episode, a voice memo, a
- * recorded call, a PDF, a YouTube video — and get back a transcript PLUS the
+ * Give it any public media or document URL â€” a podcast episode, a voice memo, a
+ * recorded call, a PDF, a YouTube video â€” and get back a transcript PLUS the
  * meaning: a summary, ranked key points, and grounded Q&A. Session-less, one
  * nano payment, settles to the single lounge wallet via the shared spine.
  *
- *   GET  /api/bar/x402/transcribe?url=https://…&kind=audio&duration_seconds=1830
- *   POST /api/bar/x402/transcribe  { "url": "https://…", "kind": "pdf" }
+ *   GET  /api/bar/x402/transcribe?url=https://â€¦&kind=audio&duration_seconds=1830
+ *   POST /api/bar/x402/transcribe  { "url": "https://â€¦", "kind": "pdf" }
  *
  * Quality is gated deterministically BEFORE settlement (transcribe-validate):
  * schema-valid, plausible words/min, no decode loop, meaning grounded in the
  * transcript. Model runs only after a credible payment/access signal; settlement
  * happens ONLY when every gate passes. On validator failure we return
- * validator_failed with settled:false — no charge, no attestation, no mark.
+ * validator_failed with settled:false â€” no charge, no attestation, no mark.
  *
- *   GET  /api/bar/x402/transcribe?url=https://…&kind=audio&duration_seconds=1830
- *   POST /api/bar/x402/transcribe  { "url": "https://…", "kind": "pdf" }
+ *   GET  /api/bar/x402/transcribe?url=https://â€¦&kind=audio&duration_seconds=1830
+ *   POST /api/bar/x402/transcribe  { "url": "https://â€¦", "kind": "pdf" }
  *
- * The attestation is EVIDENCE-ONLY — it states what we measured, never that the
+ * The attestation is EVIDENCE-ONLY â€” it states what we measured, never that the
  * transcript is "accurate" (we did not hear the audio).
  */
 
@@ -36,7 +36,7 @@ import {
 import { accessJson, verifyAccessToken } from "../../../_lib/access.js";
 import { fetchWithTimeout } from "../../../_lib/resilience.js";
 import { isAllowedMediaUrl, isVideoReferenceUrl } from "../../../_lib/url-guard.js";
-import { callGemini } from "../../../_lib/llm-openrouter.js";
+import { runTranscribePipeline } from "../../../_lib/llm-workersai.js";
 import {
   validateTranscription,
   TRANSCRIPT_OUTPUT_SCHEMA,
@@ -72,7 +72,7 @@ const PRODUCT = {
   access: "paid",
   oneTime: true,
   description:
-    "transcribe-extract (multimodal, session-less x402): give it any public audio, voice note, podcast, PDF, or video URL and get back the transcript (verbatim for audio/video, extracted text for PDF) PLUS its meaning — a summary, ranked key points, and grounded Q&A you can query. Deterministically validated (schema, words/min, no decode loop, meaning grounded in transcript) before it is served; evidence-only attestation, never a claim of accuracy. Launch recovery pricing.",
+    "transcribe-extract (multimodal, session-less x402): give it any public audio, voice note, podcast, PDF, or video URL and get back the transcript (verbatim for audio/video, extracted text for PDF) PLUS its meaning â€” a summary, ranked key points, and grounded Q&A you can query. Deterministically validated (schema, words/min, no decode loop, meaning grounded in transcript) before it is served; evidence-only attestation, never a claim of accuracy. Launch recovery pricing.",
   bazaarOutputSchema: {
     input: {
       type: "http",
@@ -89,7 +89,7 @@ const PRODUCT = {
       tool: TAP_SLUG,
       media_kind: "audio",
       language: "en",
-      transcript: "Welcome back to the show. Today we are talking about…",
+      transcript: "Welcome back to the show. Today we are talking aboutâ€¦",
       summary: "A 30-minute interview on agent payment rails and why settlement reputation compounds.",
       key_points: [
         "x402 indexes individual routes, not sites",
@@ -111,8 +111,8 @@ const PRODUCT = {
           "meaning grounded in transcript",
         ],
         disclaimer:
-          "Evidence-only. Validates structure, plausibility, and grounding — NOT factual accuracy of the transcript.",
-        signature: "hmac-sha256:…",
+          "Evidence-only. Validates structure, plausibility, and grounding â€” NOT factual accuracy of the transcript.",
+        signature: "hmac-sha256:â€¦",
       },
     },
   },
@@ -321,48 +321,33 @@ async function handle(context, input) {
 }
 
 async function transcribeMedia(env, input, kind, isVideoRef) {
-  let content;
-  try {
-    content = await buildMediaPart(kind, input.url, isVideoRef);
-  } catch (err) {
-    return {
-      ok: false,
-      status: 502,
-      body: {
-        error: "media_fetch_failed",
-        detail: String(err?.message || err).slice(0, 200),
-        provided: input.url,
-      },
-    };
-  }
-  if (content.error) {
-    return { ok: false, status: 422, body: { error: content.error, ...content } };
-  }
+  const instruction =
+    kind === "pdf"
+      ? "Extract the full text of this document verbatim into `transcript`, then produce its meaning."
+      : kind === "video"
+      ? "Transcribe the spoken content of this video verbatim into `transcript`, then produce its meaning."
+      : "Transcribe this audio verbatim into `transcript`, then produce its meaning.";
 
-  const messages = buildMessages(kind, content.part);
-  const llm = await callGemini(env, {
-    messages,
-    responseSchema: TRANSCRIPT_OUTPUT_SCHEMA,
-    maxTokens: 8192,
+  const system =
+    "You are a precise transcription and meaning-extraction engine. Transcribe verbatim - do NOT summarize inside the transcript, do NOT invent content, do NOT loop or repeat phrases to fill space. Detect the language. Then derive a faithful summary, ranked key_points, and grounded qa drawn ONLY from the transcript. Return strictly the requested JSON schema.";
+
+  const caps = { audio: CAP_AUDIO_BYTES, pdf: CAP_PDF_BYTES, video: CAP_VIDEO_BYTES };
+
+  const result = await runTranscribePipeline(env, {
+    kind,
+    url: input.url,
+    isVideoRef,
+    caps,
+    schemaPromptSpec: {
+      system,
+      instruction: `${instruction} Set media_kind to "${kind}". If the media is unintelligible or empty, return an empty transcript rather than fabricating.`,
+      schema: TRANSCRIPT_OUTPUT_SCHEMA,
+    },
   });
 
-  if (!llm.ok) {
-    return {
-      ok: false,
-      status: llm.degraded ? 503 : 502,
-      body: {
-        error: llm.degraded ? "model_degraded" : "model_failed",
-        reason: llm.error,
-        ...(llm.retryAfter ? { retry_after_seconds: llm.retryAfter } : {}),
-        note: "The transcription model did not return usable output.",
-      },
-    };
-  }
-
-  return { ok: true, data: { structured: llm.json, usage: llm.usage || null } };
-}
-
-function resolveKind(hint, url) {
+  if (!result.ok) return result;
+  return { ok: true, data: result.data };
+}function resolveKind(hint, url) {
   const h = String(hint || "").toLowerCase();
   if (h === "audio" || h === "voice" || h === "podcast") return "audio";
   if (h === "pdf" || h === "document" || h === "doc") return "pdf";
@@ -460,7 +445,7 @@ function buildMessages(kind, mediaPart) {
     {
       role: "system",
       content:
-        "You are a precise transcription and meaning-extraction engine. Transcribe verbatim — do NOT summarize inside the transcript, do NOT invent content, do NOT loop or repeat phrases to fill space. Detect the language. Then derive a faithful summary, ranked key_points, and grounded qa drawn ONLY from the transcript. Return strictly the requested JSON schema.",
+        "You are a precise transcription and meaning-extraction engine. Transcribe verbatim â€” do NOT summarize inside the transcript, do NOT invent content, do NOT loop or repeat phrases to fill space. Detect the language. Then derive a faithful summary, ranked key_points, and grounded qa drawn ONLY from the transcript. Return strictly the requested JSON schema.",
     },
     {
       role: "user",
@@ -526,7 +511,7 @@ function audioFormat(contentType, url) {
   return "mp3";
 }
 
-/** Chunked base64 — avoids call-stack blowups on large byte arrays. */
+/** Chunked base64 â€” avoids call-stack blowups on large byte arrays. */
 function base64FromBytes(bytes) {
   let binary = "";
   const chunk = 0x8000;
