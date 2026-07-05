@@ -16,7 +16,7 @@ Second Eyes is a multi-rail payment and verification substrate for wallet-equipp
 
 The MCP package is a thin stdio client that proxies to the substrate API. Same codebase, same repo, same product.
 
-## Protocol anchors (SPEC.md is law)
+## Protocol anchors
 
 | Layer | Protocol | Role |
 |-------|----------|------|
@@ -26,8 +26,6 @@ The MCP package is a thin stdio client that proxies to the substrate API. Same c
 | Payments | Stripe ACP | Human or low-trust agent checkout |
 | Discovery | x402 Bazaar / CDP | Substrate endpoints registered publicly |
 | Transport | A2A / MCP | Existing |
-
-See [`SPEC.md`](SPEC.md) for the full stack alignment and funding lane definitions.
 
 ## Session-less x402 doors (autonomous agents)
 
