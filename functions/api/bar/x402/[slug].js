@@ -12,8 +12,11 @@
  * Exact static routes (index-check, doctor) win over this dynamic file — Pages
  * Functions resolve concrete filenames before [slug].
  *
+ * GET-only. Each slug is listed exactly once — no POST twin, so this route
+ * cannot be double-discovered or double-paid via two HTTP methods for the
+ * same item.
+ *
  *   GET  /api/bar/x402/loop-detect
- *   POST /api/bar/x402/cascade-break   { "goal": "ship the migration" }
  */
 
 import {
@@ -69,14 +72,10 @@ const SLUG_DESCRIPTIONS = {
 };
 
 export async function onRequestOptions() {
-  return corsOptions("GET, POST, OPTIONS");
+  return corsOptions("GET, OPTIONS");
 }
 
 export async function onRequestGet(context) {
-  return handle(context, context.params.slug);
-}
-
-export async function onRequestPost(context) {
   return handle(context, context.params.slug);
 }
 
