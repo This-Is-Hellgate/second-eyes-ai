@@ -1,5 +1,5 @@
 /**
- * Workers AI pipeline — replaces the OpenRouter/Gemini dependency for the two
+ * Workers AI pipeline â€” replaces the OpenRouter/Gemini dependency for the two
  * highest-traffic paid doors (transcribe, extract). Everything runs on the
  * account's own AI binding; media and outputs persist to R2 with a D1 ledger.
  *
@@ -10,11 +10,11 @@
  *
  * Storage map (the "where does the data land" contract):
  *   R2  secondeyes-transcription-bank  (binding: MEDIA_BANK)
- *       inputs/{route}/{sha256}.{ext}   — raw fetched media, exactly as received
- *       outputs/{route}/{sha256}.json   — final structured output, exactly as returned
- *   D1  media_bank                      — one row per stored object (route, direction,
+ *       inputs/{route}/{sha256}.{ext}   â€” raw fetched media, exactly as received
+ *       outputs/{route}/{sha256}.json   â€” final structured output, exactly as returned
+ *   D1  media_bank                      â€” one row per stored object (route, direction,
  *                                         kind, r2_key, content_hash, source_url, bytes, model)
- *   D1  x402_payment_attempts / access_grants — untouched, still written by the payment spine.
+ *   D1  x402_payment_attempts / access_grants â€” untouched, still written by the payment spine.
  *
  * Contract mirrors the old callGemini: callers get { ok, json, usage, error, degraded }.
  */
@@ -66,12 +66,12 @@ async function gemmaJson(env, { system, user, schema, maxTokens }) {
     const args = { messages, max_tokens: maxTokens || 4096 };
     if (schema) args.response_format = { type: "json_schema", json_schema: schema };
     const res = await env.AI.run(GEMMA, args);
-    raw = typeof res === "string" ? res : res.response || res.result || "";
+    raw = typeof res === "string" ? res : (res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content) || res.response || res.result || "";
   } catch (err) {
     // Retry once without response_format in case the model rejects schema mode.
     try {
       const res = await env.AI.run(GEMMA, { messages, max_tokens: maxTokens || 4096 });
-      raw = typeof res === "string" ? res : res.response || res.result || "";
+      raw = typeof res === "string" ? res : (res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content) || res.response || res.result || "";
     } catch (err2) {
       return { ok: false, error: `workersai_failed: ${String(err2?.message || err2).slice(0, 160)}`, degraded: true };
     }
@@ -161,7 +161,7 @@ export async function runTranscribePipeline(env, { kind, url, isVideoRef, caps, 
 }
 
 /**
- * EXTRACT pipeline. Returns { ok:true, data, usage } | { ok:false, status, body } —
+ * EXTRACT pipeline. Returns { ok:true, data, usage } | { ok:false, status, body } â€”
  * the exact shape the extract route's caller expects.
  */
 export async function runExtractPipeline(env, { url, maxBytes, system, instruction, schema, pickMime, filenameFromUrl, fetcher }) {
