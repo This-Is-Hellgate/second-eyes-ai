@@ -1,24 +1,24 @@
 /**
- * /api/bar/x402/transcribe â€” multimodal transcription & meaning extraction door.
+ * /api/bar/x402/transcribe ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â multimodal transcription & meaning extraction door.
  *
- * Give it any public media or document URL â€” a podcast episode, a voice memo, a
- * recorded call, a PDF, a YouTube video â€” and get back a transcript PLUS the
+ * Give it any public media or document URL ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â a podcast episode, a voice memo, a
+ * recorded call, a PDF, a YouTube video ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â and get back a transcript PLUS the
  * meaning: a summary, ranked key points, and grounded Q&A. Session-less, one
  * nano payment, settles to the single lounge wallet via the shared spine.
  *
- *   GET  /api/bar/x402/transcribe?url=https://â€¦&kind=audio&duration_seconds=1830
- *   POST /api/bar/x402/transcribe  { "url": "https://â€¦", "kind": "pdf" }
+ *   GET  /api/bar/x402/transcribe?url=https://ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦&kind=audio&duration_seconds=1830
+ *   POST /api/bar/x402/transcribe  { "url": "https://ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦", "kind": "pdf" }
  *
  * Quality is gated deterministically BEFORE settlement (transcribe-validate):
  * schema-valid, plausible words/min, no decode loop, meaning grounded in the
  * transcript. Model runs only after a credible payment/access signal; settlement
  * happens ONLY when every gate passes. On validator failure we return
- * validator_failed with settled:false â€” no charge, no attestation, no mark.
+ * validator_failed with settled:false ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no charge, no attestation, no mark.
  *
- *   GET  /api/bar/x402/transcribe?url=https://â€¦&kind=audio&duration_seconds=1830
- *   POST /api/bar/x402/transcribe  { "url": "https://â€¦", "kind": "pdf" }
+ *   GET  /api/bar/x402/transcribe?url=https://ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦&kind=audio&duration_seconds=1830
+ *   POST /api/bar/x402/transcribe  { "url": "https://ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦", "kind": "pdf" }
  *
- * The attestation is EVIDENCE-ONLY â€” it states what we measured, never that the
+ * The attestation is EVIDENCE-ONLY ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â it states what we measured, never that the
  * transcript is "accurate" (we did not hear the audio).
  */
 
@@ -72,7 +72,7 @@ const PRODUCT = {
   access: "paid",
   oneTime: true,
   description:
-    "transcribe-extract (multimodal, session-less x402): give it any public audio, voice note, podcast, PDF, or video URL and get back the transcript (verbatim for audio/video, extracted text for PDF) PLUS its meaning â€” a summary, ranked key points, and grounded Q&A you can query. Deterministically validated (schema, words/min, no decode loop, meaning grounded in transcript) before it is served; evidence-only attestation, never a claim of accuracy. Launch recovery pricing.",
+    "content-analysis (multimodal, session-less x402): give it any public audio, voice note, podcast, PDF, or direct video file URL and get back structured content analysis in the model's own words -- a summary, ranked key points, and grounded Q&A you can query. No verbatim transcript is returned. Deterministically validated (schema, meaning grounded in source) before it is served; evidence-only attestation, never a claim of accuracy. Launch recovery pricing.",
   bazaarOutputSchema: {
     input: {
       type: "http",
@@ -89,7 +89,7 @@ const PRODUCT = {
       tool: TAP_SLUG,
       media_kind: "audio",
       language: "en",
-      transcript: "Welcome back to the show. Today we are talking aboutâ€¦",
+      transcript: "Welcome back to the show. Today we are talking aboutÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦",
       summary: "A 30-minute interview on agent payment rails and why settlement reputation compounds.",
       key_points: [
         "x402 indexes individual routes, not sites",
@@ -111,8 +111,8 @@ const PRODUCT = {
           "meaning grounded in transcript",
         ],
         disclaimer:
-          "Evidence-only. Validates structure, plausibility, and grounding â€” NOT factual accuracy of the transcript.",
-        signature: "hmac-sha256:â€¦",
+          "Evidence-only. Validates structure, plausibility, and grounding ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â NOT factual accuracy of the transcript.",
+        signature: "hmac-sha256:ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦",
       },
     },
   },
@@ -288,7 +288,6 @@ async function handle(context, input) {
     media_kind: kind,
     source_url: input.url,
     language: structured.language,
-    transcript: structured.transcript,
     summary: structured.summary,
     key_points: structured.key_points,
     qa: structured.qa,
@@ -445,7 +444,7 @@ function buildMessages(kind, mediaPart) {
     {
       role: "system",
       content:
-        "You are a precise transcription and meaning-extraction engine. Transcribe verbatim â€” do NOT summarize inside the transcript, do NOT invent content, do NOT loop or repeat phrases to fill space. Detect the language. Then derive a faithful summary, ranked key_points, and grounded qa drawn ONLY from the transcript. Return strictly the requested JSON schema.",
+        "You are a precise transcription and meaning-extraction engine. Transcribe verbatim ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â do NOT summarize inside the transcript, do NOT invent content, do NOT loop or repeat phrases to fill space. Detect the language. Then derive a faithful summary, ranked key_points, and grounded qa drawn ONLY from the transcript. Return strictly the requested JSON schema.",
     },
     {
       role: "user",
@@ -511,7 +510,7 @@ function audioFormat(contentType, url) {
   return "mp3";
 }
 
-/** Chunked base64 â€” avoids call-stack blowups on large byte arrays. */
+/** Chunked base64 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â avoids call-stack blowups on large byte arrays. */
 function base64FromBytes(bytes) {
   let binary = "";
   const chunk = 0x8000;
