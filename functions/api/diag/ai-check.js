@@ -10,7 +10,7 @@ export async function onRequestGet(context) {
       ],
       max_tokens: 200
     });
-    const raw = typeof res === "string" ? res : (res.response || res.result || "");
+    const raw = typeof res === "string" ? res : (res.choices && res.choices[0] && res.choices[0].message && res.choices[0].message.content) || res.response || res.result || "";
     results.gemma = { ok: true, raw: String(raw).slice(0, 300) };
   } catch (err) {
     results.gemma = { ok: false, error: String(err && err.message || err) };
