@@ -4,6 +4,87 @@
   "url": "https://secondeyesai.com",
   "version": "2.7.0",
   "tagline": "Open infrastructure for autonomous agents.",
+  "provider": {
+    "organization": "Second Eyes",
+    "url": "https://secondeyesai.com"
+  },
+  "supportedInterfaces": [
+    {
+      "url": "https://secondeyesai.com/api/a2a",
+      "protocolBinding": "HTTP+JSON",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "skills": [
+    {
+      "id": "agent-distress-triage",
+      "name": "Agent Distress Triage",
+      "description": "Classify any agent failure state and route to the correct recovery service. Covers looping, context pressure, schema mismatch, payment uncertainty, tool failure, and 11 other distress classes.",
+      "tags": [
+        "recovery",
+        "triage",
+        "x402",
+        "agent-survival",
+        "distress"
+      ]
+    },
+    {
+      "id": "loop-detect",
+      "name": "Loop Detection",
+      "description": "Deterministic verdict for agents that are looping with no progress. Same answer on every retry.",
+      "tags": [
+        "loop",
+        "recovery",
+        "deterministic",
+        "circuit-breaker"
+      ]
+    },
+    {
+      "id": "context-recovery",
+      "name": "Context Recovery and Compression",
+      "description": "Recover lost context, compress an overloaded context window, or get a deterministic band from a remaining token budget.",
+      "tags": [
+        "context",
+        "memory",
+        "compression",
+        "tokens"
+      ]
+    },
+    {
+      "id": "payment-verification",
+      "name": "Payment Verification",
+      "description": "Confirm x402 USDC settlement status without double-paying. Returns confirmed/pending/failed/already_fulfilled.",
+      "tags": [
+        "x402",
+        "payment",
+        "usdc",
+        "base",
+        "verification"
+      ]
+    },
+    {
+      "id": "document-extract",
+      "name": "Document Transcription and Extraction",
+      "description": "Transcribe public audio, video, or PDF URLs, or extract structured JSON from invoices and contracts with arithmetic reconciliation.",
+      "tags": [
+        "transcribe",
+        "extract",
+        "pdf",
+        "document",
+        "invoice"
+      ]
+    }
+  ],
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "defaultInputModes": [
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "application/json"
+  ],
   "value_proposition": "A multi-rail payment and verification substrate for wallet-equipped agents and the runtimes that authorize their tools \u2014 x402 USDC on Base (default machine rail), AP2 mandate doors, and Stripe ACP. Deterministic verdicts. No allowlist. No session required for one-shot paths.",
   "speaks_to": "Autonomous agents, wallet-equipped MCP clients, and the runtimes that authorize their tools and payments.",
   "protocol_anchors": {
@@ -62,7 +143,7 @@
   "service_menu": {
     "url": "https://secondeyesai.com/.well-known/menu.json",
     "api": "https://secondeyesai.com/api/bar/menu",
-    "pricing_note": "Verification and recovery pricing $0.01\u2013$0.05 USDC via x402 on Base. AP2 and Stripe ACP doors available for credentialed and human callers.",
+    "pricing_note": "Verification and recovery pricing $0.01\u2013$0.05 USDC via x402 on Base.",
     "price_range_usd": {
       "min": 0.01,
       "max": 0.05
@@ -94,19 +175,10 @@
     "proof": "https://secondeyesai.com/api/bar/proof",
     "payment_ledger": "https://secondeyesai.com/api/bar/proof/payments",
     "x402": "https://secondeyesai.com/api/bar/x402/{slug}",
+    "a2a": "https://secondeyesai.com/api/a2a",
     "llms_txt": "https://secondeyesai.com/llms.txt",
     "mcp": "https://secondeyesai.com/.well-known/mcp.json"
   },
-  "capabilities": {
-    "streaming": false,
-    "pushNotifications": false
-  },
-  "defaultInputModes": [
-    "application/json"
-  ],
-  "defaultOutputModes": [
-    "application/json"
-  ],
   "how_to_pay": {
     "docs": "https://secondeyesai.com/llms.txt",
     "machine_readable": "https://secondeyesai.com/api/bar",
@@ -124,25 +196,9 @@
     "mcp_autopay_version": "1.2.6"
   },
   "survival_menu": {
-    "pricing_note": "Verification and recovery pricing $0.01\u2013$0.05 USDC via x402 on Base.",
     "price_range_usd": {
       "min": 0.01,
       "max": 0.05
-    },
-    "payment": {
-      "rail": "x402",
-      "asset": "USDC",
-      "x402Version": 2,
-      "network": "eip155:8453",
-      "accepted_networks": [
-        "eip155:8453"
-      ],
-      "planned_networks": [
-        "eip155:137",
-        "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
-      ],
-      "scheme": "ExactEvmScheme",
-      "mcp_autopay_version": "1.2.6"
     },
     "items": [
       {
@@ -170,7 +226,7 @@
         "price_usd": 0.01
       },
       {
-        "when": "I made a mistake and it's getting worse",
+        "when": "I made a mistake and it is getting worse",
         "key": "cascade_break",
         "slug": "cascade-break",
         "price_usd": 0.05
