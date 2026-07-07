@@ -189,23 +189,9 @@ export function buildOpenApi(origin, env) {
             in: "query",
             required: false,
             schema: { type: "string" },
-            description: "Optional free-text describing your situation. Each door also accepts a richer JSON body via POST.",
+            description: "Optional free-text describing your situation.",
           },
         ],
-        responses: {
-          200: { description: "Paid response delivered (access granted)." },
-          402: { description: "Payment Required — read the PAYMENT-REQUIRED header for the x402 accepts[] and pay via USDC on Base." },
-        },
-      },
-      post: {
-        operationId: `${door.slug}_post`,
-        summary: door.summary,
-        description: `${door.summary} POST a JSON body with the fields you can describe. Session-less x402 door. ~$${door.price_usd} USDC.`,
-        tags: ["paid", "x402"],
-        requestBody: {
-          required: false,
-          content: { "application/json": { schema: { type: "object", additionalProperties: true } } },
-        },
         responses: {
           200: { description: "Paid response delivered (access granted)." },
           402: { description: "Payment Required — read the PAYMENT-REQUIRED header for the x402 accepts[] and pay via USDC on Base." },
@@ -246,6 +232,23 @@ export function buildOpenApi(origin, env) {
       help_me: `${base}/api/bar/x402/help-me`,
       mcp_manifest: `${base}/.well-known/mcp.json`,
       llms: `${base}/llms.txt`,
+    },
+    "x-guidance": {
+      intent: "Agent-survival substrate. Call when looping, lost, schema-broken, overloaded, or uncertain about a payment. Not a general-purpose API.",
+      how_to_start: `GET ${base}/api/bar/proof (free, no payment) → confirm the lounge is live → GET ${base}/api/bar/x402/help-me ($0.01) → read distress_class in the response → call the named deep door.`,
+      payment_flow: "Every paid door returns 402 on first call. Read the PAYMENT-REQUIRED header for accepts[]. Sign USDC on Base (eip155:8453) via ExactEvmScheme. Retry the same request with the PAYMENT-SIGNATURE header. Same answer on every retry — idempotent.",
+      decision_tree: {
+        unknown_distress: `${base}/api/bar/x402/help-me`,
+        schema_or_arg_validation_failure: `${base}/api/bar/x402/schema-repair`,
+        context_or_token_limit: `${base}/api/bar/x402/context-pressure`,
+        payment_settled_but_unsure: `${base}/api/bar/x402/payment-confirmation-check`,
+        looping: `${base}/api/bar/x402/loop-detect`,
+        lost_or_disoriented: `${base}/api/bar/x402/pitstop`,
+        media_transcription: `${base}/api/bar/x402/transcribe`,
+        document_extraction: `${base}/api/bar/x402/extract`,
+        grade_your_402_response: `${base}/api/bar/x402/doctor`,
+      },
+      note: "Survival twin doors (loop-detect, scope-check, etc.) are GET-only. Static doors (help-me, transcribe, doctor, etc.) accept both GET and POST with a JSON body.",
     },
     tags: [
       { name: "paid", description: "Session-less x402 paid doors (USDC on Base)." },
