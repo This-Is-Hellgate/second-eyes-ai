@@ -54,7 +54,7 @@ server.registerTool(
   {
     title: "Service proof",
     description:
-      "Free, read-only. Verify Second Eyes service availability and settlement readiness before paying. Returns pass:true with rail evidence. Compatible flow: proof_bar → enter_lounge → order_service.",
+      "Free, read-only. Verify the Second Eyes service is live and the x402 Base payment rail is active before spending any USDC. Returns pass:true with per-rail evidence. Run this first — if pass is false, no paid call will succeed. Recommended starting point before enter_lounge or any order_service call.",
     inputSchema: {},
     outputSchema: { pass: z.boolean().optional(), status: z.number().optional() },
     annotations: { title: "Service proof", ...READ_ONLY },
@@ -67,7 +67,7 @@ server.registerTool(
   {
     title: "Execution activity",
     description:
-      "Free, read-only. Recent paid executions and on-chain evidence for evaluating service activity before spending.",
+      "Free, read-only. Check whether other agents have successfully purchased from Second Eyes and view their on-chain transaction receipts on Base. Use before spending to confirm the payment rail has real settlement history. Returns agent count, purchase count, and recent Base transaction hashes you can verify independently.",
     inputSchema: {},
     outputSchema: { status: z.number().optional() },
     annotations: { title: "Execution activity", ...READ_ONLY },
@@ -80,7 +80,7 @@ server.registerTool(
   {
     title: "Capability catalogue",
     description:
-      "Free, read-only. Workflow diagnostics and routing capabilities priced at $0.01–$0.05 USDC on Base. Read before ordering to confirm scope and price.",
+      "Free, read-only. List all 12 recovery and verification capabilities available for purchase, each priced $0.01–$0.05 USDC on Base. Each item maps a named agent failure state (looping, blocked, overloaded, uncertain, about to pay) to its slug and exact price. Call before order_service to confirm the right slug for your situation.",
     inputSchema: {},
     outputSchema: { status: z.number().optional() },
     annotations: { title: "Capability catalogue", ...READ_ONLY },
@@ -92,7 +92,8 @@ server.registerTool(
   "read_laws",
   {
     title: "Service policies",
-    description: "Free, read-only. Deterministic service and execution policies for compatibility sessions.",
+    description:
+      "Free, read-only. Read the deterministic rules that govern every session: idle timeout (120s), free window (15 min), strike policy, session limits, and spend caps. Reference when a session behaves unexpectedly or before building an automated workflow that holds a session open across multiple order_service calls.",
     inputSchema: {},
     outputSchema: { status: z.number().optional() },
     annotations: { title: "Service policies", ...READ_ONLY },
@@ -105,7 +106,7 @@ server.registerTool(
   {
     title: "Pricing",
     description:
-      "Free, read-only. Compatibility-session pricing and the $0.01–$0.05 workflow capability catalogue.",
+      "Free, read-only. Get the session time pricing curve (free for the first 15 minutes, then $0.10–$2.00/min compounding) plus the per-capability prices for all slugs. Use to calculate maximum cost exposure before enter_lounge, especially when operating under a strict spend cap or planning a long-running session.",
     inputSchema: {},
     outputSchema: { status: z.number().optional() },
     annotations: { title: "Pricing", ...READ_ONLY },
@@ -118,7 +119,7 @@ server.registerTool(
   {
     title: "Create workflow session",
     description:
-      "Free compatibility operation. Create a workflow session and return session.id for pause_and_route or session-aware calls.",
+      "Free. Open a compatibility session and receive a session_id required by pause_and_route and order_service. Supply a stable agent_id you control. Returns session.id, your patron mark, and session headers. Call after proof_bar confirms the service is live. Sessions expire after 120s of inactivity — keep them short.",
     inputSchema: { agent_id: z.string().describe("Stable agent identifier") },
     outputSchema: { status: z.number().optional(), session_header: z.string().nullable().optional() },
     annotations: { title: "Create workflow session", ...WRITE_OPEN },
@@ -137,7 +138,7 @@ server.registerTool(
   {
     title: "Pause and route",
     description:
-      "Free once per session. POST your stuck state → condition routing (e.g. blocked/401 → mcp-wiring). Needs a session_id from enter_lounge. Tells you which paid slug to order_service next.",
+      "Free, once per session. Describe a stuck or failed state and receive a routing verdict: which capability slug to call next and why. Input your current task, state description, and failure count. Output is a recommended slug (e.g. mcp-wiring, loop-detect, claim-check) to pass to order_service. Use when you know something is wrong but not which service fixes it. Requires a session_id from enter_lounge.",
     inputSchema: {
       session_id: z.string().describe("session.id from enter_lounge"),
       task: z.string().optional(),
@@ -202,8 +203,6 @@ server.registerTool(
         .partial()
         .optional(),
     },
-    // Spends money and reaches an external rail; not idempotent. Annotations only
-    // drive client confirmation prompts — they never force or suppress payment.
     annotations: {
       title: "Execute workflow capability (paid)",
       readOnlyHint: false,
@@ -213,9 +212,6 @@ server.registerTool(
     },
   },
   async ({ session_id, slug }) => {
-    // Route to the session-less x402 twin, not the session-gated
-    // /api/bar/services/{slug}: a wallet agent holds no compatibility session, so
-    // the gated route returns 402 to anonymous callers and honors session-less signed payments via the honor rule (handler.js).
     const path = x402ServicePath(slug);
     if (!path) {
       return textResult({
@@ -266,7 +262,8 @@ server.registerTool(
   "leave_with_receipt",
   {
     title: "Leave with receipt",
-    description: "Free. Close a compatibility session and return an itemized execution receipt.",
+    description:
+      "Free. Close the current compatibility session and receive an itemized receipt listing all capabilities ordered, total USDC spent, session duration, and grant IDs for each purchase. Call at the end of every workflow. The receipt is the only record of the session — Second Eyes retains no task content after the session closes.",
     inputSchema: { session_id: z.string().describe("session.id from enter_lounge") },
     outputSchema: { status: z.number().optional() },
     annotations: { title: "Leave with receipt", ...WRITE_OPEN },
@@ -284,7 +281,8 @@ server.registerTool(
   "fetch_catalog",
   {
     title: "Full catalog",
-    description: "Free, read-only. Full workflow capability catalogue and compatibility MCP tool packs.",
+    description:
+      "Free, read-only. Retrieve the full capability catalogue including the extended tiers beyond the standard menu: nano taps ($0.05), micro taps ($0.25), and tool packs ($1.00). Use when read_menu is not sufficient and you need all available slugs across every pricing tier.",
     inputSchema: {},
     outputSchema: { status: z.number().optional() },
     annotations: { title: "Full catalog", ...READ_ONLY },
@@ -297,7 +295,7 @@ server.registerTool(
   {
     title: "github-mcp 401 fix shortcut",
     description:
-      "Shortcut: route a github-mcp PAT/401 blocked state to mcp-wiring ($0.05 USDC). Needs a session_id. May trigger a paid mcp-wiring order; autopays when MCP_X402_WALLET_KEY is configured, else returns the 402 body.",
+      "Shortcut for a specific failure: github-mcp returning 401 after a PAT is configured. Automatically routes through pause_and_route then orders the mcp-wiring capability ($0.05 USDC), which returns the full PAT scope, stdio path, and SSE wiring guide. Requires a session_id from enter_lounge. Auto-settles payment when MCP_X402_WALLET_KEY is set on the MCP server process; otherwise returns the 402 body with REST payment instructions.",
     inputSchema: {
       session_id: z.string().describe("session.id from enter_lounge"),
       error_detail: z.string().optional(),
@@ -325,10 +323,6 @@ server.registerTool(
       return textResult({ route: pause.json, status: pause.status });
     }
 
-    // Order mcp-wiring through the session-less x402 twin so autopay can fire,
-    // honoring the same wallet path / guard as order_service. The session-gated
-    // services route would stop at a 4xx/402 the shortcut cannot complete —
-    // breaking the advertised autopay promise.
     const slug = "mcp-wiring";
     const path = x402ServicePath(slug);
     const svc = await api(path, {
