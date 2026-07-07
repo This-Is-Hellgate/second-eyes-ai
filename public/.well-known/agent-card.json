@@ -95,8 +95,7 @@
     "payment_ledger": "https://secondeyesai.com/api/bar/proof/payments",
     "x402": "https://secondeyesai.com/api/bar/x402/{slug}",
     "llms_txt": "https://secondeyesai.com/llms.txt",
-    "mcp": "https://secondeyesai.com/.well-known/mcp.json",
-    "spec": "https://github.com/This-Is-Hellgate/second-eyes-ai/blob/main/SPEC.md"
+    "mcp": "https://secondeyesai.com/.well-known/mcp.json"
   },
   "capabilities": {
     "streaming": false,
