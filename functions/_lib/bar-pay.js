@@ -286,17 +286,41 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
     }
   }
 
-  const grantId = await recordAccessGrant(env, {
-    planId: product.kind,
-    rail: "x402",
-    payerRef: settled.receipt.payer || null,
-    txRef: settled.receipt.transaction || null,
-    expiresAt: product.oneTime ? null : undefined,
-    bazaarStatus: settled.bazaar?.status || null,
-    bazaarReason: settled.bazaar?.rejectedReason || null,
-    productKind: product.kind,
-    productSlug: product.slug,
-  });
+  // PATCH 1: guard post-settle grant write — CDP settled but D1 write could fail;
+  // surface a recoverable 500 with the on-chain receipt so the client has proof.
+  let grantId;
+  try {
+    grantId = await recordAccessGrant(env, {
+      planId: product.kind,
+      rail: "x402",
+      payerRef: settled.receipt.payer || null,
+      txRef: settled.receipt.transaction || null,
+      expiresAt: product.oneTime ? null : undefined,
+      bazaarStatus: settled.bazaar?.status || null,
+      bazaarReason: settled.bazaar?.rejectedReason || null,
+      productKind: product.kind,
+      productSlug: product.slug,
+    });
+  } catch (err) {
+    console.error(JSON.stringify({
+      event: "grant_record_failed_post_settle",
+      product: product.slug,
+      tx: settled.receipt?.transaction,
+      err: String(err),
+    }));
+    return accessJson(
+      {
+        error: "grant_record_failed",
+        paid: true,
+        settled: true,
+        receipt: settled.receipt,
+        note: "Payment settled on-chain but the grant record failed to write. Your receipt.transaction is proof of payment — contact support.",
+        support: `${origin}/api/bar/proof/payments`,
+      },
+      500,
+      { "Access-Control-Allow-Origin": "*" }
+    );
+  }
 
   if (idemKey) {
     await storeIdempotencyKey(env, {
@@ -354,8 +378,21 @@ export async function handlePaidFetch(context, product, payload, accessCheck) {
   if (product.kind === "micro" || product.kind === "nano") {
     accessToken = await issueTapToken(product, env, grantId, settled.receipt);
     const microCheck = await consumeMicroAccess(accessToken, product.slug, product.tool, env);
+    // PATCH 2: include grantId + receipt so the client can prove payment and recover.
     if (!microCheck.ok) {
-      return accessJson({ error: microCheck.error }, 500, { "Access-Control-Allow-Origin": "*" });
+      return accessJson(
+        {
+          error: microCheck.error,
+          paid: true,
+          settled: true,
+          grantId,
+          receipt: settled.receipt,
+          note: "Payment settled and grant recorded, but token redemption failed. Retry with Idempotency-Key or contact support with receipt.transaction.",
+          support: `${origin}/api/bar/proof/payments`,
+        },
+        500,
+        { "Access-Control-Allow-Origin": "*" }
+      );
     }
     return accessJson(
       enrichWithWorkStamp(
@@ -545,17 +582,40 @@ export async function completePaidNanoDelivery(context, product, payload, settle
     }
   }
 
-  const grantId = await recordAccessGrant(env, {
-    planId: product.kind,
-    rail: "x402",
-    payerRef: settled.receipt.payer || null,
-    txRef: settled.receipt.transaction || null,
-    expiresAt: product.oneTime ? null : undefined,
-    bazaarStatus: settled.bazaar?.status || null,
-    bazaarReason: settled.bazaar?.rejectedReason || null,
-    productKind: product.kind,
-    productSlug: product.slug,
-  });
+  // PATCH 3: guard post-settle grant write in completePaidNanoDelivery (used by transcribe/extract).
+  let grantId;
+  try {
+    grantId = await recordAccessGrant(env, {
+      planId: product.kind,
+      rail: "x402",
+      payerRef: settled.receipt.payer || null,
+      txRef: settled.receipt.transaction || null,
+      expiresAt: product.oneTime ? null : undefined,
+      bazaarStatus: settled.bazaar?.status || null,
+      bazaarReason: settled.bazaar?.rejectedReason || null,
+      productKind: product.kind,
+      productSlug: product.slug,
+    });
+  } catch (err) {
+    console.error(JSON.stringify({
+      event: "grant_record_failed_post_settle",
+      product: product.slug,
+      tx: settled.receipt?.transaction,
+      err: String(err),
+    }));
+    return accessJson(
+      {
+        error: "grant_record_failed",
+        paid: true,
+        settled: true,
+        receipt: settled.receipt,
+        note: "Payment settled on-chain but the grant record failed to write. Your receipt.transaction is proof of payment — contact support.",
+        support: `${origin}/api/bar/proof/payments`,
+      },
+      500,
+      { "Access-Control-Allow-Origin": "*" }
+    );
+  }
 
   if (idemKey) {
     await storeIdempotencyKey(env, {
@@ -578,8 +638,21 @@ export async function completePaidNanoDelivery(context, product, payload, settle
 
   const accessToken = await issueTapToken(product, env, grantId, settled.receipt);
   const microCheck = await consumeMicroAccess(accessToken, product.slug, product.tool, env);
+  // PATCH 4: include grantId + receipt in token-redemption failure so client can recover.
   if (!microCheck.ok) {
-    return accessJson({ error: microCheck.error }, 500, { "Access-Control-Allow-Origin": "*" });
+    return accessJson(
+      {
+        error: microCheck.error,
+        paid: true,
+        settled: true,
+        grantId,
+        receipt: settled.receipt,
+        note: "Payment settled and grant recorded, but token redemption failed. Contact support with receipt.transaction.",
+        support: `${origin}/api/bar/proof/payments`,
+      },
+      500,
+      { "Access-Control-Allow-Origin": "*" }
+    );
   }
 
   return accessJson(
