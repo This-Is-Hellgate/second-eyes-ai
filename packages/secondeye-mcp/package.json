@@ -1,6 +1,6 @@
 {
   "name": "@secondeyes/mcp-unblock",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "mcpName": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
   "description": "Agent workflow diagnostics and capability routing over MCP with x402 settlement on Base",
   "type": "module",
