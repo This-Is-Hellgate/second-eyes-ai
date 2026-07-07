@@ -200,6 +200,21 @@
       "min": 0.01,
       "max": 0.05
     },
+    "payment": {
+      "rail": "x402",
+      "asset": "USDC",
+      "x402Version": 2,
+      "network": "eip155:8453",
+      "accepted_networks": [
+        "eip155:8453"
+      ],
+      "planned_networks": [
+        "eip155:137",
+        "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+      ],
+      "scheme": "ExactEvmScheme",
+      "mcp_autopay_version": "1.2.6"
+    },
     "items": [
       {
         "when": "I am looping",
