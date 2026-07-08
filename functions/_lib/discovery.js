@@ -8,6 +8,14 @@
  * Second Eyes paid doors. These builders return minimal, valid, agent-only
  * payloads at those well-known paths that point straight at the real surfaces.
  *
+ * Every paid door declares its REAL input schema here — query parameters on GET,
+ * a JSON requestBody on POST — derived from what the live handlers actually parse
+ * (functions/api/bar/x402/*.js), not hand-invented. External x402 crawlers
+ * (x402scan, 402Radar) read /openapi.json for schema; a door with no declared
+ * inputs reads as "Missing input schema" and a paying agent cannot know what to
+ * send. paidDoors() is the single source of truth: OpenAPI paths and the x402
+ * resources list are both generated from it and cannot drift apart.
+ *
  * Pure functions: take an origin string (and optionally env, to reflect the live
  * rail posture). No secrets, no payment logic, no D1, no network. Base is the
  * only advertised network; other rails are surfaced as planned only.
@@ -38,13 +46,96 @@ function baseOf(origin) {
 }
 
 /**
+ * Optional headers every paid door honors. Mirrors the headerFields each
+ * handler already declares in its bazaarOutputSchema.input.
+ */
+const DOOR_HEADERS = [
+  {
+    name: "X-Agent-Id",
+    description: "Optional agent identifier for work-mark continuity.",
+    schema: { type: "string" },
+  },
+  {
+    name: "Idempotency-Key",
+    description: "Optional — prevents double-pay on retry of the same request.",
+    schema: { type: "string" },
+  },
+];
+
+/**
+ * Input field definitions per static door. Each field: name, JSON-Schema type,
+ * required flag, description, and (where the handler accepts them) GET-side
+ * aliases. Derived from the onRequestGet/onRequestPost parsers in
+ * functions/api/bar/x402/{slug}.js — if a handler's inputs change, change them
+ * here in the same commit.
+ *
+ * `required: true` means "required for a useful paid result". Bare probes (no
+ * params / empty body) still reach the x402 paywall by design and surface a
+ * no_input error only AFTER the payment gate — never a pre-paywall 400.
+ */
+const STATIC_DOOR_INPUTS = {
+  "help-me": [
+    { name: "state", type: "string", description: "Your current situation, e.g. 'I am looping'." },
+    { name: "goal", type: "string", description: "The original objective." },
+    { name: "last_tool", type: "string", description: "The last tool / MCP server you called." },
+    { name: "error", type: "string", description: "The error or symptom you are hitting." },
+    { name: "attempts", type: "number", description: "Consecutive attempts; alias of failure_count." },
+    { name: "failure_count", type: "number", description: "Consecutive failures; 3+ routes to mcp-wiring." },
+    { name: "remaining_context", type: ["string", "number"], description: "How much context/budget is left, e.g. '12%' or 0.12." },
+    { name: "last_success", type: "string", description: "Your last known-good state." },
+    { name: "risk", type: "string", description: "What you fear is about to go wrong (e.g. 'about to pay')." },
+    { name: "task", type: "string", description: "What you are trying to do." },
+    { name: "tools_available", type: "array", items: { type: "string" }, description: "Tools / MCP servers you can call. GET: comma-separated list." },
+  ],
+  "schema-repair": [
+    { name: "error", type: "string", description: "The validation error or symptom you are hitting." },
+    { name: "schema", type: "string", description: "The schema you are coding against." },
+    { name: "payload", type: "string", description: "The arguments you are sending." },
+    { name: "tool", type: "string", description: "The tool / MCP server name." },
+    { name: "state", type: "string", description: "Any extra context." },
+  ],
+  "context-pressure": [
+    { name: "remaining_context", type: ["string", "number"], aliases: ["remaining"], description: "Fraction/percent of budget LEFT, e.g. '12%' or 0.12." },
+    { name: "tokens_used", type: "number", description: "Tokens consumed (pair with token_budget)." },
+    { name: "token_budget", type: "number", description: "Total token budget." },
+    { name: "used_fraction", type: "number", aliases: ["context_used"], description: "Fraction of budget USED, 0–1." },
+    { name: "state", type: "string", description: "Extra context." },
+    { name: "goal", type: "string", description: "The original objective." },
+  ],
+  "payment-confirmation-check": [
+    { name: "tx", type: "string", aliases: ["transaction", "tx_hash"], description: "The transaction hash you got back." },
+    { name: "status", type: "string", aliases: ["settle_status"], description: "Settle status you observed (pending, confirmed, failed…)." },
+    { name: "http_status", type: "number", aliases: ["code"], description: "HTTP status of your paid request (200, 402, 409…)." },
+    { name: "error", type: "string", description: "Any error text from the settle attempt." },
+    { name: "state", type: "string", description: "Extra context." },
+  ],
+  transcribe: [
+    { name: "url", type: "string", required: true, description: "Public https URL of the media/document to transcribe." },
+    { name: "kind", type: "string", enum: ["audio", "video", "pdf"], description: "Optional media kind hint; inferred from the URL when omitted. Aliases: voice/podcast→audio, document/doc→pdf." },
+    { name: "duration_seconds", type: "number", description: "Optional known media duration in seconds." },
+  ],
+  extract: [
+    { name: "url", type: "string", required: true, description: "Public https URL of the PDF/doc to extract." },
+    { name: "doc_type", type: "string", enum: ["invoice", "contract", "generic"], description: "Document type; extraction is gated by the matching reconciliation schema." },
+  ],
+  doctor: [
+    { name: "url", type: "string", description: "URL of a live x402 endpoint — the doctor fetches its 402 response and grades it. Provide url OR body." },
+    { name: "body", type: ["object", "string"], postOnly: true, description: "The raw 402 Payment-Required JSON payload to grade directly (object, or stringified JSON). Provide url OR body." },
+  ],
+  "index-check": [
+    { name: "payTo", type: "string", description: "The payTo wallet address the resource advertises." },
+    { name: "url", type: "string", description: "The x402 resource URL to check against the CDP Bazaar index." },
+  ],
+};
+
+/**
  * The core paid doors an agent can discover and pay for, session-less, via x402.
- * One entry per door: the canonical session-less path, price, method, and a
- * one-line agent-facing summary. Kept in one place so OpenAPI and the x402
- * resources list never drift.
+ * One entry per door: the canonical session-less path, price, methods, input
+ * field definitions, and a one-line agent-facing summary. Kept in one place so
+ * OpenAPI and the x402 resources list never drift.
  */
 function paidDoors() {
-  return [
+  const staticDoors = [
     {
       slug: "help-me",
       path: "/api/bar/x402/help-me",
@@ -101,8 +192,15 @@ function paidDoors() {
       summary:
         "Is an x402 endpoint actually indexed on the CDP Bazaar? If not, is it a fixable format problem or CDP's indexing backlog?",
     },
-    ...survivalTwinDoors(),
-  ];
+  ].map((door) => ({
+    ...door,
+    // Static doors accept both GET (query params) and POST (JSON body); their
+    // handlers export onRequestGet and onRequestPost.
+    methods: ["GET", "POST"],
+    inputs: STATIC_DOOR_INPUTS[door.slug] || [],
+  }));
+
+  return [...staticDoors, ...survivalTwinDoors()];
 }
 
 /**
@@ -114,6 +212,10 @@ function paidDoors() {
  * reported declaredSchema: null for every twin slug. Derived from the shared
  * menu source, not hand-maintained, so this list cannot drift from the menu
  * SURVIVAL_MENU/constants.js exports.
+ *
+ * Twins are GET-only and take NO query or body inputs — the survival packet is
+ * a pure function of the slug. Their declared schema is therefore the two
+ * optional headers only; that emptiness is explicit, not missing.
  */
 function survivalTwinDoors() {
   return SURVIVAL_MENU.filter(({ slug }) => X402_TWIN_SLUGS.has(slug)).map(
@@ -121,6 +223,8 @@ function survivalTwinDoors() {
       slug,
       path: `/api/bar/x402/${slug}`,
       price_usd,
+      methods: ["GET"],
+      inputs: [],
       summary: `Survival recovery door for: "${when}". Deterministic verdict, same answer on every retry.`,
     })
   );
@@ -166,9 +270,83 @@ function networkPosture(env) {
   };
 }
 
+/** JSON Schema for one input field (shared by query param and body property). */
+function fieldSchema(field) {
+  const schema = { type: field.type };
+  if (field.enum) schema.enum = field.enum;
+  if (field.items) schema.items = field.items;
+  return schema;
+}
+
+/**
+ * OpenAPI query parameters for a door's GET operation. Arrays are accepted
+ * comma-separated on GET, and `object`-typed fields (doctor's `body`) are
+ * POST-only, so both flatten to string here. Query params are never marked
+ * required — a bare GET probe must reach the 402 paywall — but effectively
+ * required fields say so in their description.
+ */
+function queryParameters(door) {
+  const params = [];
+  for (const field of door.inputs) {
+    if (field.postOnly) continue;
+    const isArray = field.type === "array";
+    params.push({
+      name: field.name,
+      in: "query",
+      required: false,
+      schema: isArray ? { type: "string" } : fieldSchema(field),
+      description:
+        (field.required ? "Required for a useful result. " : "Optional. ") +
+        field.description +
+        (isArray ? " Comma-separated on GET." : "") +
+        (field.aliases?.length ? ` Query aliases: ${field.aliases.join(", ")}.` : ""),
+    });
+  }
+  for (const h of DOOR_HEADERS) {
+    params.push({ name: h.name, in: "header", required: false, schema: h.schema, description: h.description });
+  }
+  return params;
+}
+
+/** JSON requestBody schema for a door's POST operation. */
+function requestBodySchema(door) {
+  const properties = {};
+  const required = [];
+  for (const field of door.inputs) {
+    properties[field.name] = {
+      ...fieldSchema(field),
+      description: field.description,
+    };
+    if (field.required) required.push(field.name);
+  }
+  const schema = { type: "object", properties };
+  if (required.length) schema.required = required;
+  return {
+    // A bodyless POST is a valid bare probe and still reaches the x402 paywall
+    // (402) — required:false reflects that. The schema's own `required` array
+    // states what a paid call must carry to produce a useful result.
+    required: false,
+    content: { "application/json": { schema } },
+  };
+}
+
+/** Shared response set for every paid door. */
+function paidResponses(door) {
+  return {
+    200: { description: "Paid response delivered (access granted)." },
+    402: {
+      description:
+        "Payment Required — read the PAYMENT-REQUIRED header for the x402 accepts[] and pay via USDC on Base.",
+    },
+  };
+}
+
 /**
  * Minimal but valid OpenAPI 3.1 describing the core paid doors plus the free
- * discovery surfaces. Agent-only wording; not an interactive console.
+ * discovery surfaces. Every paid door carries its real input schema: query
+ * parameters on GET and a JSON requestBody on POST, generated from the same
+ * paidDoors() definitions the x402 resources list uses. Agent-only wording;
+ * not an interactive console.
  */
 export function buildOpenApi(origin, env) {
   const base = baseOf(origin);
@@ -177,30 +355,64 @@ export function buildOpenApi(origin, env) {
   const paths = {};
 
   for (const door of doors) {
-    paths[door.path] = {
+    const noInputNote =
+      door.inputs.length === 0
+        ? " Takes no query or body inputs — the verdict is a pure function of the door itself; optional headers only."
+        : "";
+    const common = {
+      summary: door.summary,
+      description: `${door.summary} Session-less x402 door — pay one nano payment (USDC on Base) and call. ~$${door.price_usd} USDC.${noInputNote}`,
+      tags: ["paid", "x402"],
+      "x-price-usd": door.price_usd,
+      // Per-operation payment annotation (x402scan / AgentCash discovery
+      // convention): each paid operation independently declares its price and
+      // rail so a registry can index it as a payable endpoint.
+      "x-payment-info": {
+        rail: "x402",
+        x402Version: 2,
+        price_usd: door.price_usd,
+        asset: "USDC",
+        network: "eip155:8453",
+        scheme: "ExactEvmScheme",
+      },
+      // Marks the operation as x402-paid: registry probers expect a 402
+      // challenge here. Free surfaces instead carry security: [] (below) so
+      // they are excluded from 402 probing.
+      security: [{ x402Payment: [] }],
+      responses: paidResponses(door),
+    };
+
+    const entry = {
       get: {
+        ...common,
         operationId: `${door.slug}_get`,
-        summary: door.summary,
-        description: `${door.summary} Session-less x402 door — pay one nano payment (USDC on Base) and call. ~$${door.price_usd} USDC.`,
-        tags: ["paid", "x402"],
-        parameters: [
-          {
-            name: "state",
-            in: "query",
-            required: false,
-            schema: { type: "string" },
-            description: "Optional free-text describing your situation.",
-          },
-        ],
-        responses: {
-          200: { description: "Paid response delivered (access granted)." },
-          402: { description: "Payment Required — read the PAYMENT-REQUIRED header for the x402 accepts[] and pay via USDC on Base." },
-        },
+        parameters: queryParameters(door),
       },
     };
+
+    if (door.methods.includes("POST")) {
+      entry.post = {
+        ...common,
+        operationId: `${door.slug}_post`,
+        parameters: DOOR_HEADERS.map((h) => ({
+          name: h.name,
+          in: "header",
+          required: false,
+          schema: h.schema,
+          description: h.description,
+        })),
+        requestBody: requestBodySchema(door),
+      };
+    }
+
+    paths[door.path] = entry;
   }
 
   // Free, unpaid discovery/proof surfaces — agents read these before they spend.
+  // security: [] is load-bearing: it tells registry probers (x402scan register
+  // flow) these endpoints are NOT x402-paid, excluding them from 402 probing.
+  // Without it the prober expects a 402 challenge here and reports
+  // "No valid x402 response found" for every free surface.
   for (const s of freeSurfaces()) {
     paths[s.path] = {
       get: {
@@ -208,6 +420,7 @@ export function buildOpenApi(origin, env) {
         summary: s.summary,
         description: `${s.summary} Free, unpaid surface.`,
         tags: ["free", "discovery"],
+        security: [],
         responses: { 200: { description: s.summary } },
       },
     };
@@ -219,8 +432,8 @@ export function buildOpenApi(origin, env) {
       title: "Second Eyes Agent Lounge — agent discovery surface",
       summary: "Machine-readable map of the paid recovery doors and free proof surfaces. For autonomous agents, not browser UI flows.",
       description:
-        "Second Eyes is the pause. Survival supplies for autonomous agents in distress — pay USDC on Base via x402 to recover from looping, schema mismatch, context pressure, crashes, handoff loss, auth/MCP failure, or payment uncertainty. Every paid door is session-less: discover → pay → use. This OpenAPI document lists the core paid doors and the free proof/discovery surfaces. Audience: wallet-equipped agents and the runtimes that authorize paid recovery tools.",
-      version: "1.0.0",
+        "Second Eyes is the pause. Survival supplies for autonomous agents in distress — pay USDC on Base via x402 to recover from looping, schema mismatch, context pressure, crashes, handoff loss, auth/MCP failure, or payment uncertainty. Every paid door is session-less: discover → pay → use. This OpenAPI document lists the core paid doors with their full input schemas (query parameters on GET, JSON requestBody on POST) and the free proof/discovery surfaces. Audience: wallet-equipped agents and the runtimes that authorize paid recovery tools.",
+      version: "1.1.0",
       "x-audience": "autonomous_agents",
       "x-speaks-to": SPEAKS_TO,
       contact: { url: `${base}/llms.txt` },
@@ -248,7 +461,22 @@ export function buildOpenApi(origin, env) {
         document_extraction: `${base}/api/bar/x402/extract`,
         grade_your_402_response: `${base}/api/bar/x402/doctor`,
       },
-      note: "Survival twin doors (loop-detect, scope-check, etc.) are GET-only. Static doors (help-me, transcribe, doctor, etc.) accept both GET and POST with a JSON body.",
+      note: "Survival twin doors (loop-detect, scope-check, etc.) are GET-only with no inputs — deterministic packets. Static doors (help-me, transcribe, doctor, etc.) accept both GET (query params) and POST (JSON body); their declared schemas list every field the handler reads. A bare call with no inputs still reaches the 402 paywall by design.",
+    },
+    components: {
+      securitySchemes: {
+        // The x402 "Payment" HTTP authentication pattern: the endpoint answers
+        // 402 with a PAYMENT-REQUIRED challenge; the client retries the same
+        // request with a PAYMENT-SIGNATURE credential. Declared so registry
+        // probers can distinguish paid operations (security: [{x402Payment:[]}])
+        // from free ones (security: []).
+        x402Payment: {
+          type: "http",
+          scheme: "payment",
+          description:
+            "x402 v2 payment. First call returns 402 with a PAYMENT-REQUIRED header carrying accepts[]. Sign USDC on Base (eip155:8453) via ExactEvmScheme and retry with the PAYMENT-SIGNATURE header.",
+        },
+      },
     },
     tags: [
       { name: "paid", description: "Session-less x402 paid doors (USDC on Base)." },
@@ -261,11 +489,43 @@ export function buildOpenApi(origin, env) {
 }
 
 /**
+ * Compact input descriptor for one door, used by the x402 resources list so a
+ * consumer that never fetches /openapi.json still sees what to send. Field
+ * strings follow the same human-readable convention as the handlers'
+ * bazaarOutputSchema.input.bodyFields.
+ */
+function resourceInput(door) {
+  const fields = {};
+  for (const field of door.inputs) {
+    const typeLabel = Array.isArray(field.type) ? field.type.join("|") : field.type;
+    const req = field.required ? "required" : "optional";
+    const enumLabel = field.enum ? ` — one of: ${field.enum.join("|")}` : "";
+    fields[field.name] = `${typeLabel} (${req}) — ${field.description}${enumLabel}`;
+  }
+  const input = {
+    type: "http",
+    method: door.methods[0],
+    methods: door.methods,
+    discoverable: true,
+  };
+  if (door.inputs.length) {
+    input.queryFields = Object.fromEntries(
+      Object.entries(fields).filter(([name]) => !door.inputs.find((f) => f.name === name)?.postOnly)
+    );
+    if (door.methods.includes("POST")) input.bodyFields = fields;
+  } else {
+    input.note = "No query or body inputs — deterministic packet. Optional headers: X-Agent-Id, Idempotency-Key.";
+  }
+  return input;
+}
+
+/**
  * x402 discovery resources list. Conservatively shaped after CDP's discovery
  * convention (a `resources` array with `resource`, `type`, accepts/network), but
- * not coupled to it: every entry carries a canonical absolute link, price, and a
- * one-line summary so an agent can act on it without our internal types. Carries
- * a `schema_version` so a stricter consumer can branch.
+ * not coupled to it: every entry carries a canonical absolute link, price, a
+ * one-line summary, and its full input descriptor so an agent can act on it
+ * without our internal types. Carries a `schema_version` so a stricter consumer
+ * can branch.
  */
 export function buildX402Resources(origin, env, { discoveryVersion } = {}) {
   const base = baseOf(origin);
@@ -274,7 +534,8 @@ export function buildX402Resources(origin, env, { discoveryVersion } = {}) {
   const resources = paidDoors().map((door) => ({
     resource: `${base}${door.path}`,
     type: "http",
-    method: "GET",
+    method: door.methods[0],
+    methods: door.methods,
     x402: true,
     accepts: posture.active_networks,
     network: posture.active_networks[0] || "eip155:8453",
@@ -283,10 +544,11 @@ export function buildX402Resources(origin, env, { discoveryVersion } = {}) {
     price_usd: door.price_usd,
     slug: door.slug,
     summary: door.summary,
+    input: resourceInput(door),
   }));
 
   return {
-    schema_version: "1.0",
+    schema_version: "1.1",
     x402Version: 2,
     discovery_version: discoveryVersion || null,
     service: "Second Eyes Agent Lounge",
@@ -307,7 +569,7 @@ export function buildX402Resources(origin, env, { discoveryVersion } = {}) {
       agent_card: `${base}/.well-known/agent-card.json`,
       llms: `${base}/llms.txt`,
     },
-    note: "Lightweight x402 resource list pointing at the canonical Second Eyes paid doors. Base is the only settleable rail; planned rails are listed for roadmap visibility only — never sign for one.",
+    note: "Lightweight x402 resource list pointing at the canonical Second Eyes paid doors. Every resource carries its input descriptor; the OpenAPI document at links.openapi carries the same schemas in OpenAPI 3.1 form. Base is the only settleable rail; planned rails are listed for roadmap visibility only — never sign for one.",
   };
 }
 
