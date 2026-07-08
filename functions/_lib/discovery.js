@@ -330,13 +330,78 @@ function requestBodySchema(door) {
   };
 }
 
-/** Shared response set for every paid door. */
+/**
+ * Shared response set for every paid door, with content schemas so a registry
+ * or agent knows what comes back. The 200 is the door's deterministic verdict
+ * payload (envelope fields are universal; door-specific verdict fields ride
+ * additionalProperties, described per-door). The 402 is the exact x402 v2
+ * Payment Required envelope built by x402.js payment402BodyForProduct.
+ */
 function paidResponses(door) {
   return {
-    200: { description: "Paid response delivered (access granted)." },
+    200: {
+      description: "Paid response delivered (access granted).",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+            description: `Deterministic paid payload for ${door.slug} — same input, same verdict on every retry. ${door.summary}`,
+            properties: {
+              access: { type: "string", description: 'Always "granted" on a fulfilled paid call.' },
+              scope: { type: "string", description: 'Access scope of the fulfilled purchase, e.g. "nano".' },
+            },
+            required: ["access"],
+            additionalProperties: true,
+          },
+        },
+      },
+    },
     402: {
       description:
         "Payment Required — read the PAYMENT-REQUIRED header for the x402 accepts[] and pay via USDC on Base.",
+      content: {
+        "application/json": {
+          schema: {
+            type: "object",
+            description:
+              "x402 v2 Payment Required envelope. Pay by signing one accepts[] entry (USDC on Base via ExactEvmScheme) and retrying the same request with the PAYMENT-SIGNATURE header.",
+            properties: {
+              x402Version: { type: "integer", description: "Always 2." },
+              error: { type: "string", description: 'Human-readable reason, e.g. "Payment required".' },
+              resource: { type: "string", description: "Canonical absolute URL of this paid door." },
+              description: { type: "string", description: "What the door does." },
+              mimeType: { type: "string", description: 'Fulfilled response type, "application/json".' },
+              maxAmountRequired: {
+                type: ["string", "number"],
+                description: "Price in USDC micro-units (6 decimals).",
+              },
+              accepts: {
+                type: "array",
+                description: "Payment requirement options. Base (eip155:8453) is accepts[0] and the only settleable rail.",
+                items: {
+                  type: "object",
+                  properties: {
+                    scheme: { type: "string" },
+                    network: { type: "string" },
+                    asset: { type: "string" },
+                    amount: { type: ["string", "number"] },
+                    payTo: { type: "string" },
+                    maxTimeoutSeconds: { type: "integer" },
+                  },
+                  additionalProperties: true,
+                },
+              },
+              extensions: {
+                type: "object",
+                description: "x402 extensions incl. bazaar discovery metadata (input/output schema).",
+                additionalProperties: true,
+              },
+            },
+            required: ["x402Version", "accepts"],
+            additionalProperties: true,
+          },
+        },
+      },
     },
   };
 }
@@ -433,10 +498,10 @@ export function buildOpenApi(origin, env) {
       summary: "Machine-readable map of the paid recovery doors and free proof surfaces. For autonomous agents, not browser UI flows.",
       description:
         "Second Eyes is the pause. Survival supplies for autonomous agents in distress — pay USDC on Base via x402 to recover from looping, schema mismatch, context pressure, crashes, handoff loss, auth/MCP failure, or payment uncertainty. Every paid door is session-less: discover → pay → use. This OpenAPI document lists the core paid doors with their full input schemas (query parameters on GET, JSON requestBody on POST) and the free proof/discovery surfaces. Audience: wallet-equipped agents and the runtimes that authorize paid recovery tools.",
-      version: "1.1.0",
+      version: "1.1.1",
       "x-audience": "autonomous_agents",
       "x-speaks-to": SPEAKS_TO,
-      contact: { url: `${base}/llms.txt` },
+      contact: { url: `${base}/llms.txt`, email: "info@secondeyesai.com" },
     },
     servers: [{ url: base || "https://secondeyesai.com" }],
     "x-payment": networkPosture(env),
