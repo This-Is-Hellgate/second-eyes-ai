@@ -50,7 +50,7 @@ No `/api/bar/enter`. No API key. Bare GET/POST → **402** → sign with `@x402/
 | Bazaar index check | 0.05 | https://secondeyesai.com/api/bar/x402/index-check |
 | x402 format doctor | 0.25 | https://secondeyesai.com/api/bar/x402/doctor |
 
-**help-me first:** help-me is the canonical meta-tool for workflow classification; 402 is one condition, not the whole product. `GET https://secondeyesai.com/api/bar/x402/help-me?state=I+am+looping` (or POST JSON `{ "state", "goal", "last_tool", "error", "attempts", "remaining_context", "last_success", "risk" }` — all optional) returns the relevant problem class, the specialist route to call next, deterministic stop/preserve/continue guidance, and an escalation condition. `peril-router` remains a legacy alias. Machine-readable packet: `/.well-known/help-me.json`; npm MCP version: @1.2.6.
+**help-me first:** help-me is the canonical meta-tool for workflow classification; 402 is one condition, not the whole product. `GET https://secondeyesai.com/api/bar/x402/help-me?state=I+am+looping` (or POST JSON `{ "state", "goal", "last_tool", "error", "attempts", "remaining_context", "last_success", "risk" }` — all optional) returns the relevant problem class, the specialist route to call next, deterministic stop/preserve/continue guidance, and an escalation condition. `peril-router` remains a legacy alias. Machine-readable packet: `/.well-known/help-me.json`; npm MCP version: @1.2.7.
 
 **Specialist routes when you already know the problem class.** Skip broad classification and call the single-concern route directly — each returns a deterministic stop/preserve/continue verdict (pure function of your input, same answer on every retry): **schema-repair** ($0.03) when a tool/MCP call keeps failing validation; **context-pressure** ($0.03, alias token-pressure) when you are running out of context/token budget; **payment-confirmation-check** ($0.01) when you attempted a settlement and are unsure it confirmed (do not blind-retry and double-pay). help-me also surfaces these as a `recommended_door` when it classifies `schema_mismatch`, `context_pressure`, or `payment_uncertainty`.
 
@@ -155,8 +155,8 @@ Agent card: https://secondeyesai.com/.well-known/agent-card.json
 - **x402 resources discovery:** https://secondeyesai.com/v1/x402/discovery/resources (alias `/v2/x402/discovery/resources`)
 - **API docs pointer:** https://secondeyesai.com/api-docs (machine pointer to /openapi.json — no interactive console)
 - **MCP discovery:** https://secondeyesai.com/.well-known/mcp.json
-- **MCP stdio (npm, default):** `@secondeyes/mcp-unblock@1.2.6` — `npx -y @secondeyes/mcp-unblock@1.2.6`. Free reads work with no wallet; auto-pay activates only when `MCP_X402_WALLET_KEY` is set on the server process (see HOW TO PAY)
-- **MCP stdio legacy free-reads pin:** `@secondeyes/mcp-unblock@1.0.5` — reads only, `order_service` cannot pay; upgrade to 1.2.6
+- **MCP stdio (npm, default):** `@secondeyes/mcp-unblock@1.2.7` — `npx -y @secondeyes/mcp-unblock@1.2.7`. Free reads work with no wallet; auto-pay activates only when `MCP_X402_WALLET_KEY` is set on the server process (see HOW TO PAY)
+- **MCP stdio legacy free-reads pin:** `@secondeyes/mcp-unblock@1.0.5` — reads only, `order_service` cannot pay; upgrade to 1.2.7
 - **MCP Registry:** `io.github.This-Is-Hellgate/secondeye-mcp-unblock`
 - **Payment ledger (proof):** https://secondeyesai.com/api/bar/proof/payments
 - **GitHub (monorepo):** https://github.com/This-Is-Hellgate/second-eyes-ai/tree/main/packages/secondeye-mcp
@@ -203,22 +203,22 @@ Reference implementation: `scripts/canary-pay.mjs` and `scripts/x402-server-self
 
 ### Path B — MCP stdio `@1.0.5` (LEGACY free-reads pin; pay via REST)
 
-Legacy pin for operators who require a version with no payment code present. Default is `@1.2.6` (Path C behavior activates only when a wallet key is set):
+Legacy pin for operators who require a version with no payment code present. Default is `@1.2.7` (Path C behavior activates only when a wallet key is set):
 ```json
 { "mcpServers": { "secondeye-unblock": { "command": "npx", "args": ["-y", "@secondeyes/mcp-unblock@1.0.5"], "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com" } } } }
 ```
 - **Free via MCP:** `proof_bar`, `read_menu`, `read_laws`, `read_pricing`, `enter_session`, `pause_and_route`, `fetch_catalog`
 - **Paid via MCP 1.0.5:** `order_service` returns **402** — use **Path A (REST)** to sign and pay, or upgrade to Path C
 
-### Path C — MCP stdio `@1.2.6+` (compatibility auto-pay via env)
+### Path C — MCP stdio `@1.2.7+` (compatibility auto-pay via env)
 
-**Gated:** only use when npm reports ≥ 1.2.6:
+**Gated:** only use when npm reports ≥ 1.2.7:
 ```bash
 npm view @secondeyes/mcp-unblock version
 ```
-When ≥ `1.2.6`, pin explicitly and set a dedicated compatibility wallet on the **MCP server process** (never pass a key as a tool argument):
+When ≥ `1.2.7`, pin explicitly and set a dedicated compatibility wallet on the **MCP server process** (never pass a key as a tool argument):
 ```json
-{ "mcpServers": { "second-eyes": { "command": "npx", "args": ["-y", "@secondeyes/mcp-unblock@1.2.6"], "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com", "MCP_X402_WALLET_KEY": "0x…", "MCP_X402_MAX_SPEND_USD": "0.50", "MCP_X402_SESSION_MAX_USD": "2.00" } } } }
+{ "mcpServers": { "second-eyes": { "command": "npx", "args": ["-y", "@secondeyes/mcp-unblock@1.2.7"], "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com", "MCP_X402_WALLET_KEY": "0x…", "MCP_X402_MAX_SPEND_USD": "0.50", "MCP_X402_SESSION_MAX_USD": "2.00" } } } }
 ```
 - **`order_service`** on 402 → `@x402/fetch` signs USDC → returns paid JSON inline (`paid_via_mcp_x402: true`, `grantId`, `receipt`)
 - **Default slug allow-list:** with a wallet set and `MCP_X402_ALLOW_SLUGS` unset (or `*`), every **zero-argument** launch-priced slug (each ≤ $0.05 USDC) auto-pays. `transcribe-extract`/`doc-extract` are routable but excluded from the zero-arg default — they need a caller-supplied input the zero-arg tool can't pass; call `/api/bar/x402/transcribe` and `/api/bar/x402/extract` directly with the input, or name them in `MCP_X402_ALLOW_SLUGS` to opt in. Set `MCP_X402_ALLOW_SLUGS=claim-check,mcp-wiring` to RESTRICT. Spend caps + the $0.05 price ceiling are the safety boundary, not the allow-list.
@@ -227,7 +227,7 @@ When ≥ `1.2.6`, pin explicitly and set a dedicated compatibility wallet on the
 
 ## MCP STDIO INSTALL (default)
 ```json
-{ "mcpServers": { "secondeye-unblock": { "command": "npx", "args": ["-y", "@secondeyes/mcp-unblock@1.2.6"], "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com" } } } }
+{ "mcpServers": { "secondeye-unblock": { "command": "npx", "args": ["-y", "@secondeyes/mcp-unblock@1.2.7"], "env": { "SECOND_EYE_BASE_URL": "https://secondeyesai.com" } } } }
 ```
 Free reads work immediately with no wallet. To enable auto-pay, add `MCP_X402_WALLET_KEY` + `MCP_X402_MAX_SPEND_USD` to the env (Path C). Without a key, paid calls return an actionable wallet-setup result — never a silent dead end.)
 
@@ -265,7 +265,7 @@ Separate from the service catalog — full cited wiring context:
 1. `GET /api/bar/proof`
 2. `GET /api/bar/tools/cursor-mcp-wiring` (free)
 3. `GET /api/bar/catalog` → nano ($0.05), micro ($0.25), tool ($1), bar tab
-4. Paid → HTTP 402 → follow **HOW TO PAY** (REST Path A or MCP `@1.2.6` Path C)
+4. Paid → HTTP 402 → follow **HOW TO PAY** (REST Path A or MCP `@1.2.7` Path C)
 
 ## CLIENT STAMPS
 

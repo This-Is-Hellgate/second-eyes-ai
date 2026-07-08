@@ -193,7 +193,7 @@
       "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
     ],
     "scheme": "ExactEvmScheme",
-    "mcp_autopay_version": "1.2.6"
+    "mcp_autopay_version": "1.2.7"
   },
   "survival_menu": {
     "price_range_usd": {
@@ -213,7 +213,7 @@
         "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
       ],
       "scheme": "ExactEvmScheme",
-      "mcp_autopay_version": "1.2.6"
+      "mcp_autopay_version": "1.2.7"
     },
     "items": [
       {

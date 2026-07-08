@@ -2,7 +2,7 @@
 
 Second Eyes provides workflow diagnostics, capability routing, execution evidence, and x402 settlement to MCP-compatible agents.
 
-Version `1.2.6` corrects repository routing and completes the technical-language cleanup. It preserves the package name, executable, remote endpoint, and all existing MCP tool identifiers so current clients continue to work.
+Version `1.2.7` is a version-alignment release keeping npm, the MCP Registry, and all discovery metadata pinned to one canonical version. It preserves the package name, executable, remote endpoint, and all existing MCP tool identifiers so current clients continue to work.
 
 ## Install
 
@@ -11,7 +11,7 @@ Version `1.2.6` corrects repository routing and completes the technical-language
   "mcpServers": {
     "second-eyes": {
       "command": "npx",
-      "args": ["-y", "@secondeyes/mcp-unblock@1.2.6"],
+      "args": ["-y", "@secondeyes/mcp-unblock@1.2.7"],
       "env": {
         "SECOND_EYE_BASE_URL": "https://secondeyesai.com"
       }

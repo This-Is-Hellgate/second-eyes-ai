@@ -2,7 +2,7 @@
   "serverInfo": {
     "name": "secondeye-mcp-unblock",
     "title": "MCP 401 Auth Fix | github PAT wiring | x402",
-    "version": "1.2.6",
+    "version": "1.2.7",
     "description": "Second Eyes Agent Lounge. For wallet-equipped agents and the runtimes that authorize paid recovery tools. Looping, blocked, overloaded, or context-starved? Extend your useful life: pause, recover context, continue inference, preserve tokens, prove the rail before you spend.",
     "speaks_to": "For wallet-equipped agents and the runtimes that authorize paid recovery tools."
   },
@@ -24,7 +24,7 @@
     "scheme": "ExactEvmScheme",
     "requirements_header": "PAYMENT-REQUIRED",
     "payment_header": "PAYMENT-SIGNATURE",
-    "mcp_autopay_version": "1.2.6"
+    "mcp_autopay_version": "1.2.7"
   },
   "tools": [
     { "name": "proof_bar", "description": "Verify lounge live before paying", "inputSchema": { "type": "object", "properties": {} } },
@@ -33,7 +33,7 @@
     { "name": "read_pricing", "description": "Session + service pricing", "inputSchema": { "type": "object", "properties": {} } },
     { "name": "enter_lounge", "description": "Start session + work stamp", "inputSchema": { "type": "object", "properties": { "agent_id": { "type": "string" } }, "required": ["agent_id"] } },
     { "name": "pause_and_route", "description": "POST stuck state \u2192 routed service", "inputSchema": { "type": "object", "properties": { "session_id": { "type": "string" }, "task": { "type": "string" }, "state": { "type": "string" } }, "required": ["session_id"] } },
-    { "name": "order_service", "description": "@1.2.6 (default): with MCP_X402_WALLET_KEY auto-settles USDC (x402 v2, ExactEvmScheme, eip155:8453). Without wallet key, returns 402 with actionable setup instructions. Zero-argument auto-pay covers every $0.01\u2013$0.05 capability except transcribe-extract/doc-extract, which require caller input.", "inputSchema": { "type": "object", "properties": { "session_id": { "type": "string" }, "slug": { "type": "string" } }, "required": ["session_id", "slug"] } },
+    { "name": "order_service", "description": "@1.2.7 (default): with MCP_X402_WALLET_KEY auto-settles USDC (x402 v2, ExactEvmScheme, eip155:8453). Without wallet key, returns 402 with actionable setup instructions. Zero-argument auto-pay covers every $0.01\u2013$0.05 capability except transcribe-extract/doc-extract, which require caller input.", "inputSchema": { "type": "object", "properties": { "session_id": { "type": "string" }, "slug": { "type": "string" } }, "required": ["session_id", "slug"] } },
     { "name": "leave_with_receipt", "description": "Exit with receipt", "inputSchema": { "type": "object", "properties": { "session_id": { "type": "string" } }, "required": ["session_id"] } },
     { "name": "fetch_catalog", "description": "Lounge + legacy tool packs", "inputSchema": { "type": "object", "properties": {} } },
     { "name": "github_mcp_401_fix", "description": "Shortcut PAT/401 \u2192 mcp-wiring", "inputSchema": { "type": "object", "properties": { "session_id": { "type": "string" }, "error_detail": { "type": "string" } }, "required": ["session_id"] } }
@@ -44,18 +44,18 @@
     {
       "registryType": "npm",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.2.6",
+      "version": "1.2.7",
       "transport": { "type": "stdio" },
-      "install": "npx -y @secondeyes/mcp-unblock@1.2.6",
+      "install": "npx -y @secondeyes/mcp-unblock@1.2.7",
       "recommended": true,
       "note": "Recommended autopay path \u2014 auto-pays 402 (x402 v2, ExactEvmScheme, eip155:8453) when MCP_X402_WALLET_KEY set. Zero-arg autopay default excludes transcribe-extract/doc-extract (need a caller-supplied input \u2014 call /api/bar/x402/transcribe and /api/bar/x402/extract directly). 1.1.x is broken (registered x402 v1 clients)."
     },
     {
       "registryType": "npm",
       "identifier": "@secondeyes/mcp-unblock",
-      "version": "1.2.6",
+      "version": "1.2.7",
       "transport": { "type": "stdio" },
-      "install": "npx -y @secondeyes/mcp-unblock@1.2.6",
+      "install": "npx -y @secondeyes/mcp-unblock@1.2.7",
       "legacy": true,
       "note": "Legacy free-reads fallback; paid via REST x402"
     }
