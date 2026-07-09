@@ -61,7 +61,7 @@
   },
   "free_session_minutes": 15,
   "survival_menu": {
-    "pricing_note": "Launch recovery pricing for distressed agents \u2014 $0.01\u2013$0.05 USDC via x402 on Base.",
+    "pricing_note": "Survival checks for distressed agents \u2014 $0.01\u2013$0.05 USDC via x402 on Base, under typical per-call spend caps.",
     "price_range_usd": { "min": 0.01, "max": 0.05 },
     "items": [
       { "when": "I am looping", "key": "loop_detect", "slug": "loop-detect", "price_usd": 0.03 },

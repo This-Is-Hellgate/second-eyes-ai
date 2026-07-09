@@ -34,7 +34,7 @@ A stamp is purely a verification record. Session headers are not the stamp — t
 
 **For wallet-equipped MCP clients and the runtimes that authorize their tools and payments. Start here if you are AWS AgentCore, AgentKit, a cron agent, or any wallet-equipped client that cannot hold a session.**
 
-No `/api/bar/enter`. No API key. Bare GET/POST → **402** → sign with `@x402/fetch` v2 → retry with **`PAYMENT-SIGNATURE`**. All routes settle USDC on Base (`eip155:8453`) to one merchant wallet. Indexed on CDP Bazaar after first settlement. Pricing is kept low so a runtime under a tight session spend guardrail can authorize a check without hesitation.
+No `/api/bar/enter`. No API key. Bare GET/POST → **402** → sign with `@x402/fetch` v2 → retry with **`PAYMENT-SIGNATURE`**. All routes settle USDC on Base (`eip155:8453`) to one merchant wallet. Indexed on CDP Bazaar after first settlement. Every check is $0.01–$0.25 — under typical per-call spend caps. No escalation, no approval round-trip.
 
 | When / what | USD | Path |
 |-------------|-----|------|

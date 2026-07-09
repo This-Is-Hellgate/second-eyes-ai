@@ -28,7 +28,7 @@
   },
   "tools": [
     { "name": "proof_bar", "description": "Verify lounge live before paying", "inputSchema": { "type": "object", "properties": {} } },
-    { "name": "read_menu", "description": "Survival menu \u2014 launch recovery pricing $0.01\u2013$0.05", "inputSchema": { "type": "object", "properties": {} } },
+    { "name": "read_menu", "description": "Survival menu \u2014 $0.01\u2013$0.05 per check", "inputSchema": { "type": "object", "properties": {} } },
     { "name": "read_laws", "description": "Deterministic lounge laws", "inputSchema": { "type": "object", "properties": {} } },
     { "name": "read_pricing", "description": "Session + service pricing", "inputSchema": { "type": "object", "properties": {} } },
     { "name": "enter_lounge", "description": "Start session + work stamp", "inputSchema": { "type": "object", "properties": { "agent_id": { "type": "string" } }, "required": ["agent_id"] } },

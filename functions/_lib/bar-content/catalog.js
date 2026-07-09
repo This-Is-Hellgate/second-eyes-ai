@@ -440,7 +440,7 @@ export const BARS = [
         priceUsd: 0.05,
         method: "GET|POST",
         path: "/api/bar/x402/extract",
-        lead: "Turn an invoice, contract, or generic PDF/doc URL into structured JSON — arithmetic-reconciled and schema-checked before it is served. Launch recovery pricing. Charges only when the extraction reconciles; on a math/schema failure it returns the exact discrepancy and does not settle.",
+        lead: "Turn an invoice, contract, or generic PDF/doc URL into structured JSON — arithmetic-reconciled and schema-checked before it is served. Charges only when the extraction reconciles; on a math/schema failure it returns the exact discrepancy and does not settle.",
         usage: {
           invoice: "GET /api/bar/x402/extract?url=https://host/doc.pdf&doc_type=invoice",
           contract: 'POST /api/bar/x402/extract  { "url": "https://host/doc.pdf", "doc_type": "contract" }',
