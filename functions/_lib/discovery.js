@@ -434,8 +434,10 @@ export function buildOpenApi(origin, env) {
       // rail so a registry can index it as a payable endpoint.
       "x-payment-info": {
         rail: "x402",
+        protocols: ["x402"],
         x402Version: 2,
         price_usd: door.price_usd,
+        price: { mode: "fixed", currency: "USD", amount: door.price_usd.toFixed(2) },
         asset: "USDC",
         network: "eip155:8453",
         scheme: "ExactEvmScheme",

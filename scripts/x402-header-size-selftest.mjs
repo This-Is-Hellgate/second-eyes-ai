@@ -16,8 +16,10 @@
 // and MAY additionally carry top-level { description, mimeType, extensions } so the
 // Coinbase Python x402_action_provider (make_http_request) can populate discoveryInfo
 // — it extracts those from the DECODED header object, not from resource{}. The header
-// `extensions` is the COMPACT listing-identity subset only; the full Bazaar
-// input/output schema stays in the 402 body (and the CDP settle echo). So this test
+// `extensions` MUST include extensions.bazaar (info + input/output schema): x402scan's
+// v2 parser reads it from the header (2026-07 spec, docs/DISCOVERY.md in their repo) and
+// marks routes non-invocable without it. The heavyweight extension block (batch
+// settlement, auth-capture, eip2612, receipts) stays body-only. So this test
 // asserts the header is under threshold AND its extensions stay small, while the rich
 // discovery metadata is still preserved in the body so cataloging is intact.
 //
@@ -72,7 +74,7 @@ const ALLOWED_KEYS = [...REQUIRED_KEYS, ...OPTIONAL_KEYS];
 // The header `extensions` must stay the compact listing-identity subset — never the
 // full Bazaar input/output schema. Hold it well under 1KB so a route can't quietly
 // reintroduce the multi-KB header bloat this gate exists to prevent.
-const HEADER_EXTENSIONS_MAX_BYTES = 1024;
+const HEADER_EXTENSIONS_MAX_BYTES = 4096;
 
 const report = [];
 
@@ -126,8 +128,11 @@ for (const { file, name } of listRoutes()) {
       fail(name, `header extensions is ${extBytes}B (> ${HEADER_EXTENSIONS_MAX_BYTES}B) — keep only the compact listing identity in the header; the full Bazaar schema belongs in the 402 body.`);
     }
     // The full Bazaar input/output schema must NOT ride the header.
-    if (decoded.extensions?.bazaar?.schema || decoded.extensions?.bazaar?.info) {
-      fail(name, "header extensions carries the full bazaar schema — move it to the 402 body; the header keeps only compact listing identity (e.g. bazaar_metadata).");
+    if (!decoded.extensions?.bazaar?.info || !decoded.extensions?.bazaar?.schema?.properties?.input) {
+      fail(name, "header extensions MUST carry extensions.bazaar with info + schema.properties.input — x402scan's v2 parser reads the header and marks routes non-invocable without it (SCHEMA_INPUT_MISSING).");
+    }
+    if (decoded.extensions?.batch_settlement || decoded.extensions?.auth_capture || decoded.extensions?.eip2612_sponsorship || decoded.extensions?.offer_receipt) {
+      fail(name, "heavyweight extension metadata (batch/auth-capture/eip2612/receipt) belongs in the 402 body, not the header.");
     }
   }
   if (!decoded.resource || typeof decoded.resource !== "object" || !decoded.resource.url) {
