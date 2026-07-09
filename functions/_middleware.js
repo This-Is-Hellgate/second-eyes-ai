@@ -63,14 +63,20 @@ export async function onRequest(context) {
     return doc;
   }
 
-  // HEAD must behave as GET-without-body everywhere. Pages Functions routes
-  // export onRequestGet only, so a bare HEAD 404s — crawlers doing HEAD
-  // preflight then skip real doors. Convert HEAD to an internal GET and strip
-  // the body from the result.
+  // HEAD must behave as GET-without-body everywhere. Pages binds the route
+  // method BEFORE middleware, so context.next() with a swapped method cannot
+  // re-dispatch to a function route (only to static assets). Static paths:
+  // convert via next(). Function paths (/api/): make an internal same-zone
+  // GET fetch and strip the body. The internal request is a GET, so it can
+  // never re-enter this branch — loop-safe.
   const isHead = context.request.method === "HEAD";
   const runNext = () =>
     isHead
       ? context.next(new Request(context.request.url, { method: "GET", headers: context.request.headers }))
+      : context.next();
+  const runNextApi = () =>
+    isHead
+      ? fetch(new Request(context.request.url, { method: "GET", headers: context.request.headers }))
       : context.next();
 
   if (!url.pathname.startsWith("/api/")) {
@@ -103,7 +109,7 @@ export async function onRequest(context) {
     return rateLimitResponse(limit);
   }
 
-  const response = INFLIGHT_HANDLERS.has(url.pathname) ? await trackInFlight(runNext) : await runNext();
+  const response = INFLIGHT_HANDLERS.has(url.pathname) ? await trackInFlight(runNextApi) : await runNextApi();
 
   if (isHead) {
     return new Response(null, { status: response.status, headers: response.headers });
