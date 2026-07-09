@@ -444,6 +444,21 @@ export function buildOpenApi(origin, env) {
       // challenge here. Free surfaces instead carry security: [] (below) so
       // they are excluded from 402 probing.
       security: [{ x402Payment: [] }],
+      // Per-door agent guidance (Mason Hall feedback, extended per-operation):
+      // an agent reading ONE operation gets the full call story without
+      // needing the spec-level x-guidance block. Generated from the same door
+      // registry as everything else — cannot drift.
+      "x-guidance": {
+        call_when: door.summary,
+        price_usd: door.price_usd,
+        first_call: `${door.methods[0]} ${door.path} returns 402 with a PAYMENT-REQUIRED header (base64 JSON payment requirements).`,
+        pay: "Sign USDC on Base (eip155:8453) via ExactEvmScheme (@x402/fetch) and retry the SAME request with the PAYMENT-SIGNATURE header.",
+        inputs: door.methods.includes("POST")
+          ? "GET with query parameters, or POST the same fields as a JSON body."
+          : "GET only — the packet is a pure function of the door; no query or body inputs.",
+        idempotent: "Deterministic: same input, same verdict on every retry. Send an Idempotency-Key header on paid retries.",
+        when_unsure: "Start at /api/bar/x402/help-me ($0.01): it names your distress_class and routes you to the right door.",
+      },
       responses: paidResponses(door),
     };
 
