@@ -253,7 +253,7 @@ app.get("/api/checks", async (c) => {
         rail: "x402",
         network: activeNetwork(c.env).id,
         asset: "USDC",
-        how: "GET a guidance door (or POST your state to a check) -> 402 -> sign -> retry with PAYMENT-SIGNATURE",
+        how: "GET a guidance item (or POST your state to a check) -> 402 -> sign -> retry with PAYMENT-SIGNATURE",
       },
       checks: doors.map((t) => ({
         sku: t.sku,
@@ -294,7 +294,7 @@ app.post("/api/x402/:key", async (c) => {
     return c.json({ error: "unknown_sku", checks: "/api/checks" }, 404, JSON_HEADERS);
   }
   if (item.invoke_kind !== "verdict" && item.invoke_kind !== "workersai") {
-    return c.json({ error: "method_not_allowed", hint: `This door resolves: GET /api/x402/${item.slug || item.sku}` }, 405, JSON_HEADERS);
+    return c.json({ error: "method_not_allowed", hint: `This item resolves: GET /api/x402/${item.slug || item.sku}` }, 405, JSON_HEADERS);
   }
   let body = {};
   try {
@@ -338,7 +338,7 @@ app.get("/api/x402/:key", async (c) => {
     return c.json({ error: "unknown_sku", checks: "/api/checks" }, 404, JSON_HEADERS);
   }
   if (item.invoke_kind === "verdict" || item.invoke_kind === "workersai") {
-    return c.json({ error: "method_not_allowed", hint: `This door is a check: POST /api/x402/${item.slug || item.sku} with a JSON body { "state": "..." }` }, 405, JSON_HEADERS);
+    return c.json({ error: "method_not_allowed", hint: `This is a check: POST /api/x402/${item.slug || item.sku} with a JSON body { "state": "..." }` }, 405, JSON_HEADERS);
   }
   const resolved = await resolveCapability(c.env, item, new URL(c.req.url).origin);
   return c.json(resolved, 200, JSON_HEADERS);
@@ -354,7 +354,7 @@ app.all("/api/*", (c) => {
       error: "method_not_allowed",
       method: c.req.method,
       path: new URL(c.req.url).pathname,
-      hint: "Guidance doors are GET; checks are POST. The exact method per path is declared in openapi.json.",
+      hint: "Guidance items are GET; checks are POST. The exact method per path is declared in openapi.json.",
       docs: { openapi: `${new URL(c.req.url).origin}/openapi.json`, checks: `${new URL(c.req.url).origin}/api/checks` },
     },
     405,

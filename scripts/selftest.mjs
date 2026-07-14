@@ -11,7 +11,7 @@
  */
 import Ajv from "ajv";
 import { DiscoveryResponseSchema, PaymentRequirementsSchema, ExtensionsSchema } from "./spec-schemas.mjs";
-import { buildX402Resources } from "../src/lib/discovery.js";
+import { buildX402Resources, buildOpenApi } from "../src/lib/discovery.js";
 import { services as SERVICES, categories as CATEGORIES, items as ITEMS, edges as EDGES } from "../seeds/doors.mjs";
 
 const ajv = new Ajv({ allErrors: true, strict: false });
@@ -28,7 +28,9 @@ function validate(schema, obj) {
 const ITEM_TYPES = new Set(["meta-tool", "check", "cookbook", "dataset", "bundle", "guide", "template", "tool"]);
 const INVOKE = new Set(["resolve", "verdict", "workersai", "r2"]);
 const RELATIONS = new Set(["composes_with", "requires", "step_of", "alternative_to", "pairs_with", "supersedes"]);
-const BANNED_VOCAB = ["bar", "lounge", "patron", "tab", "bouncer", "tavern", "bartender", "drink"];
+// Plain-names rule (docs §6): metaphor vocabulary is banned from agent-facing
+// output. "door" was retired 2026-07-14 in favor of literal item types.
+const BANNED_VOCAB = ["bar", "lounge", "patron", "tab", "bouncer", "tavern", "bartender", "drink", "door"];
 
 function mockEnv(liveItems) {
   return {
@@ -116,6 +118,13 @@ async function partB() {
   const rawResources = JSON.stringify(resources);
   const leak = ITEMS.find((d) => (d.guidance && rawResources.includes(d.guidance)) || (d.reference_doc && rawResources.includes(d.reference_doc)) || (d.tool_code && rawResources.includes(d.tool_code)));
   check("real set: no paid substance on free discovery", !leak, leak ? leak.slug : "");
+
+  // Plain-names rule over the GENERATED agent-facing docs (discovery + openapi).
+  const openapi = await buildOpenApi(mockEnv(live), "https://secondeyesai.com");
+  const served = `${rawResources} ${JSON.stringify(openapi)}`.toLowerCase();
+  for (const w of BANNED_VOCAB) {
+    check(`served docs free of "${w}"`, !new RegExp(`\\b${w}\\b`).test(served));
+  }
 }
 
 async function main() {

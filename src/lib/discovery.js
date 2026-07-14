@@ -81,7 +81,7 @@ export function toolBazaarExtension(stub) {
         name: stub.name,
         item_type: stub.item_type,
         summary: String(stub.summary || "").slice(0, 200),
-        guidance: "when to reach for this door, how to wire it, the gotchas",
+        guidance: "when to reach for this item, how to wire it, the gotchas",
         composition: { steps: [], composes_with: [], requires: [], alternatives: [] },
         content_hash: stub.content_hash,
       },
@@ -112,7 +112,7 @@ function componentSchemas() {
   return {
     CheckStub: {
       type: "object",
-      description: "One live verification door as listed on the free listing.",
+      description: "One live catalog item as listed on the free listing.",
       properties: {
         sku: { type: "string" },
         name: { type: "string" },
@@ -120,13 +120,13 @@ function componentSchemas() {
         service: { type: "string" },
         price_usd: { type: "number" },
         summary: { type: "string" },
-        url: { type: "string", format: "uri", description: "The paid endpoint for this door." },
+        url: { type: "string", format: "uri", description: "The paid endpoint for this item." },
       },
       required: ["sku", "name", "price_usd", "summary", "url"],
     },
     ChecksListing: {
       type: "object",
-      description: "Free listing of every live verification door.",
+      description: "Free listing of every live catalog item.",
       properties: {
         service: { type: "string" },
         tagline: { type: "string" },
@@ -146,7 +146,7 @@ function componentSchemas() {
     },
     Proof: {
       type: "object",
-      description: "Free liveness proof: inventory reachability, live door count, payment rail configuration.",
+      description: "Free liveness proof: inventory reachability, live item count, payment rail configuration.",
       properties: {
         service: { type: "string" },
         status: { type: "string", enum: ["live", "degraded"] },
@@ -184,10 +184,10 @@ function componentSchemas() {
         kind: { type: "string" },
         service: { type: "string" },
         summary: { type: "string" },
-        guidance: { type: "string", description: "The editorial layer: when to reach for this door, wiring, gotchas." },
+        guidance: { type: "string", description: "The editorial layer: when to reach for this item, wiring, gotchas." },
         composition: {
           type: "object",
-          description: "The door's wired graph neighborhood — curation as data.",
+          description: "The item's wired graph neighborhood — curation as data.",
           properties: {
             steps: { type: "array", items: { type: "object" } },
             composes_with: { type: "array", items: { type: "object" } },
@@ -262,7 +262,7 @@ function componentSchemas() {
     },
     MethodNotAllowed: {
       type: "object",
-      description: "Teaching 405: the method a door expects (GET for guidance doors, POST for checks).",
+      description: "Teaching 405: the method an item expects (GET for guidance items, POST for checks).",
       properties: {
         error: { type: "string", const: "method_not_allowed" },
         method: { type: "string" },
@@ -283,7 +283,7 @@ function paidResponses(stub) {
   const okSchema = stub && isPostDoor(stub) ? "#/components/schemas/Verdict" : "#/components/schemas/ResolvedCapability";
   return {
     200: {
-      description: "Paid. Body carries the verdict (checks) or the resolved capability (guidance doors).",
+      description: "Paid. Body carries the verdict (checks) or the resolved capability (guidance items).",
       content: jsonContent(okSchema),
     },
     402: {
@@ -295,7 +295,7 @@ function paidResponses(stub) {
       content: jsonContent("#/components/schemas/PaymentRequired402"),
     },
     404: { description: "Unknown SKU or slug.", content: jsonContent("#/components/schemas/NotFound") },
-    405: { description: "Wrong method for this door.", content: jsonContent("#/components/schemas/MethodNotAllowed") },
+    405: { description: "Wrong method for this item.", content: jsonContent("#/components/schemas/MethodNotAllowed") },
   };
 }
 
@@ -372,13 +372,13 @@ export async function buildOpenApi(env, origin = CANONICAL_ORIGIN) {
 
   paths["/api/x402/{sku}"] = {
     get: {
-      operationId: "door_by_sku_get",
-      summary: "Paid door by SKU or slug (x402).",
+      operationId: "item_by_sku_get",
+      summary: "Paid item by SKU or slug (x402).",
       description:
         "Session-less paid endpoint. First call returns 402 with payment requirements in the PAYMENT-REQUIRED header; sign USDC on Base and retry the same URL with PAYMENT-SIGNATURE.",
       tags: ["paid", "x402"],
       parameters: [
-        { name: "sku", in: "path", required: true, description: "Door SKU or slug — both resolve.", schema: { type: "string" } },
+        { name: "sku", in: "path", required: true, description: "Item SKU or slug — both resolve.", schema: { type: "string" } },
       ],
       security: [{ x402Payment: [] }],
       responses: paidResponses(),
@@ -388,7 +388,7 @@ export async function buildOpenApi(env, origin = CANONICAL_ORIGIN) {
   paths["/api/checks"] = {
     get: {
       operationId: "checks_get",
-      summary: "Free listing of every live verification door with SKU, kind, price, and summary.",
+      summary: "Free listing of every live catalog item with SKU, type, price, and summary.",
       description: "Free, unpaid surface. The place to browse before paying.",
       tags: ["free", "discovery"],
       security: [],
@@ -402,7 +402,7 @@ export async function buildOpenApi(env, origin = CANONICAL_ORIGIN) {
   paths["/api/proof"] = {
     get: {
       operationId: "proof_get",
-      summary: "Free liveness proof: live door count, payment rail configuration, inventory reachability.",
+      summary: "Free liveness proof: live item count, payment rail configuration, inventory reachability.",
       description: "Free, unpaid surface. Confirm the service is live before spending.",
       tags: ["free", "discovery"],
       security: [],
