@@ -42,3 +42,16 @@ CREATE TABLE IF NOT EXISTS request_log (
   ts         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_request_log_ts ON request_log(ts);
+
+-- Catalog governance audit — the human-review trail. Every change to what is
+-- for sale is an append-only row here: who did it, what action, and why.
+-- (Second Wind's deployed promotions table; see docs/labeling-and-taxonomy.md §4.)
+CREATE TABLE IF NOT EXISTS promotions (
+  id          TEXT PRIMARY KEY,
+  sku         TEXT NOT NULL,
+  action      TEXT NOT NULL CHECK (action IN ('promote','update','publish','retire','reprice')),
+  actor       TEXT NOT NULL DEFAULT 'mike',
+  note        TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_promotions_sku ON promotions(sku, created_at);

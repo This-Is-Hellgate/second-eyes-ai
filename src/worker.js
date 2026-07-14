@@ -74,7 +74,7 @@ function routeForStub(stub, payTo, network) {
     mimeType: "application/json",
     resource: url,
     serviceName: SERVICE_NAME,
-    tags: [stub.kind, "second-eyes", "x402"].filter(Boolean).slice(0, 5),
+    tags: [stub.item_type, "second-eyes", "x402"].filter(Boolean).slice(0, 5),
     iconUrl: `${CANONICAL_ORIGIN}/favicon.ico`,
     extensions: {
       ...toolBazaarExtension(stub),
@@ -258,8 +258,10 @@ app.get("/api/checks", async (c) => {
       checks: doors.map((t) => ({
         sku: t.sku,
         name: t.name,
-        kind: t.kind,
-        service: t.service,
+        item_type: t.item_type,
+        service: t.service_slug,
+        category: t.category_slug,
+        token_estimate: t.token_estimate,
         price_usd: t.price_usd,
         summary: t.summary,
         url: `${CANONICAL_ORIGIN}/api/x402/${t.slug || t.sku}`,

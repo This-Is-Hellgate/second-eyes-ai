@@ -79,7 +79,7 @@ export function toolBazaarExtension(stub) {
       example: {
         sku: stub.sku,
         name: stub.name,
-        kind: stub.kind,
+        item_type: stub.item_type,
         summary: String(stub.summary || "").slice(0, 200),
         guidance: "when to reach for this door, how to wire it, the gotchas",
         composition: { steps: [], composes_with: [], requires: [], alternatives: [] },
@@ -310,7 +310,7 @@ export async function buildOpenApi(env, origin = CANONICAL_ORIGIN) {
           operationId: `${stub.slug || stub.sku}_post`,
           summary: String(stub.summary || "").slice(0, 120),
           description: `${stub.summary} Paid check — POST your state (USDC via x402), get a verdict. Settlement happens only when the check returns successfully. ~$${stub.price_usd} USDC.`,
-          tags: ["paid", "x402", "check", stub.kind, stub.service].filter(Boolean),
+          tags: ["paid", "x402", "check", stub.item_type, stub.service_slug].filter(Boolean),
           "x-price-usd": stub.price_usd,
           security: [{ x402Payment: [] }],
           requestBody: {
@@ -342,7 +342,7 @@ export async function buildOpenApi(env, origin = CANONICAL_ORIGIN) {
         operationId: `${stub.slug || stub.sku}_get`,
         summary: String(stub.summary || "").slice(0, 120),
         description: `${stub.summary} Session-less x402 paid endpoint — pay once (USDC) and receive the resolved capability: guidance, composition, invocation. ~$${stub.price_usd} USDC.`,
-        tags: ["paid", "x402", stub.kind, stub.service].filter(Boolean),
+        tags: ["paid", "x402", stub.item_type, stub.service_slug].filter(Boolean),
         "x-price-usd": stub.price_usd,
         security: [{ x402Payment: [] }],
         responses: paidResponses(stub),
@@ -354,7 +354,7 @@ export async function buildOpenApi(env, origin = CANONICAL_ORIGIN) {
           operationId: `${stub.slug || stub.sku}_artifact_get`,
           summary: `Artifact for ${stub.name} (deliberate secondary fetch).`,
           description: `The genuine file artifact behind ${stub.name}. Reached through the resolved capability; same x402 gate.`,
-          tags: ["paid", "x402", "artifact", stub.service].filter(Boolean),
+          tags: ["paid", "x402", "artifact", stub.service_slug].filter(Boolean),
           "x-price-usd": stub.price_usd,
           security: [{ x402Payment: [] }],
           responses: {
@@ -473,8 +473,9 @@ export async function buildX402Resources(env, origin = CANONICAL_ORIGIN) {
     metadata: {
       sku: stub.sku,
       slug: stub.slug,
-      item_type: stub.kind,
-      service: stub.service,
+      item_type: stub.item_type,
+      service: stub.service_slug,
+      category: stub.category_slug,
       price_usd: stub.price_usd,
       summary: stub.summary,
     },

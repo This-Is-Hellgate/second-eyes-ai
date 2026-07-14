@@ -1,29 +1,30 @@
 /**
- * Curation — the product substrate. Second Eyes sells VERIFICATION CHECKS: a
- * stuck or about-to-spend agent describes its state and gets back a verdict
- * plus the judgment around it. D1 (SE_DB) holds the curated index (items: the
- * door stub + guidance + how to invoke) and the relationship graph (edges: how
- * checks route into one another — help-me → schema-repair, context-pressure,
- * should-i-pay — each edge carrying its one-line WHY).
+ * Curation — the product substrate. D1 holds the curated index (items) plus two
+ * label tables (services, categories) and the routing graph (edges). See
+ * docs/labeling-and-taxonomy.md.
  *
- * What a buyer receives is a RESOLVED CAPABILITY: guidance + the door's graph
- * neighborhood, wired — never a raw dump. The free surface carries stubs only;
- * guidance and the routing graph live behind the x402 gate.
+ * Every item has an EXTERNAL stub (STUB_COLS — free, agent-scannable) and
+ * INTERNAL substance (the extra FULL_COLS — guidance + payload, paid). The
+ * free listing and every generated surface read ONLY the stub; the resolved
+ * capability (paid) is the only place substance is served.
  */
 
-const STUB_COLS = "sku, slug, name, kind, service, price_usd, summary, updated_at, invoke_kind, input_schema, input_example, mime_type, content_hash";
-const FULL_COLS = `${STUB_COLS}, guidance, invoke_key, source_repo, source_path, source_url, license_spdx, provenance, version`;
+// EXTERNAL — safe on any free surface.
+const STUB_COLS =
+  "sku, slug, name, item_type, service_slug, category_slug, price_usd, summary, token_estimate, updated_at, invoke_kind, input_schema, input_example, mime_type";
+// INTERNAL substance — added only for the paid resolved capability.
+const FULL_COLS = `${STUB_COLS}, guidance, tool_code, reference_doc, language, invoke_key, source_repo, source_url, license_spdx, provenance, content_hash, version`;
 
 /** Live stubs — the free listing and every generated surface come from this. */
 export async function liveStubs(env) {
   if (!env.SE_DB) return [];
   try {
     const { results } = await env.SE_DB.prepare(
-      `SELECT ${STUB_COLS} FROM items WHERE status = 'live' ORDER BY kind, service, sku`
+      `SELECT ${STUB_COLS} FROM items WHERE status = 'live' ORDER BY service_slug, category_slug, sku`
     ).all();
     return results || [];
   } catch {
-    return []; // curation tables absent -> empty door list, never an error
+    return []; // curation tables absent -> empty catalog, never an error
   }
 }
 
@@ -46,15 +47,15 @@ export async function findItem(env, key) {
 }
 
 /**
- * The graph neighborhood for one door — the routing moat, shipped only inside
- * paid resolved responses. Outbound edges plus inbound step_of membership.
+ * The graph neighborhood for one item — the moat, shipped only inside paid
+ * resolved responses. Outbound edges plus inbound step_of membership.
  */
 export async function neighborhood(env, sku) {
   if (!env.SE_DB) return [];
   try {
     const { results } = await env.SE_DB.prepare(
       `SELECT e.relation, e.position, e.note, e.from_sku, e.to_sku,
-              i.sku, i.slug, i.name, i.kind, i.price_usd, i.summary
+              i.sku, i.slug, i.name, i.item_type, i.price_usd, i.summary
        FROM edges e
        JOIN items i ON i.sku = (CASE WHEN e.from_sku = ?1 THEN e.to_sku ELSE e.from_sku END)
        WHERE (e.from_sku = ?1 OR e.to_sku = ?1) AND i.status = 'live'
@@ -70,7 +71,8 @@ export async function neighborhood(env, sku) {
 
 /**
  * Build the paid deliverable: the resolved capability. Guidance (the voice) +
- * composition (the wired neighborhood of related doors) + invocation.
+ * composition (the wired neighborhood) + the substance payload (tool_code /
+ * reference_doc) + invocation. This is the ONLY surface that carries substance.
  */
 export async function resolveCapability(env, item, origin) {
   const edges = await neighborhood(env, item.sku);
@@ -80,7 +82,7 @@ export async function resolveCapability(env, item, origin) {
     const other = {
       sku: e.sku,
       name: e.name,
-      kind: e.kind,
+      item_type: e.item_type,
       price_usd: e.price_usd,
       summary: e.summary,
       why: e.note || "",
@@ -100,9 +102,8 @@ export async function resolveCapability(env, item, origin) {
   }
   related.steps.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-  // How to run this door: verdict/workersai checks take a POST body describing
-  // the agent's state; r2 items expose a deliberate artifact fetch; resolve
-  // items are pure guidance (GET), no further call.
+  // How to run this item: verdict/workersai take a POST body describing state;
+  // r2 items expose a deliberate artifact fetch; resolve items are pure guidance.
   const invoke =
     item.invoke_kind === "verdict" || item.invoke_kind === "workersai"
       ? {
@@ -128,9 +129,11 @@ export async function resolveCapability(env, item, origin) {
 
   const resolved = {
     sku: item.sku,
+    slug: item.slug,
     name: item.name,
-    kind: item.kind,
-    service: item.service,
+    item_type: item.item_type,
+    service: item.service_slug,
+    category: item.category_slug,
     summary: item.summary,
     guidance: item.guidance || "",
     composition: related,
@@ -138,11 +141,14 @@ export async function resolveCapability(env, item, origin) {
     content_hash: item.content_hash || "",
     version: item.version ?? 1,
   };
-  // Source/provenance is optional for Second Eyes doors — surface only when set.
+  // The shippable payload — cookbooks/templates carry code, guides/datasets a doc.
+  if (item.tool_code) resolved.tool_code = item.tool_code;
+  if (item.reference_doc) resolved.reference_doc = item.reference_doc;
+  if (item.language) resolved.language = item.language;
+  // Source/provenance — surface only when set (human-review / trust).
   if (item.source_repo || item.source_url || item.license_spdx) {
     resolved.source = {
       repo: item.source_repo || "",
-      path: item.source_path || "",
       url: item.source_url || "",
       license_spdx: item.license_spdx || "",
       provenance: item.provenance || "",
