@@ -20,6 +20,7 @@
   },
   "scripts": {
     "build:worker": "esbuild src/worker.js --bundle --format=esm --outfile=public/_worker.js --platform=browser --conditions=workerd,worker,browser --minify-syntax --alias:url=node:url --alias:buffer=node:buffer --external:node:*",
-    "selftest": "node scripts/selftest.mjs"
+    "selftest": "node scripts/selftest.mjs && node scripts/pruner-selftest.mjs",
+    "selftest:pruner": "node scripts/pruner-selftest.mjs"
   }
 }

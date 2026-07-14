@@ -1,0 +1,32 @@
+# Second Eyes pruner — a STANDALONE scheduled Worker (Cron Trigger), separate
+# from the Pages gatekeeper (Pages advanced-mode _worker.js cannot run
+# scheduled()). Detects retire candidates and writes 'retire-proposed'
+# promotions ONLY; a human confirms via /review (docs/labeling-and-taxonomy.md §7).
+#
+#   dev:    npx wrangler dev -c wrangler.pruner.toml           # GET / = dry-run preview
+#   deploy: npx wrangler deploy -c wrangler.pruner.toml        # after SE_DB is provisioned
+#
+# Inert until deployed against a provisioned SE_DB — nothing is written now.
+
+name = "second-eyes-pruner"
+main = "src/pruner.js"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Cron: daily at 06:00 UTC. Detection is cheap; a human works the /review queue.
+[triggers]
+crons = ["0 6 * * *"]
+
+[vars]
+PRUNER_DEMAND_WINDOW_DAYS = "45"
+PRUNER_STALE_DRAFT_DAYS = "30"
+# KNOWN_TEST_PAYERS — comma/space-separated 0x wallets excluded from demand
+# (canary/operator settlements are not sales). Full addresses only.
+# KNOWN_TEST_PAYERS = "0x..."
+
+# The curated catalog + ledger (items, edges, payments, promotions). Same DB the
+# gatekeeper reads; the pruner writes only 'retire-proposed' promotions.
+[[d1_databases]]
+binding = "SE_DB"
+database_name = "second-eyes-curation"
+database_id = "TODO_PROVISION_AT_STEP_2"
