@@ -49,7 +49,9 @@ CREATE INDEX IF NOT EXISTS idx_request_log_ts ON request_log(ts);
 CREATE TABLE IF NOT EXISTS promotions (
   id          TEXT PRIMARY KEY,
   sku         TEXT NOT NULL,
-  action      TEXT NOT NULL CHECK (action IN ('promote','update','publish','retire','reprice')),
+  -- 'retire-proposed' is written by the pruner (actor='pruner'); the human-in-
+  -- the-loop then writes 'retire' (confirm) or 'dismiss' — see docs §7.
+  action      TEXT NOT NULL CHECK (action IN ('promote','update','publish','retire','retire-proposed','dismiss','reprice')),
   actor       TEXT NOT NULL DEFAULT 'mike',
   note        TEXT NOT NULL DEFAULT '',
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
