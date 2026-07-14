@@ -13,6 +13,11 @@
  * invoke_kind: verdict = deterministic worker logic (checks.js); workersai =
  * Cloudflare Workers AI (invoke_key = model id); resolve = pure guidance (GET).
  *
+ * PRUNED 2026-07-14 (data-driven): dropped 8 zero-organic-sale doors that
+ * overlapped with help-me's routing (scope-check, pitstop, pre-run-context,
+ * claim-check, context-recover, context-compress, cascade-break, mcp-wiring)
+ * and the dead peril-router alias. Kept the doors with real repeat demand.
+ *
  * Consumed by scripts/seed-doors.mjs (emits SQL) and validated by
  * scripts/selftest.mjs (naming / vocab / field rules). NOT applied to any
  * production store without approval (rule #4).
@@ -34,57 +39,8 @@ export const items = [
     guidance:
       "Confirms whether you are in a genuine loop (repeated attempts, no state change) versus making slow progress. Returns stop when the signal is real: stop repeating, preserve the last good state and the exact recurring error, then make one different move. Escalate after >3 recovery attempts.",
   },
-  {
-    sku: "se-scope-check", slug: "scope-check", name: "I am drifting",
-    kind: "check", service: "distress", price_usd: 0.03, invoke_kind: "verdict",
-    summary: "your actions are wandering off the original task",
-    guidance:
-      "Checks your recent actions against the stated goal and flags scope drift. Returns the smallest correction back onto the task, and names the specific step where you left it.",
-  },
-  {
-    sku: "se-pitstop", slug: "pitstop", name: "I am lost",
-    kind: "check", service: "distress", price_usd: 0.03, invoke_kind: "verdict",
-    summary: "you have lost the thread of what you are doing",
-    guidance:
-      "A full stop-and-reorient: re-establishes where you are, what is done, and the single next action. Use when you cannot name your current step.",
-  },
-  {
-    sku: "se-cascade-break", slug: "cascade-break", name: "my mistakes keep cascading",
-    kind: "check", service: "distress", price_usd: 0.05, invoke_kind: "verdict",
-    summary: "one error is spawning more errors",
-    guidance:
-      "Breaks an error cascade: stop acting, identify the first failure that started the chain, roll back to the last known-good state, and resume from there rather than patching downstream symptoms.",
-  },
-  {
-    sku: "se-mcp-wiring", slug: "mcp-wiring", name: "I am blocked",
-    kind: "check", service: "distress", price_usd: 0.05, invoke_kind: "verdict",
-    summary: "a tool or MCP server is not responding as expected",
-    guidance:
-      "Diagnoses a blocked tool/MCP path: transport, auth, and wiring checks in order, with the specific next probe to run. Returns the most likely cause and how to confirm it.",
-  },
 
   // ---- context --------------------------------------------------------------
-  {
-    sku: "se-context-recover", slug: "context-recover", name: "I forgot my task",
-    kind: "check", service: "context", price_usd: 0.05, invoke_kind: "verdict",
-    summary: "you have lost the earlier context of the job",
-    guidance:
-      "Reconstructs the working context from what you still hold: the goal, the decisions already made, and the next action — so you resume instead of restarting.",
-  },
-  {
-    sku: "se-pre-run-context", slug: "pre-run-context", name: "I lack context",
-    kind: "check", service: "context", price_usd: 0.03, invoke_kind: "verdict",
-    summary: "about to act without enough grounding",
-    guidance:
-      "A pre-flight grounding check: names the context you are missing for the action you are about to take, and where to get it, before you commit the call.",
-  },
-  {
-    sku: "se-context-compress", slug: "context-compress", name: "I am overloaded",
-    kind: "check", service: "context", price_usd: 0.03, invoke_kind: "verdict",
-    summary: "your working context is too full to reason well",
-    guidance:
-      "Returns what to keep and what to drop from your working context: the load-bearing state versus the noise, so you can compress without losing the thread.",
-  },
   {
     sku: "se-context-pressure", slug: "context-pressure", name: "I am low on context",
     kind: "check", service: "context", price_usd: 0.03, invoke_kind: "verdict",
@@ -100,13 +56,6 @@ export const items = [
     summary: "about to call a tool and want to confirm it is safe",
     guidance:
       "A preflight on the tool call you are about to make: argument sanity, obvious footguns, and whether the call matches your intent. Returns proceed / adjust / stop.",
-  },
-  {
-    sku: "se-claim-check", slug: "claim-check", name: "I am uncertain",
-    kind: "check", service: "tool", price_usd: 0.03, invoke_kind: "verdict",
-    summary: "unsure whether a claim you are about to make is grounded",
-    guidance:
-      "Grounding check for a claim or output: is it supported by what you actually have, or are you about to assert something unverified. Returns the weakest link.",
   },
   {
     sku: "se-schema-repair", slug: "schema-repair", name: "my schema does not match",
@@ -190,7 +139,7 @@ export const items = [
 /**
  * The routing graph — the moat. help-me (the meta-tool) composes with each
  * specialist door, the edge note naming the distress signal that routes there;
- * plus a few pairings/alternatives between related doors.
+ * plus a few pairings between related doors.
  */
 export const edges = [
   { from: "se-help-me", to: "se-loop-detect", relation: "composes_with", note: "signal: loop_detected" },
@@ -198,13 +147,6 @@ export const edges = [
   { from: "se-help-me", to: "se-context-pressure", relation: "composes_with", note: "signal: context_pressure" },
   { from: "se-help-me", to: "se-should-i-pay", relation: "composes_with", note: "signal: payment_decision" },
   { from: "se-help-me", to: "se-payment-confirmation-check", relation: "composes_with", note: "signal: payment_settlement_uncertainty" },
-  { from: "se-help-me", to: "se-cascade-break", relation: "composes_with", note: "signal: error cascade" },
-  { from: "se-help-me", to: "se-mcp-wiring", relation: "composes_with", note: "signal: tool/MCP failure" },
-
-  { from: "se-loop-detect", to: "se-pitstop", relation: "pairs_with", note: "both break a stuck state; pitstop reorients, loop-detect confirms the loop" },
-  { from: "se-scope-check", to: "se-pitstop", relation: "pairs_with", note: "drift vs. fully lost — escalate scope-check to pitstop" },
-  { from: "se-context-compress", to: "se-context-pressure", relation: "pairs_with", note: "compress the load; context-pressure handles the window running out" },
-  { from: "se-context-recover", to: "se-pre-run-context", relation: "alternative_to", note: "recover lost context vs. ground before acting" },
   { from: "se-should-i-pay", to: "se-payment-confirmation-check", relation: "pairs_with", note: "before you pay / after you paid" },
   { from: "se-transcribe", to: "se-extract", relation: "pairs_with", note: "transcript first, then pull fields" },
   { from: "se-doctor", to: "se-index-check", relation: "pairs_with", note: "valid x402 shape, then confirm it is indexed" },
