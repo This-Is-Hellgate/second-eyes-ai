@@ -5,4 +5,10 @@ cdp-credentials.local.json
 node_modules/
 .wrangler/
 .dev.vars
+
+# v2 gatekeeper build output — advanced-mode _worker.js hijacks ALL Pages
+# routing. Keep it out of git so the side-by-side rebuild can never cut over by
+# accident; it is built + committed deliberately at cutover (SPEC.md §2 step 5).
+public/_worker.js
+public/_worker.js.map
 .cursor/rules/hub-architecture-law.mdc

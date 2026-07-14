@@ -2,11 +2,24 @@
   "name": "second-eyes-ai",
   "private": true,
   "type": "module",
+  "description": "Second Eyes — session-less x402 verification checks for autonomous agents. USDC on Base.",
   "dependencies": {
     "@coinbase/cdp-sdk": "^1.50.0",
+    "@x402/evm": "^2.17.0",
+    "@x402/extensions": "^2.17.0",
+    "@x402/hono": "^2.17.0",
+    "hono": "^4.12.29",
     "jose": "^5.9.6"
   },
   "devDependencies": {
+    "@x402/core": "^2.17.0",
+    "@x402/fetch": "^2.17.0",
+    "ajv": "^8.20.0",
+    "esbuild": "^0.28.1",
     "viem": "^2.51.2"
+  },
+  "scripts": {
+    "build:worker": "esbuild src/worker.js --bundle --format=esm --outfile=public/_worker.js --platform=browser --conditions=workerd,worker,browser --minify-syntax --alias:url=node:url --alias:buffer=node:buffer --external:node:*",
+    "selftest": "node scripts/selftest.mjs"
   }
 }

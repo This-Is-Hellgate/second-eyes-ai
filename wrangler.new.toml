@@ -1,0 +1,46 @@
+# Second Eyes v2 gatekeeper — SIDE-BY-SIDE config for the new SDK worker.
+#
+# The LIVE Pages project is driven by wrangler.toml (legacy functions/). This
+# file drives ONLY the new worker and never touches that config:
+#   build:  npm run build:worker                         # -> public/_worker.js (gitignored)
+#   dev:    npx wrangler pages dev public -c wrangler.new.toml
+#   deploy: npx wrangler pages deploy public -c wrangler.new.toml --project-name second-eyes-ai-preview
+#
+# Cutover (SPEC.md §2, step 5) folds this into wrangler.toml and commits
+# public/_worker.js. Not before — until then the legacy stack serves.
+
+name = "second-eyes-ai"
+pages_build_output_dir = "public"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# FIRST PROOF: Base Sepolia + public x402.org facilitator (no auth, valueless
+# test USDC). Promotion to mainnet is a config swap:
+#   X402_NETWORK=eip155:8453
+#   X402_FACILITATOR_URL=https://api.cdp.coinbase.com/platform/v2/x402  (CDP JWT secrets)
+#   X402_PAYTO_PUBLIC=0xFb8915074cC941f5Ab95E6001c45287b8EeC4427        (the live mainnet payTo)
+X402_NETWORK = "eip155:84532"
+X402_FACILITATOR_URL = "https://x402.org/facilitator"
+X402_PAYTO_PUBLIC = "0x0000000000000000000000000000000000000000"  # TODO: throwaway Sepolia test wallet (Mike supplies)
+
+# Workers AI — the compute layer for transcribe/extract doors (invoke_kind: workersai).
+[ai]
+binding = "AI"
+
+# R2 — genuine artifacts behind the gate (invoke_kind: r2). Reuses the existing
+# media bucket; artifacts are secondary, never the front door.
+[[r2_buckets]]
+binding = "SE_MEDIA"
+bucket_name = "secondeyes-transcription-bank"
+
+# D1 — the curated index (items + edges) + operational ledger. A FRESH database,
+# kept separate from the live `second-eyes-lawful-loop`. NOT provisioned yet
+# (standing rule #4): create it and fill database_id at step 2, with approval.
+#   npx wrangler d1 create second-eyes-curation
+#   npx wrangler d1 execute second-eyes-curation --file migrations/0001_curation.sql
+#   npx wrangler d1 execute second-eyes-curation --file migrations/0002_ledger.sql
+[[d1_databases]]
+binding = "SE_DB"
+database_name = "second-eyes-curation"
+database_id = "TODO_PROVISION_AT_STEP_2"
