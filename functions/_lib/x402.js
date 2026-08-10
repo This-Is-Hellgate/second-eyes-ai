@@ -337,6 +337,7 @@ export function encodePaymentRequiredHeader(obj) {
  * see payment402BodyForProduct() + buildFacilitatorRequestBody()'s extensions echo.
  */
 const HEADER_DESCRIPTION_MAX = 220;
+const FACILITATOR_RESOURCE_DESCRIPTION_MAX = 500;
 
 function shortHeaderDescription(description) {
   const d = String(description || "");
@@ -359,6 +360,21 @@ function resourceObject(requirements, { truncate } = { truncate: false }) {
     url: resourceUrl,
     description: truncate ? shortHeaderDescription(description) : description,
     mimeType: requirements.mimeType || "application/json",
+  };
+}
+
+function facilitatorResourceObject(requirement) {
+  const resourceUrl =
+    typeof requirement.resource === "string"
+      ? requirement.resource
+      : requirement.resource?.url;
+  const description = Array.from(String(requirement.description || ""))
+    .slice(0, FACILITATOR_RESOURCE_DESCRIPTION_MAX)
+    .join("");
+  return {
+    url: resourceUrl,
+    description,
+    mimeType: requirement.mimeType || "application/json",
   };
 }
 
@@ -500,18 +516,36 @@ export function buildFacilitatorRequestBody(paymentHeader, requirement) {
   // no maxAmountRequired. It must equal the buyer's paymentPayload.accepted.
   const paymentRequirements = { ...accept };
 
-  // Pass the buyer's signed paymentPayload through to CDP verify UNMUTATED.
-  // Rewriting resource/extensions here (PR #27) reshaped the signed payload so CDP
-  // could classify it as neither x402V2PaymentPayload nor x402V1PaymentPayload
-  // (HTTP 400, "must match one of [...]"). Resource enrichment for Bazaar cataloging
-  // belongs on paymentRequirements and the 402 body / settle echo, not smuggled into
-  // the signed payload sent to /verify. Spread so we never mutate the parsed object.
+  // Keep the decoded buyer payload unchanged at the parse/selection boundary.
+  // The CDP wire copy is enriched later by buildFacilitatorWireBody(), so existing
+  // rail-selection and signature-parsing invariants remain isolated from Bazaar
+  // indexing metadata.
   const enrichedPayload = { ...paymentPayload };
 
   return {
     ok: true,
     accept,
     body: { x402Version, paymentPayload: enrichedPayload, paymentRequirements },
+  };
+}
+
+/**
+ * CDP Bazaar correlates settlements to discoverable resources from
+ * paymentPayload.resource. Some buyers omit that optional metadata, so forwarding
+ * their payload verbatim leaves a successful on-chain settlement unattributed.
+ *
+ * CDP currently accepts resource metadata but rejects resource.description above
+ * 500 characters (x402-foundation/x402#2832). Build a wire-only copy with the
+ * canonical server resource and a Unicode-safe 500-character cap. Do not inject
+ * extensions, and leave paymentRequirements in the clean v2 per-accept shape.
+ */
+export function buildFacilitatorWireBody(builtBody, requirement) {
+  return {
+    ...builtBody,
+    paymentPayload: {
+      ...builtBody.paymentPayload,
+      resource: facilitatorResourceObject(requirement),
+    },
   };
 }
 
@@ -620,6 +654,7 @@ export async function verifyPaymentHeader(paymentHeader, requirement, env) {
   }
 
   const accept = built.accept;
+  const facilitatorBody = buildFacilitatorWireBody(built.body, requirement);
   const base = facilitator.replace(/\/$/, "");
   const paths = facilitatorPaths(base);
 
@@ -642,7 +677,7 @@ export async function verifyPaymentHeader(paymentHeader, requirement, env) {
       {
         method: "POST",
         headers,
-        body: JSON.stringify(built.body),
+        body: JSON.stringify(facilitatorBody),
       },
       DEFAULT_FETCH_TIMEOUT_MS
     );
@@ -673,7 +708,7 @@ export async function verifyPaymentHeader(paymentHeader, requirement, env) {
     };
   }
 
-  return { ok: true, built: built.body, accept, requirement };
+  return { ok: true, built: facilitatorBody, accept, requirement };
 }
 
 /** Settle a payment that already passed verify (same built body CDP returned ok for). */

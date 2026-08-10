@@ -4,6 +4,7 @@
  *
  * Runs the safe layers in order and stops on the first failure:
  *   Layer 1 — mocked verify/settle (always; no network, no spend)
+ *   Bazaar resource attribution — canonical paymentPayload.resource wire shape
  *   Layer 2 — dry-run /supported reachability (skips cleanly if no URLs set)
  *
  * Layer 3 (live settlement, real testnet USDC) is intentionally NOT run here —
@@ -20,6 +21,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const layers = [
   ["Layer 1 (mocked)", "test/x402-facilitator/mocked.test.mjs", {}],
+  ["Bazaar resource attribution", "test/x402-facilitator/resource-attribution.test.mjs", {}],
   ["Layer 2 (dry-run)", "test/x402-facilitator/dry-run.test.mjs", {}],
   // Polygon canary mock-mode gates (no spend, no network, no keys). Proves the
   // safety gates of scripts/polygon-canary.mjs in CI. The live canary is opt-in:
@@ -42,6 +44,6 @@ for (const [label, file, extraEnv] of layers) {
 }
 
 console.log(
-  "\nx402 facilitator harness OK (Layers 1-2). Layer 3 (live settlement) is opt-in: " +
-    "see test/x402-facilitator/README.md."
+  "\nx402 facilitator harness OK (Layers 1-2 + Bazaar resource attribution). " +
+    "Layer 3 (live settlement) is opt-in: see test/x402-facilitator/README.md."
 );
