@@ -97,12 +97,19 @@ export function usdToUsdcMicros(usd) {
   return String(Math.round(usd * 1_000_000));
 }
 
+/**
+ * Build the v2 accepts[] for this env. Base (eip155:8453) is always accepts[0];
+ * additional rails (Polygon, Solana) append only when an operator has configured
+ * AND gated them — see functions/_lib/x402-networks.js. Returns null when no
+ * payTo is configured at all (x402 not set up).
+ */
 function buildAccepts(amount, env) {
   const rails = resolveActiveNetworks(env);
   if (rails.length === 0) return null;
   return rails.map((rail) => buildAcceptEntry(rail, amount));
 }
 
+/** Synthesize a minimal Bazaar schema so every paid product is discoverable. */
 function defaultBazaarSchema(product) {
   return {
     input: { type: "http", method: "GET", discoverable: true },
@@ -116,11 +123,13 @@ function defaultBazaarSchema(product) {
   };
 }
 
+/** Absolute, canonical resource URL — CDP Bazaar catalogs by callable URL, not path. */
 function canonicalResource(requestUrl) {
   const { pathname } = new URL(requestUrl);
   return `https://${CANONICAL_HOST}${pathname}`;
 }
 
+/** Matches @x402/extensions createQueryDiscoveryExtension() { info, schema } wire shape. */
 function bazaarExtension(_resource, bazaarOutputSchema) {
   const { input, output } = bazaarOutputSchema;
   const method = (input.method || "GET").toUpperCase();
@@ -144,6 +153,10 @@ function bazaarExtension(_resource, bazaarOutputSchema) {
             properties: {
               type: { type: "string", const: "http" },
               method: { type: "string", enum: [method] },
+              // x402scan's v2 extractor reads THIS record as the invocation
+              // input schema (schema.properties.input.properties.queryParams).
+              // Empty properties = honestly zero-parameter door; real
+              // descriptors thread through when a door declares queryParams.
               queryParams: {
                 type: "object",
                 properties:
@@ -171,6 +184,15 @@ function bazaarExtension(_resource, bazaarOutputSchema) {
   };
 }
 
+/**
+ * Header-sized bazaar extension: x402scan's v2 parser REQUIRES
+ * extensions.bazaar.info + schema.properties.input in the PAYMENT-REQUIRED
+ * header, but a giant info.output.example (aws-agent-survival: ~7KB) can blow
+ * the single-header transport ceiling. The schema (small, always kept) is what
+ * the parser validates; the output EXAMPLE is illustrative and is dropped from
+ * the header variant when the block exceeds the budget. The full example still
+ * rides the 402 body and the CDP settle echo.
+ */
 const HEADER_BAZAAR_BUDGET_BYTES = 3 * 1024;
 
 function headerSizedBazaarExtension(resource, bazaarOutputSchema) {
@@ -183,6 +205,13 @@ function headerSizedBazaarExtension(resource, bazaarOutputSchema) {
   return slim;
 }
 
+/**
+ * Decode a base64 (or base64url) string to a UTF-8 JSON object. Exact inverse of
+ * encodePaymentRequiredHeader (UTF-8 -> btoa): atob yields a binary string of bytes,
+ * which we widen back to a Uint8Array and decode as UTF-8. Bare JSON.parse(atob(...))
+ * corrupts every multibyte char (em-dash, ellipsis, accents, CJK) -> garbled discovery
+ * metadata shipped to CDP. Returns null on any malformed input.
+ */
 export function decodeBase64Json(b64) {
   try {
     const normalized = b64.trim().replace(/-/g, "+").replace(/_/g, "/");
@@ -197,6 +226,7 @@ export function decodeBase64Json(b64) {
   }
 }
 
+/** Decode CDP settle EXTENSION-RESPONSES header → bazaar status object. */
 export function parseExtensionResponses(header) {
   if (!header) return null;
   return decodeBase64Json(header)?.bazaar || null;
@@ -205,6 +235,11 @@ export function parseExtensionResponses(header) {
 export function buildProductPaymentRequirements(product, requestUrl, env) {
   const resource = canonicalResource(requestUrl);
   const amount = usdToUsdcMicros(product.priceUsd);
+
+  // x402 v2: accepts[] entries stay clean (CDP Bazaar indexer rejects v1-style
+  // resource/description/mimeType/outputSchema inside accepts). Discovery
+  // metadata lives top-level; only EIP-712 domain (name/version) goes in extra.
+  // Base is accepts[0]; extra rails append only when configured + gated.
   const accepts = buildAccepts(amount, env);
   if (!accepts) return null;
 
@@ -222,6 +257,15 @@ export function buildProductPaymentRequirements(product, requestUrl, env) {
     ...bazaarExtension(resource, schema),
     ...allExtensions(product),
   };
+  // Compact subset that rides the PAYMENT-REQUIRED header so the Coinbase Python
+  // x402_action_provider populates discoveryInfo.extensions (it reads only the
+  // decoded header). The full set above stays in the 402 body / settle echo.
+  // Full bazaar extension (info + input/output schema) MUST ride the header:
+  // x402scan's v2 parser reads extensions.bazaar.schema from the decoded
+  // PAYMENT-REQUIRED header and marks routes non-invocable without it
+  // (SCHEMA_INPUT_MISSING / SCHEMA_OUTPUT_MISSING). Compact listing identity
+  // (serviceName/tags/icon) still rides alongside. Header-size gate verified
+  // by scripts/x402-header-size-selftest.mjs.
   requirements.headerExtensions = {
     ...headerSizedBazaarExtension(resource, schema),
     ...headerDiscoveryExtensions(product),
@@ -273,6 +317,10 @@ export function payment402BodyForProduct(requirements, product, error, origin, r
   };
 }
 
+/**
+ * Standard base64 (matches @x402/core safeBase64Encode: UTF-8 → btoa) of the v2
+ * payment-required object. The @x402 client's Base64EncodedRegex is /^[A-Za-z0-9+/]*={0,2}$/.
+ */
 export function encodePaymentRequiredHeader(obj) {
   const bytes = new TextEncoder().encode(JSON.stringify(obj));
   let bin = "";
@@ -280,6 +328,14 @@ export function encodePaymentRequiredHeader(obj) {
   return btoa(bin);
 }
 
+/**
+ * Cap for resource.description inside the PAYMENT-REQUIRED header. The header is a
+ * single HTTP header line; common intermediaries reject one above ~8KB (nginx
+ * large_client_header_buffers default, Node's 16KB total-header parser budget,
+ * undici/agent-runtime defaults). The full description still ships in the 402 JSON
+ * body and the settle-time extension echo, so cataloging/discovery is unaffected —
+ * see payment402BodyForProduct() + buildFacilitatorRequestBody()'s extensions echo.
+ */
 const HEADER_DESCRIPTION_MAX = 220;
 const FACILITATOR_RESOURCE_DESCRIPTION_MAX = 500;
 
@@ -289,6 +345,11 @@ function shortHeaderDescription(description) {
   return d.slice(0, HEADER_DESCRIPTION_MAX - 1).trimEnd() + "…";
 }
 
+/**
+ * The v2 resource object { url, description, mimeType }. `truncate` controls
+ * whether the description is capped for header use (true) or kept full for the
+ * 402 body / settle echo where there is no header-size constraint (false).
+ */
 function resourceObject(requirements, { truncate } = { truncate: false }) {
   const resourceUrl =
     typeof requirements.resource === "string"
@@ -317,6 +378,27 @@ function facilitatorResourceObject(requirement) {
   };
 }
 
+/**
+ * Canonical x402 v2 payment-required object — the shape the official x402 client
+ * decodes from the PAYMENT-REQUIRED header (see coinbase/agentkit x402ActionProvider:
+ * "v2 sends requirements in PAYMENT-REQUIRED header; v1 sends in body").
+ *
+ * The Coinbase Python x402_action_provider (make_http_request) decodes this header,
+ * reads accepts[] for the pay-path, AND extracts discoveryInfo from the SAME decoded
+ * object: payment_data.get("description") / .get("mimeType") / .get("extensions").
+ * Those live at the TOP LEVEL of the decoded object, not inside resource{} — so a
+ * lean header carrying only {x402Version,error,resource,accepts} yields an EMPTY
+ * discoveryInfo for a Python agent. To make the official provider's discoveryInfo
+ * extraction work we surface a short top-level description, mimeType, and a COMPACT
+ * extensions block (listing identity only — serviceName/tags/iconUrl).
+ *
+ * The header stays small: the description is truncated and `extensions` here is the
+ * compact headerExtensions subset, NOT the full Bazaar input/output schema. The full
+ * description + full extensions.bazaar still ride the 402 JSON body
+ * (payment402BodyForProduct) and the CDP settle echo (buildFacilitatorRequestBody),
+ * so cataloging is unchanged. The header-size gate (8KB ceiling) still holds — see
+ * scripts/x402-header-size-selftest.mjs.
+ */
 export function paymentRequiredObject(requirements, error) {
   const resource = resourceObject(requirements, { truncate: true });
   const obj = {
@@ -333,6 +415,11 @@ export function paymentRequiredObject(requirements, error) {
   return obj;
 }
 
+/**
+ * Headers every 402 must carry so a real v2 agent can actually pay:
+ *  - PAYMENT-REQUIRED: base64 v2 object (the ONLY place v2 clients read requirements)
+ *  - Access-Control-Expose-Headers: lets browser/agent fetch read it cross-origin
+ */
 export function payment402Headers(requirements, error, extra = {}) {
   return {
     "PAYMENT-REQUIRED": encodePaymentRequiredHeader(paymentRequiredObject(requirements, error)),
@@ -386,6 +473,7 @@ export function readPaymentHeader(request) {
   );
 }
 
+/** Decode PAYMENT-SIGNATURE / X-PAYMENT (base64 JSON) per CDP verify/settle API. */
 export function parsePaymentPayloadFromHeader(paymentHeader) {
   if (!paymentHeader) return null;
   const trimmed = paymentHeader.trim();
@@ -395,12 +483,18 @@ export function parsePaymentPayloadFromHeader(paymentHeader) {
   return decodeBase64Json(trimmed);
 }
 
+/** CDP POST /platform/v2/x402/{verify,settle} body — see verify-a-payment OpenAPI. */
 export function buildFacilitatorRequestBody(paymentHeader, requirement) {
   const paymentPayload = parsePaymentPayloadFromHeader(paymentHeader);
   if (!paymentPayload) return { ok: false, error: "invalid_payment_header" };
 
+  // Select the accept the buyer actually signed for — with a multi-rail accepts[]
+  // a Polygon/Solana signer must NOT be verified against the Base accept[0].
   const accept = selectAcceptForPayload(requirement.accepts, paymentPayload);
   if (!accept) {
+    // Distinguish "buyer named a rail we don't advertise" from "no accepts at all"
+    // so the failure log/diagnostics show which rail was signed for. Verifying a
+    // declared-but-unmatched payload against accepts[0] is the multi-rail trap.
     const declared = payloadNetwork(paymentPayload);
     if (declared) {
       const offered = (requirement.accepts || []).map((a) => a.network);
@@ -414,12 +508,18 @@ export function buildFacilitatorRequestBody(paymentHeader, requirement) {
     return { ok: false, error: "missing_payment_requirements" };
   }
 
-  const x402Version = paymentPayload.x402Version ?? requirement.x402Version ?? 2;
+  const x402Version =
+    paymentPayload.x402Version ?? requirement.x402Version ?? 2;
+
+  // v2 per-accept requirement is CLEAN (PaymentRequirementsV2Schema:
+  // scheme, network, amount, asset, payTo, maxTimeoutSeconds, extra) — no resource,
+  // no maxAmountRequired. It must equal the buyer's paymentPayload.accepted.
   const paymentRequirements = { ...accept };
 
-  // Preserve the decoded buyer payload here. CDP-specific resource attribution is
-  // added only to the outbound facilitator wire body (buildFacilitatorWireBody), so
-  // parsing/rail selection remains a clean representation of what the buyer sent.
+  // Keep the decoded buyer payload unchanged at the parse/selection boundary.
+  // The CDP wire copy is enriched later by buildFacilitatorWireBody(), so existing
+  // rail-selection and signature-parsing invariants remain isolated from Bazaar
+  // indexing metadata.
   const enrichedPayload = { ...paymentPayload };
 
   return {
@@ -434,8 +534,8 @@ export function buildFacilitatorRequestBody(paymentHeader, requirement) {
  * paymentPayload.resource. Some buyers omit that optional metadata, so forwarding
  * their payload verbatim leaves a successful on-chain settlement unattributed.
  *
- * The facilitator currently accepts resource metadata but rejects descriptions
- * above 500 characters (x402-foundation/x402#2832). Build a wire-only copy with the
+ * CDP currently accepts resource metadata but rejects resource.description above
+ * 500 characters (x402-foundation/x402#2832). Build a wire-only copy with the
  * canonical server resource and a Unicode-safe 500-character cap. Do not inject
  * extensions, and leave paymentRequirements in the clean v2 per-accept shape.
  */
@@ -466,6 +566,12 @@ function facilitatorVerifyError(verify) {
   );
 }
 
+/**
+ * A CDP /verify error body is small and useful for diagnosis (invalidReason,
+ * status, payer) but may echo back signature material. Keep only the diagnostic
+ * fields, drop anything that looks like a signature/authorization, and bound the
+ * size so an unexpected body can never blow up a log line.
+ */
 const REDACTED = "[redacted]";
 const SECRET_KEY_RE = /signature|authorization|secret|privatekey|private_key|seed|mnemonic/i;
 
@@ -486,6 +592,7 @@ export function redactFacilitatorBody(body) {
   return out;
 }
 
+/** One structured, secret-free log line per verify failure — fires for EVERY caller. */
 function logVerifyFailure(fields) {
   try {
     console.log(JSON.stringify({ event: "x402_verify_failed", ...fields }));
@@ -507,6 +614,7 @@ export async function verifyAndSettlePayment(paymentHeader, requirement, env, lo
   return settled;
 }
 
+/** Verify a payment header against requirements without settling (for validate-before-settle doors). */
 export async function verifyPaymentHeader(paymentHeader, requirement, env) {
   const facilitator = env.X402_FACILITATOR_URL;
   if (!facilitator) {
@@ -603,6 +711,7 @@ export async function verifyPaymentHeader(paymentHeader, requirement, env) {
   return { ok: true, built: facilitatorBody, accept, requirement };
 }
 
+/** Settle a payment that already passed verify (same built body CDP returned ok for). */
 export async function settleBuiltPayment(builtBody, accept, env) {
   const facilitator = env.X402_FACILITATOR_URL;
   if (!facilitator) {
@@ -671,6 +780,12 @@ export function encodePaymentResponse(receipt) {
   return btoa(JSON.stringify(receipt));
 }
 
+/**
+ * The v2 settlement-confirmation headers. The x402 v2 HTTP spec names the response
+ * header PAYMENT-RESPONSE (base64 settlement confirmation); legacy CDP/agentkit
+ * clients read X-PAYMENT-RESPONSE. Emit BOTH so a strict v2 client and an existing
+ * client both find the receipt. Spread onto any post-settlement 200.
+ */
 export function paymentResponseHeaders(receipt) {
   const encoded = encodePaymentResponse(receipt);
   return {
