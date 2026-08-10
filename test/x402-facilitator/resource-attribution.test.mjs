@@ -3,6 +3,7 @@
 import {
   buildProductPaymentRequirements,
   buildFacilitatorRequestBody,
+  buildFacilitatorWireBody,
 } from "../../functions/_lib/x402.js";
 
 const BASE = "eip155:8453";
@@ -37,36 +38,44 @@ const built = buildFacilitatorRequestBody(
   Buffer.from(JSON.stringify(signedPayload)).toString("base64"),
   requirement
 );
-
 assert(built.ok, `builder failed: ${built.error}`);
-assert(built.body.paymentPayload.resource, "paymentPayload.resource must be present");
+
+// The parser/builder keeps the buyer payload intact. Resource attribution is added
+// only to the facilitator wire body used by /verify and then reused by /settle.
 assert(
-  built.body.paymentPayload.resource.url === RESOURCE,
-  `resource.url ${built.body.paymentPayload.resource.url} != ${RESOURCE}`
+  built.body.paymentPayload.resource === undefined,
+  "builder should preserve an omitted buyer resource before facilitator enrichment"
+);
+
+const wireBody = buildFacilitatorWireBody(built.body, requirement);
+assert(wireBody.paymentPayload.resource, "paymentPayload.resource must be present on facilitator wire body");
+assert(
+  wireBody.paymentPayload.resource.url === RESOURCE,
+  `resource.url ${wireBody.paymentPayload.resource.url} != ${RESOURCE}`
 );
 assert(
-  built.body.paymentPayload.resource.mimeType === "application/json",
+  wireBody.paymentPayload.resource.mimeType === "application/json",
   "resource.mimeType must be application/json"
 );
 assert(
-  built.body.paymentPayload.resource.description.length <= MAX_DESCRIPTION,
+  Array.from(wireBody.paymentPayload.resource.description).length <= MAX_DESCRIPTION,
   `resource.description exceeds ${MAX_DESCRIPTION} characters`
 );
 assert(
-  built.body.paymentPayload.resource.description === product.description.slice(0, MAX_DESCRIPTION),
+  wireBody.paymentPayload.resource.description === Array.from(product.description).slice(0, MAX_DESCRIPTION).join(""),
   "resource.description must be the canonical server description capped at 500 characters"
 );
 assert(
-  built.body.paymentPayload.extensions === undefined,
-  "builder must not inject Bazaar extensions into paymentPayload"
+  wireBody.paymentPayload.extensions === undefined,
+  "wire enrichment must not inject Bazaar extensions into paymentPayload"
 );
 assert(
-  !("resource" in built.body.paymentRequirements),
+  !("resource" in wireBody.paymentRequirements),
   "paymentRequirements must remain the clean v2 per-accept shape"
 );
 
-// Buyer-supplied resource metadata must not be able to redirect Bazaar attribution
-// away from the canonical server requirement.
+// Buyer-supplied resource metadata must not redirect Bazaar attribution away from
+// the canonical server requirement.
 const spoofedPayload = {
   ...signedPayload,
   resource: {
@@ -80,12 +89,13 @@ const spoofedBuilt = buildFacilitatorRequestBody(
   requirement
 );
 assert(spoofedBuilt.ok, `spoofed builder failed: ${spoofedBuilt.error}`);
+const spoofedWireBody = buildFacilitatorWireBody(spoofedBuilt.body, requirement);
 assert(
-  spoofedBuilt.body.paymentPayload.resource.url === RESOURCE,
+  spoofedWireBody.paymentPayload.resource.url === RESOURCE,
   "Bazaar attribution must use the canonical requirement resource URL"
 );
 assert(
-  spoofedBuilt.body.paymentPayload.resource.description === product.description.slice(0, MAX_DESCRIPTION),
+  spoofedWireBody.paymentPayload.resource.description === Array.from(product.description).slice(0, MAX_DESCRIPTION).join(""),
   "Bazaar attribution must use the canonical capped server description"
 );
 
