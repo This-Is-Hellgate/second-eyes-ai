@@ -2,6 +2,8 @@
 
 Second Eyes sells agent-facing transformations over x402 v2. The two confirmed refinery products are below. Public product slugs are intentionally descriptive so an autonomous buyer can understand the value before it pays.
 
+**MCP package:** `@secondeyes/mcp-unblock@1.2.7` — `npx -y @secondeyes/mcp-unblock@1.2.7`
+
 ## 1) Analyze video, audio, and PDFs
 
 **Path:** `https://secondeyesai.com/api/bar/x402/analyze-video-audio-and-pdfs`
