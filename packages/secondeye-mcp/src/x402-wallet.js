@@ -1,41 +1,11 @@
-/**
- * x402 compatibility wallet bridge for MCP order_service.
- *
- * Env (see README threat model):
- *   MCP_X402_WALLET_KEY — 0x-prefixed EVM private key (preferred)
- *   CANARY_WALLET_KEY   — fallback alias for canary / CI
- *   MCP_X402_MAX_SPEND_USD — per-call cap (default 0.50)
- *   MCP_X402_SESSION_MAX_USD — process lifetime cap (default 2.00)
- *   MCP_X402_ALLOW_SLUGS — comma-separated slugs (or "*"). Default (unset) =
- *     every zero-argument capability slug in CAPABILITY_PRICES_USD that
- *     the zero-argument order_service tool can actually convert — i.e. the
- *     catalog minus INPUT_REQUIRED_SLUGS (transcribe-extract, doc-extract). Those
- *     two doors need a caller-supplied URL the zero-arg tool cannot pass, so the
- *     paid retry would reach the door and dead-end on no_input (Codex C-025);
- *     they stay priced + routable but are excluded from the default-allow set.
- *     A wallet-configured agent autopays the safe zero-arg menu without extra
- *     config. Safety is enforced by the per-call/session caps and the catalog
- *     price ceiling (every default slug is ≤ CAPABILITY_PRICE_MAX_USD = $0.05),
- *     never by the allowlist. Set this env var to a comma-separated list to
- *     restrict, or to explicitly opt a door like transcribe-extract back in once
- *     the caller can supply its required input out-of-band.
- */
+/** x402 wallet bridge for MCP order_service and direct refinery routing. */
 import { wrapFetchWithPayment, x402Client, decodePaymentResponseHeader } from "@x402/fetch";
 import { ExactEvmScheme, toClientEvmSigner } from "@x402/evm";
 import { privateKeyToAccount } from "viem/accounts";
 import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
 
-/**
- * Compatibility price catalogue, USD — mirrored from the legacy service
- * constants plus the sessionless
- * x402 nano twins in functions/api/bar/x402/*.js. Launch recovery pricing is
- * $0.01–$0.05: tap services that are one cheap inference are $0.01, core
- * recovery packs $0.03, deepest recovery work $0.05. Kept in sync so the live
- * 402 quote, the advertised menu, and guardPayment all agree.
- */
 export const CAPABILITY_PRICES_USD = {
-  // Compatibility capabilities (session-gated /api/bar/services/{slug})
   "loop-detect": 0.03,
   "scope-check": 0.03,
   "context-recover": 0.05,
@@ -48,63 +18,28 @@ export const CAPABILITY_PRICES_USD = {
   "mcp-wiring": 0.05,
   "should-i-pay": 0.01,
   receipt: 0.03,
-  // Session-less x402 nano twins (/api/bar/x402/{slug})
   "help-me": 0.01,
   "schema-repair": 0.03,
-  "transcribe-extract": 0.05,
-  "doc-extract": 0.05,
+  "analyze-video-audio-and-pdfs": 0.05,
+  "turn-paper-into-code": 0.25,
 };
 
-/** Highest launch price in the catalog — the ceiling autopay should ever sign. */
 export const CAPABILITY_PRICE_MAX_USD = Math.max(...Object.values(CAPABILITY_PRICES_USD));
 
-/**
- * Slugs whose x402 door requires a caller-supplied input (a URL, doc_type, …)
- * that the zero-argument order_service tool cannot pass. They stay priced and
- * routable (x402ServicePath resolves them) so an agent that can supply the input
- * out-of-band — or a future tool with an input schema — can still pay them, but
- * they are excluded from the zero-arg autopay default-allow set: a blind paid
- * retry reaches the door and dead-ends on no_input rather than producing a paid
- * 200 (Codex C-025). Call /api/bar/x402/transcribe and /api/bar/x402/extract
- * directly with the required input instead.
- */
-export const INPUT_REQUIRED_SLUGS = new Set(["transcribe-extract", "doc-extract"]);
+/** These products require caller-supplied source input; zero-arg order_service must not autopay them. */
+export const INPUT_REQUIRED_SLUGS = new Set([
+  "analyze-video-audio-and-pdfs",
+  "turn-paper-into-code",
+]);
 
-/**
- * The launch catalog minus INPUT_REQUIRED_SLUGS — the slugs a zero-argument
- * order_service call can actually convert to a paid 200, and therefore the
- * default autopay allow-set.
- */
 export const ZERO_ARG_AUTOPAY_SLUGS = Object.keys(CAPABILITY_PRICES_USD).filter(
   (slug) => !INPUT_REQUIRED_SLUGS.has(slug)
 );
 
-/**
- * Session-less x402 route for each autopay catalog slug. order_service must hit
- * /api/bar/x402/{path} — the canonical /api/bar/services/{slug} route is
- * session-gated and returns 4xx (never a 402) to a wallet agent that holds no
- * compatibility session, so payAndRetryService never fires and the request stops
- * on unknown_service / missing_session instead of autopaying.
- *
- * Most slugs map to /api/bar/x402/{slug} 1:1 (the dynamic [slug].js twin). Two
- * task-named nano slugs resolve to a differently-named static route file:
- *   transcribe-extract → /api/bar/x402/transcribe
- *   doc-extract        → /api/bar/x402/extract
- * Kept here, in the package, so the client routes to a live door without a
- * network round-trip to discover the path.
- */
-const X402_ROUTE_OVERRIDES = {
-  "transcribe-extract": "transcribe",
-  "doc-extract": "extract",
-};
-
-/** Session-less x402 path segment for a catalog slug (null when not in the catalog). */
 export function x402RouteSlug(slug) {
-  if (!(slug in CAPABILITY_PRICES_USD)) return null;
-  return X402_ROUTE_OVERRIDES[slug] || slug;
+  return slug in CAPABILITY_PRICES_USD ? slug : null;
 }
 
-/** Full session-less x402 path for a catalog slug, or null when unknown. */
 export function x402ServicePath(slug) {
   const routeSlug = x402RouteSlug(slug);
   return routeSlug ? `/api/bar/x402/${routeSlug}` : null;
@@ -135,21 +70,10 @@ export function normalizePrivateKey(raw) {
 
 export function parseAllowSlugs() {
   const raw = process.env.MCP_X402_ALLOW_SLUGS;
-  // Default (unset) and "*" both allow the zero-arg autopay set — the launch
-  // catalog minus INPUT_REQUIRED_SLUGS (transcribe-extract, doc-extract), which
-  // the zero-arg tool cannot convert (C-025). A wallet-configured agent autopays
-  // the safe zero-arg menu out of the box; spend caps and the price ceiling —
-  // not the allowlist — are the safety boundary. An operator can still name an
-  // input-requiring slug explicitly to opt it back in.
   if (raw === undefined || raw === null || !raw.trim() || raw.trim() === "*") {
     return new Set(ZERO_ARG_AUTOPAY_SLUGS);
   }
-  return new Set(
-    raw
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-  );
+  return new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
 }
 
 function loadWallet() {
@@ -199,15 +123,11 @@ export function priceFrom402(json, slug) {
 export function guardPayment(slug, priceUsd) {
   const allow = parseAllowSlugs();
   if (!allow.has(slug)) {
-    return {
-      ok: false,
-      code: "slug_not_allowed",
-      message: `Slug "${slug}" not in MCP_X402_ALLOW_SLUGS`,
-    };
+    return { ok: false, code: "slug_not_allowed", message: `Slug "${slug}" not in MCP_X402_ALLOW_SLUGS` };
   }
 
   const maxCall = envNum("MCP_X402_MAX_SPEND_USD", DEFAULT_MAX_CALL_USD);
-  if (priceUsd === null || priceUsd <= 0) {
+  if (priceUsd === null || priceUsd === undefined || priceUsd <= 0) {
     return { ok: false, code: "unknown_price", message: "Could not determine 402 price from response" };
   }
   if (priceUsd > maxCall) {
@@ -235,29 +155,35 @@ export function guardPayment(slug, priceUsd) {
       message: `402 quoted $${priceUsd} but catalog max for ${slug} is $${catalogMax}`,
     };
   }
-
   return { ok: true, priceUsd };
 }
 
 /**
- * Retry a capability URL with x402 payment after an initial 402.
- * @returns {{ status, json, headers, payment?: object, x402_error?: object }}
+ * Retry a zero-argument capability URL with x402 payment after an initial 402.
+ * Input-requiring refinery products deliberately fail here: call their descriptive
+ * HTTP route directly so the signed retry preserves the caller's source arguments.
  */
 export async function payAndRetryService(url, { session_id, slug, initial402 }) {
-  loadWallet();
-
-  if (walletLoadError) {
+  if (INPUT_REQUIRED_SLUGS.has(slug)) {
     return {
       status: 402,
       json: initial402,
       x402_error: {
-        code: "malformed_wallet_key",
-        message: walletLoadError,
-        hint: "Fix MCP_X402_WALLET_KEY — expect 0x + 64 hex chars",
+        code: "input_required",
+        message: `${slug} requires caller-supplied input and cannot be purchased through zero-argument order_service.`,
+        hint: `Call ${x402ServicePath(slug)} directly with its declared input schema.`,
       },
     };
   }
 
+  loadWallet();
+  if (walletLoadError) {
+    return {
+      status: 402,
+      json: initial402,
+      x402_error: { code: "malformed_wallet_key", message: walletLoadError, hint: "Fix MCP_X402_WALLET_KEY — expect 0x + 64 hex chars" },
+    };
+  }
   if (!cachedFetchWithPayment || !cachedAccount) {
     return {
       status: 402,
@@ -265,7 +191,7 @@ export async function payAndRetryService(url, { session_id, slug, initial402 }) 
       x402_error: {
         code: "no_wallet_configured",
         message: "Payment required but no wallet key in MCP server env",
-        hint: "Set MCP_X402_WALLET_KEY on the MCP server process (not the LLM). Or pay via REST with PAYMENT-SIGNATURE.",
+        hint: "Set MCP_X402_WALLET_KEY on the MCP server process, or pay via REST with PAYMENT-SIGNATURE.",
         wallet: walletStatus(),
       },
     };
@@ -293,30 +219,21 @@ export async function payAndRetryService(url, { session_id, slug, initial402 }) 
         "X-Second-Eye-Session": session_id,
       },
     });
-
     const text = await res.text();
     let json;
-    try {
-      json = JSON.parse(text);
-    } catch {
-      json = { raw: text, status: res.status };
-    }
+    try { json = JSON.parse(text); } catch { json = { raw: text, status: res.status }; }
 
-    const paymentHeader =
-      res.headers.get("X-PAYMENT-RESPONSE") || res.headers.get("PAYMENT-RESPONSE");
+    const paymentHeader = res.headers.get("PAYMENT-RESPONSE") || res.headers.get("X-PAYMENT-RESPONSE");
     let payment;
     if (paymentHeader) {
-      try {
-        payment = decodePaymentResponseHeader(paymentHeader);
-      } catch (e) {
-        payment = { decode_error: String(e), raw: paymentHeader };
-      }
+      try { payment = decodePaymentResponseHeader(paymentHeader); }
+      catch (e) { payment = { decode_error: String(e), raw: paymentHeader }; }
     }
 
     if (res.status === 200) {
       sessionSpendUsd += guard.priceUsd;
       return {
-        status: res.status,
+        status: 200,
         json,
         headers: res.headers,
         payment: {
@@ -324,36 +241,21 @@ export async function payAndRetryService(url, { session_id, slug, initial402 }) 
           payer: cachedAccount.address,
           session_spend_usd: sessionSpendUsd,
           decoded_header: payment,
-          transaction:
-            json?.receipt?.transaction ||
-            payment?.transaction ||
-            payment?.txHash ||
-            payment?.tx ||
-            null,
+          transaction: json?.receipt?.transaction || payment?.transaction || payment?.txHash || payment?.tx || null,
         },
       };
     }
-
     if (res.status === 402) {
       return {
         status: 402,
         json,
-        x402_error: {
-          code: "payment_retry_still_402",
-          message: "Wallet signed payment but server still returned 402",
-          payer: cachedAccount.address,
-        },
+        x402_error: { code: "payment_retry_still_402", message: "Wallet signed payment but server still returned 402", payer: cachedAccount.address },
       };
     }
-
     return {
       status: res.status,
       json,
-      x402_error: {
-        code: "payment_verify_failed",
-        message: `Paid retry returned HTTP ${res.status}`,
-        payer: cachedAccount.address,
-      },
+      x402_error: { code: "payment_verify_failed", message: `Paid retry returned HTTP ${res.status}`, payer: cachedAccount.address },
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -364,15 +266,6 @@ export async function payAndRetryService(url, { session_id, slug, initial402 }) 
         : /payment|402|verify|settle/i.test(msg)
           ? "x402_verify_failure"
           : "payment_error";
-
-    return {
-      status: 402,
-      json: initial402,
-      x402_error: {
-        code,
-        message: msg,
-        payer: cachedAccount.address,
-      },
-    };
+    return { status: 402, json: initial402, x402_error: { code, message: msg, payer: cachedAccount.address } };
   }
 }
