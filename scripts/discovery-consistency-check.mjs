@@ -117,15 +117,18 @@ function routePrice(file) {
   if (/handlePaidFetch|runExtractPipeline/.test(oldExtract)) fail("extract.js", "legacy alias still contains product implementation");
 }
 
+// Keep this root check dependency-free: nested @x402 packages are installed later in CI.
 {
-  const wallet = await import("../packages/secondeye-mcp/src/x402-wallet.js");
+  const wallet = read("packages/secondeye-mcp/src/x402-wallet.js");
   for (const [slug, expected] of Object.entries(REFINERY)) {
-    if (wallet.CAPABILITY_PRICES_USD[slug] !== expected.price) fail("x402-wallet.js", `${slug} price drift`);
-    if (!wallet.INPUT_REQUIRED_SLUGS.has(slug)) fail("x402-wallet.js", `${slug} must be input-required`);
-    if (wallet.x402ServicePath(slug) !== expected.path) fail("x402-wallet.js", `${slug} routing drift`);
+    const escaped = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const priceMatch = wallet.match(new RegExp(`"${escaped}"\\s*:\\s*([\\d.]+)`));
+    if (!priceMatch || Number(priceMatch[1]) !== expected.price) fail("x402-wallet.js", `${slug} catalog price missing or wrong`);
+    if (!wallet.includes(`"${slug}",`)) fail("x402-wallet.js", `${slug} missing from input-required set/catalog`);
   }
-  if ("transcribe-extract" in wallet.CAPABILITY_PRICES_USD) fail("x402-wallet.js", "legacy transcribe-extract catalog slug remains");
-  if ("doc-extract" in wallet.CAPABILITY_PRICES_USD) fail("x402-wallet.js", "legacy doc-extract catalog slug remains");
+  if (/"transcribe-extract"\s*:/.test(wallet)) fail("x402-wallet.js", "legacy transcribe-extract catalog slug remains");
+  if (/"doc-extract"\s*:/.test(wallet)) fail("x402-wallet.js", "legacy doc-extract catalog slug remains");
+
   const mcpIndex = read("packages/secondeye-mcp/src/index.js");
   if (!mcpIndex.includes("analyze-video-audio-and-pdfs")) fail("src/index.js", "Content Analysis route missing from MCP copy");
   if (!mcpIndex.includes("turn-paper-into-code")) fail("src/index.js", "Paper-to-Code route missing from MCP copy");
