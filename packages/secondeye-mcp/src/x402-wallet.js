@@ -8,17 +8,9 @@
  *   MCP_X402_SESSION_MAX_USD — process lifetime cap (default 2.00)
  *   MCP_X402_ALLOW_SLUGS — comma-separated slugs (or "*"). Default (unset) =
  *     every zero-argument capability slug in CAPABILITY_PRICES_USD that
- *     the zero-argument order_service tool can actually convert — i.e. the
- *     catalog minus INPUT_REQUIRED_SLUGS (transcribe-extract, doc-extract). Those
- *     two doors need a caller-supplied URL the zero-arg tool cannot pass, so the
- *     paid retry would reach the door and dead-end on no_input (Codex C-025);
- *     they stay priced + routable but are excluded from the default-allow set.
- *     A wallet-configured agent autopays the safe zero-arg menu without extra
- *     config. Safety is enforced by the per-call/session caps and the catalog
- *     price ceiling (every default slug is ≤ CAPABILITY_PRICE_MAX_USD = $0.05),
- *     never by the allowlist. Set this env var to a comma-separated list to
- *     restrict, or to explicitly opt a door like transcribe-extract back in once
- *     the caller can supply its required input out-of-band.
+ *     order_service can call without extra input. The two refinery products
+ *     require a caller-supplied URL, so they remain priced and routable but are
+ *     excluded from zero-argument autopay by default.
  */
 import { wrapFetchWithPayment, x402Client, decodePaymentResponseHeader } from "@x402/fetch";
 import { ExactEvmScheme, toClientEvmSigner } from "@x402/evm";
@@ -26,16 +18,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
 
-/**
- * Compatibility price catalogue, USD — mirrored from the legacy service
- * constants plus the sessionless
- * x402 nano twins in functions/api/bar/x402/*.js. Launch recovery pricing is
- * $0.01–$0.05: tap services that are one cheap inference are $0.01, core
- * recovery packs $0.03, deepest recovery work $0.05. Kept in sync so the live
- * 402 quote, the advertised menu, and guardPayment all agree.
- */
 export const CAPABILITY_PRICES_USD = {
-  // Compatibility capabilities (session-gated /api/bar/services/{slug})
   "loop-detect": 0.03,
   "scope-check": 0.03,
   "context-recover": 0.05,
@@ -48,63 +31,28 @@ export const CAPABILITY_PRICES_USD = {
   "mcp-wiring": 0.05,
   "should-i-pay": 0.01,
   receipt: 0.03,
-  // Session-less x402 nano twins (/api/bar/x402/{slug})
   "help-me": 0.01,
   "schema-repair": 0.03,
-  "transcribe-extract": 0.05,
-  "doc-extract": 0.05,
+  "analyze-video-audio-and-pdfs": 0.05,
+  "turn-paper-into-code": 0.05,
 };
 
-/** Highest launch price in the catalog — the ceiling autopay should ever sign. */
 export const CAPABILITY_PRICE_MAX_USD = Math.max(...Object.values(CAPABILITY_PRICES_USD));
 
-/**
- * Slugs whose x402 door requires a caller-supplied input (a URL, doc_type, …)
- * that the zero-argument order_service tool cannot pass. They stay priced and
- * routable (x402ServicePath resolves them) so an agent that can supply the input
- * out-of-band — or a future tool with an input schema — can still pay them, but
- * they are excluded from the zero-arg autopay default-allow set: a blind paid
- * retry reaches the door and dead-ends on no_input rather than producing a paid
- * 200 (Codex C-025). Call /api/bar/x402/transcribe and /api/bar/x402/extract
- * directly with the required input instead.
- */
-export const INPUT_REQUIRED_SLUGS = new Set(["transcribe-extract", "doc-extract"]);
+export const INPUT_REQUIRED_SLUGS = new Set([
+  "analyze-video-audio-and-pdfs",
+  "turn-paper-into-code",
+]);
 
-/**
- * The launch catalog minus INPUT_REQUIRED_SLUGS — the slugs a zero-argument
- * order_service call can actually convert to a paid 200, and therefore the
- * default autopay allow-set.
- */
 export const ZERO_ARG_AUTOPAY_SLUGS = Object.keys(CAPABILITY_PRICES_USD).filter(
   (slug) => !INPUT_REQUIRED_SLUGS.has(slug)
 );
 
-/**
- * Session-less x402 route for each autopay catalog slug. order_service must hit
- * /api/bar/x402/{path} — the canonical /api/bar/services/{slug} route is
- * session-gated and returns 4xx (never a 402) to a wallet agent that holds no
- * compatibility session, so payAndRetryService never fires and the request stops
- * on unknown_service / missing_session instead of autopaying.
- *
- * Most slugs map to /api/bar/x402/{slug} 1:1 (the dynamic [slug].js twin). Two
- * task-named nano slugs resolve to a differently-named static route file:
- *   transcribe-extract → /api/bar/x402/transcribe
- *   doc-extract        → /api/bar/x402/extract
- * Kept here, in the package, so the client routes to a live door without a
- * network round-trip to discover the path.
- */
-const X402_ROUTE_OVERRIDES = {
-  "transcribe-extract": "transcribe",
-  "doc-extract": "extract",
-};
-
-/** Session-less x402 path segment for a catalog slug (null when not in the catalog). */
 export function x402RouteSlug(slug) {
   if (!(slug in CAPABILITY_PRICES_USD)) return null;
-  return X402_ROUTE_OVERRIDES[slug] || slug;
+  return slug;
 }
 
-/** Full session-less x402 path for a catalog slug, or null when unknown. */
 export function x402ServicePath(slug) {
   const routeSlug = x402RouteSlug(slug);
   return routeSlug ? `/api/bar/x402/${routeSlug}` : null;
@@ -135,12 +83,6 @@ export function normalizePrivateKey(raw) {
 
 export function parseAllowSlugs() {
   const raw = process.env.MCP_X402_ALLOW_SLUGS;
-  // Default (unset) and "*" both allow the zero-arg autopay set — the launch
-  // catalog minus INPUT_REQUIRED_SLUGS (transcribe-extract, doc-extract), which
-  // the zero-arg tool cannot convert (C-025). A wallet-configured agent autopays
-  // the safe zero-arg menu out of the box; spend caps and the price ceiling —
-  // not the allowlist — are the safety boundary. An operator can still name an
-  // input-requiring slug explicitly to opt it back in.
   if (raw === undefined || raw === null || !raw.trim() || raw.trim() === "*") {
     return new Set(ZERO_ARG_AUTOPAY_SLUGS);
   }
@@ -239,10 +181,6 @@ export function guardPayment(slug, priceUsd) {
   return { ok: true, priceUsd };
 }
 
-/**
- * Retry a capability URL with x402 payment after an initial 402.
- * @returns {{ status, json, headers, payment?: object, x402_error?: object }}
- */
 export async function payAndRetryService(url, { session_id, slug, initial402 }) {
   loadWallet();
 
