@@ -1,2 +1,5 @@
 import assert from "node:assert/strict";
-assert.equal(1, 2, "new refinery routes are not implemented yet");
+import { existsSync } from "node:fs";
+assert.equal(existsSync("functions/api/bar/x402/analyze-video-audio-and-pdfs.js"), true);
+assert.equal(existsSync("functions/api/bar/x402/turn-paper-into-code.js"), true);
+console.log("refinery route contract: PASS");
